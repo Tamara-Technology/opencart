@@ -55,6 +55,7 @@ class ControllerExtensionPaymentTamarapay extends Controller {
         $data['error_warning'] = $this->error['warning'] ?? '';
         $data['error_url'] = $this->error['url'] ?? '';
         $data['error_token'] = $this->error['token'] ?? '';
+        $data['error_token_notification'] = $this->error['token_notification'] ?? '';
         $data['error_merchant_success_url'] = $this->error['merchant_success_url'] ?? '';
         $data['error_merchant_failure_url'] = $this->error['merchant_failure_url'] ?? '';
         $data['error_merchant_cancel_url'] = $this->error['merchant_cancel_url'] ?? '';
@@ -292,16 +293,23 @@ class ControllerExtensionPaymentTamarapay extends Controller {
             $check_credentials = false;
         }
 
+        if (!$this->request->post['payment_tamarapay_token_notification']) {
+            $this->error['token_notification'] = $this->language->get('error_notification_token_required');
+
+            $check_credentials = false;
+        }
+
         if ($check_credentials) {
-            $client = $this->model_extension_payment_tamarapay->createClient(array(
-                'url'    => $this->request->post['payment_tamarapay_url'],
-                'token' => $this->request->post['payment_tamarapay_token']
-            ));
+            $url = $this->request->post['payment_tamarapay_url'];
+            $token = $this->request->post['payment_tamarapay_token'];
 
-            $verify_credentials = $this->model_extension_payment_tamarapay->verifyCredentials($client);
-
-            if (!$verify_credentials) {
-                $this->error['warning'] = $this->language->get('error_connection');
+            try {
+                $paymentTypes = $this->model_extension_payment_tamarapay->getPaymentTypes($url, $token, true);
+                if (empty($this->request->post['payment_tamarapay_types_pay_by_later_min_limit'])){
+                    $this->request->post = $this->addPaymentsTypeToRequest($this->request->post, $paymentTypes);
+                }
+            } catch (\Exception $exception) {
+                $this->error['token'] = $this->language->get('error_token_invalid');
             }
         }
 
@@ -310,6 +318,22 @@ class ControllerExtensionPaymentTamarapay extends Controller {
         }
 
         return !$this->error;
+    }
+
+    private function addPaymentsTypeToRequest($requestData, $paymentTypes) {
+        $keys = ['min_limit', 'max_limit', 'currency'];
+        foreach ($paymentTypes as $type) {
+            $name = strtolower($type['name']);
+            foreach ($keys as $key) {
+                $_key = 'payment_tamarapay_types_'.$name.'_' . $key;
+                if ($key == 'currency') {
+                    $requestData[$_key] = $type['max_limit']['currency'];
+                } else {
+                    $requestData[$_key] = $type[$key]['amount'];
+                }
+            }
+        }
+        return $requestData;
     }
 
     public function install() {

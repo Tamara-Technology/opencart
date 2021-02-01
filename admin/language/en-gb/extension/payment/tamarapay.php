@@ -50,6 +50,7 @@ $_['entry_title']                       = 'Title';
 $_['entry_enable']                      = 'Enabled';
 $_['entry_min_limit_amount']            = 'Min Limit Amount of Order';
 $_['entry_max_limit_amount']            = 'Max Limit Amount of Order';
+$_['entry_auto_fetching']               = 'Auto fetching in the first time after you save the credential';
 
 // Help
 $_['help_debug']			= 'Enabling debug will write sensitive data to a log file. You should always disable unless instructed otherwise.';
@@ -61,6 +62,8 @@ $_['button_refund']			= 'Refund';
 // Error
 $_['error_url']				            = 'URL Required!';
 $_['error_token']			            = 'Token Required!';
+$_['error_notification_token_required'] = 'Notification token Required!';
+$_['error_token_invalid']			    = 'Token Invalid!';
 $_['error_composer']		            = 'Unable to load Tamarapay SDK. Please download a compiled vendor folder or run composer.';
 $_['error_php_version']		            = 'Minimum version of PHP 7.0 is required!';
 $_['error_permission']		            = 'Warning: You do not have permission to modify payment Tamarapay!';

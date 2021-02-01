@@ -48,18 +48,6 @@ class ModelExtensionPaymentTamarapay extends Model
         return Client::create($configuration);
     }
 
-    public function verifyCredentials($client)
-    {
-        try {
-            $response = $client->getPaymentTypes(self::COUNTRY_ISO);
-            return true;
-        } catch (Exception $e) {
-            $this->log($e->getMessage());
-
-            return false;
-        }
-    }
-
     public function log($data)
     {
         if ($this->config->get('payment_tamarapay_debug')) {
@@ -232,6 +220,7 @@ class ModelExtensionPaymentTamarapay extends Model
      * @param $token
      * @param bool $forceReload force reload without cache
      * @return array
+     * @throws Exception
      */
     public function getPaymentTypes($url, $token, $forceReload = false)
     {
@@ -241,10 +230,10 @@ class ModelExtensionPaymentTamarapay extends Model
 
             if ($forceReload || !$cacheItem->isHit()) {
 
-                $client = Client::create(Configuration::create($url, $token));
+                $client = $this->createClient(['url' => $url, 'token' => $token]);
                 $paymentTypes = [];
 
-                $response = $client->getPaymentTypes(self::COUNTRY_ISO);
+                $response = $this->getPaymentTypesOfClient($client);
 
                 if (!$response->isSuccess()) {
                     throw new Exception($response->getMessage());
@@ -265,5 +254,9 @@ class ModelExtensionPaymentTamarapay extends Model
             throw $exception;
         }
         return [];
+    }
+
+    public function getPaymentTypesOfClient($client) {
+        return $client->getPaymentTypes(self::COUNTRY_ISO);
     }
 }
