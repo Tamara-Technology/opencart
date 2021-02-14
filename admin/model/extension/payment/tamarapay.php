@@ -50,7 +50,7 @@ class ModelExtensionPaymentTamarapay extends Model
 
     public function log($data)
     {
-        if ($this->config->get('payment_tamarapay_debug')) {
+        if ($this->config->get('tamarapay_debug')) {
             $backtrace = debug_backtrace();
             $log = new Log('tamarapay.log');
             $log->write('(' . $backtrace[1]['class'] . '::' . $backtrace[1]['function'] . ') - ' . print_r($data,
@@ -188,9 +188,9 @@ class ModelExtensionPaymentTamarapay extends Model
     }
 
     private function addEvents() {
-        $this->load->model('setting/event');
-        $this->model_setting_event->addEvent(self::TAMARA_EVENT_ORDER_STATUS_CHANGE_CODE, 'catalog/model/checkout/order/addOrderHistory/after', 'extension/payment/tamarapay/handleOrderStatusChange');
-        $this->model_setting_event->addEvent(self::TAMARA_EVENT_ADD_PROMO_WIDGET_CODE, 'catalog/view/product/product/after', 'extension/payment/tamarapay/addPromoWidgetForProduct');
+        $this->load->model('extension/event');
+        $this->model_extension_event->addEvent(self::TAMARA_EVENT_ORDER_STATUS_CHANGE_CODE, 'catalog/model/checkout/order/addOrderHistory/after', 'extension/payment/tamarapay/handleOrderStatusChange');
+        $this->model_extension_event->addEvent(self::TAMARA_EVENT_ADD_PROMO_WIDGET_CODE, 'catalog/view/*/template/product/product/after', 'extension/payment/tamarapay/addPromoWidgetForProduct');
     }
 
     public function uninstall()
@@ -209,9 +209,9 @@ class ModelExtensionPaymentTamarapay extends Model
     }
 
     private function removeEvents() {
-        $this->load->model('setting/event');
-        $this->model_setting_event->deleteEvent(self::TAMARA_EVENT_ORDER_STATUS_CHANGE_CODE);
-        $this->model_setting_event->deleteEvent(self::TAMARA_EVENT_ADD_PROMO_WIDGET_CODE);
+        $this->load->model('extension/event');
+        $this->model_extension_event->deleteEvent(self::TAMARA_EVENT_ORDER_STATUS_CHANGE_CODE);
+        $this->model_extension_event->deleteEvent(self::TAMARA_EVENT_ADD_PROMO_WIDGET_CODE);
     }
 
     /**

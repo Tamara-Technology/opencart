@@ -33,10 +33,16 @@ class ControllerExtensionPaymentTamarapay extends Controller
         $data['installment_min_limit'] = $installmentMinLimit;
         $data['methods'] = $methods;
         $data['total_method_available'] = $totalTypeAvailable;
-        $data['use_iframe_checkout'] = $this->config->get('payment_tamarapay_iframe_checkout_enabled');
+        $data['use_iframe_checkout'] = $this->config->get('tamarapay_iframe_checkout_enabled');
         $data['merchant_urls'] = $this->model_extension_payment_tamarapay->getMerchantUrls();
         $data['order_data'] = $this->model_extension_payment_tamarapay->getOrder( $this->model_extension_payment_tamarapay->getOrderIdFromSession());
         $data['language_code'] = $this->language->get('code');
+        $data['text_choose_payment'] = $this->language->get('text_choose_payment');
+        $data['text_min_amount'] = $this->language->get('text_min_amount');
+        $data['text_max_amount'] = $this->language->get('text_max_amount');
+        $data['text_more_details'] = $this->language->get('text_more_details');
+        $data['button_confirm'] = $this->language->get('button_confirm');
+        $data['error_get_payment'] = null;
         return $this->renderIndexTemplate($data);
     }
 
@@ -67,8 +73,8 @@ class ControllerExtensionPaymentTamarapay extends Controller
             return;
         }
 
-        $url = $this->config->get('payment_tamarapay_url');
-        $token = $this->config->get('payment_tamarapay_token');
+        $url = $this->config->get('tamarapay_url');
+        $token = $this->config->get('tamarapay_token');
 
         $response = $this->model_extension_payment_tamarapay->createCheckout($url, $token,
             $this->request->post['payment_type']);
@@ -92,7 +98,7 @@ class ControllerExtensionPaymentTamarapay extends Controller
         if (!$tamaraOrder['is_authorised']) {
 
             //set order status
-            $successStatusId = $this->config->get('payment_tamarapay_order_status_success_id');
+            $successStatusId = $this->config->get('tamarapay_order_status_success_id');
             $this->model_extension_payment_tamarapay->addOrderComment($this->session->data['order_id'], $successStatusId, "Tamara - Pay success", 0);
         }
 
@@ -131,13 +137,14 @@ class ControllerExtensionPaymentTamarapay extends Controller
         }
 
         $data['continue'] = $this->url->link('common/home');
-
+        $data['heading_title'] = $this->language->get('heading_title');
         $data['column_left'] = $this->load->controller('common/column_left');
         $data['column_right'] = $this->load->controller('common/column_right');
         $data['content_top'] = $this->load->controller('common/content_top');
         $data['content_bottom'] = $this->load->controller('common/content_bottom');
         $data['footer'] = $this->load->controller('common/footer');
         $data['header'] = $this->load->controller('common/header');
+        $data['button_continue'] = $this->language->get('button_continue');
         $this->clearCheckoutSession();
 
         $this->response->setOutput($this->load->view('extension/payment/tamarapay_success', $data));
@@ -168,7 +175,7 @@ class ControllerExtensionPaymentTamarapay extends Controller
         $this->load->language('extension/payment/tamarapay');
 
         if (isset($this->session->data['order_id'])) {
-            $this->model_extension_payment_tamarapay->addOrderComment($this->session->data['order_id'], $this->config->get('payment_tamarapay_order_status_failure_id'), "Tamara - Pay failed", 0);
+            $this->model_extension_payment_tamarapay->addOrderComment($this->session->data['order_id'], $this->config->get('tamarapay_order_status_failure_id'), "Tamara - Pay failed", 0);
         }
 
         $this->session->data['error'] = $this->language->get('text_order_pay_failure');
@@ -181,7 +188,7 @@ class ControllerExtensionPaymentTamarapay extends Controller
         $this->load->model('extension/payment/tamarapay');
         $this->load->language('extension/payment/tamarapay');
         if (isset($this->session->data['order_id'])) {
-            $this->model_extension_payment_tamarapay->addOrderComment($this->session->data['order_id'], $this->config->get('payment_tamarapay_order_status_canceled_id'), "Tamara - Pay canceled", 0);
+            $this->model_extension_payment_tamarapay->addOrderComment($this->session->data['order_id'], $this->config->get('tamarapay_order_status_canceled_id'), "Tamara - Pay canceled", 0);
         }
 
         $this->session->data['error'] = $this->language->get('text_order_canceled');
@@ -200,7 +207,7 @@ class ControllerExtensionPaymentTamarapay extends Controller
         $this->load->model('extension/payment/tamarapay');
         $this->load->model('checkout/order');
 
-        $tokenNotification = $this->config->get('payment_tamarapay_token_notification');
+        $tokenNotification = $this->config->get('tamarapay_token_notification');
 
         $notificationService = NotificationService::create($tokenNotification);
         try {
@@ -214,7 +221,7 @@ class ControllerExtensionPaymentTamarapay extends Controller
         $orderId = $authorise->getOrderId();
 
         try {
-            $this->model_extension_payment_tamarapay->getTamaraOrderByTamaraOrderId($orderId);
+           $this->model_extension_payment_tamarapay->getTamaraOrderByTamaraOrderId($orderId);
         } catch (Exception $exception) {
             $this->log($exception->getMessage());
             $response = ['error' => $this->language->get('error_not_found_order')];
@@ -222,13 +229,12 @@ class ControllerExtensionPaymentTamarapay extends Controller
         }
 
         $response = $this->model_extension_payment_tamarapay->authoriseOrder($orderId);
-
         $this->responseJson($response);
     }
 
     public function log($data, $class_step = 6, $function_step = 6)
     {
-        if ($this->config->get('payment_tamarapay_debug')) {
+        if ($this->config->get('tamarapay_debug')) {
             $backtrace = debug_backtrace();
             $log = new Log('tamarapay.log');
             $log->write('(' . $backtrace[$class_step]['class'] . '::' . $backtrace[$function_step]['function'] . ') - ' . print_r($data,
@@ -238,13 +244,13 @@ class ControllerExtensionPaymentTamarapay extends Controller
 
     public function handleOrderStatusChange($route, $args, $output)
     {
-        if ($this->config->get('payment_tamarapay_trigger_actions_enabled')) {
+        if ($this->config->get('tamarapay_trigger_actions_enabled')) {
             try {
                 $this->load->model('extension/payment/tamarapay');
                 $orderId = $args[0];
                 $statusId = $args[1];
                 $tamaraOrder = $this->model_extension_payment_tamarapay->getTamaraOrder($orderId);
-                if ($statusId == $this->config->get('payment_tamarapay_capture_order_status_id')) {
+                if ($statusId == $this->config->get('tamarapay_capture_order_status_id')) {
                     $this->model_extension_payment_tamarapay->captureOrder($tamaraOrder['tamara_order_id']);
                 }
                 if ($statusId == self::ORDER_CANCELED_STATUS_ID) {
@@ -281,7 +287,7 @@ class ControllerExtensionPaymentTamarapay extends Controller
             }
             $str = "";
             if ($canPayByInstallments) {
-                $str .= ('<div id="tamara-product-widget" class="tamara-product-widget" data-lang="" data-price="'.$finalPrice.'" data-currency="' .$installmentsConfig['currency']. '" data-payment-type="installment" data-installment-minimum-amount="' .$installmentsConfig['min_limit']. '" ></div>');
+                $str .= ('<div id="tamara-product-widget" class="tamara-product-widget" data-lang="" data-price="'.$finalPrice.'" data-currency="' .$installmentsConfig['currency']. '" data-payment-type="installment" data-installment-minimum-amount="' .$installmentsConfig['min_limit']. '" ></a>');
             } else {
                 $str .= ('<div id="tamara-product-widget" class="tamara-product-widget" data-lang="" data-inject-template="true"></div>');
             }

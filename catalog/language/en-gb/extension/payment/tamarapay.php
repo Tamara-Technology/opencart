@@ -17,10 +17,10 @@ $_['text_min_amount']                   = 'Min amount:';
 $_['text_max_amount']                   = 'Max amount:';
 $_['text_more_details']                 = 'More details...';
 $_['text_know_more']                    = 'Know more?';
-$_['text_order_canceled']               = 'Your order has been canceled';
-$_['text_order_pay_failure']            = 'Pay with Tamara failed';
 $_['text_pay_by_later']                 = 'Pay later in 30 days';
 $_['text_pay_by_instalments']           = 'Pay in 3 instalments';
+$_['text_order_canceled']               = 'Your order has been canceled';
+$_['text_order_pay_failure']            = 'Pay with Tamara failed';
 
 // Error
 $_['error_process_order']				= 'There was an error processing your order. Please contact the shop administrator for help.';
