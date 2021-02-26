@@ -80,6 +80,10 @@
     a.tamara-widget {
         padding: 5px !important;
     }
+    div.tamara-product-widget {
+        text-decoration: underline;
+        cursor: pointer;
+    }
     section.payment-types {
         min-height: 200px; margin-bottom: 50px;
     }
@@ -87,9 +91,9 @@
         margin-bottom: 80px;
     }
 </style>
-{% if error_get_payment %}
-    <div id="error-area" class="alert alert-danger"><i class="fa fa-ban"></i> {{ error_get_payment }}</div>
-{% else %}
+<?php if ($error_get_payment): ?>
+    <div id="error-area" class="alert alert-danger"><i class="fa fa-ban"></i> <?php echo $error_get_payment ?></div>
+<?php else: ?>
     <div style="display: none;" class="payment-warning alert alert-danger">
         <i class="fa fa-exclamation-circle"></i>
         <span class="message"></span>
@@ -99,75 +103,75 @@
         <form class="form-horizontal" id="payment">
             <section class="payment-types">
                 <div class="payment-type-title">
-                    <h3 class="text-center">{{ text_choose_payment }}</h3>
+                    <h3 class="text-center"><?php echo $text_choose_payment ?></h3>
                     <div class="col-sm-12">
                         <div class="col-sm-4"></div>
                         <div class="col-sm-4 text-center">
-                            <a href="javascript:void(0)" class="tamara-widget" data-lang="{{ language_code }}" data-currency="{{ order_data.currency_code }}" data-installment-minimum-amount="{{ installment_min_limit }}"></a>
+                            <a href="javascript:void(0)" class="tamara-widget" data-lang="<?php echo $language_code ?>" data-currency="<?php echo $order_data['currency_code'] ?>" data-installment-minimum-amount="<?php echo $installment_min_limit ?>"></a>
                         </div>
                         <div class="col-sm-4"></div>
                     </div>
                 </div>
                 <div class="payment-type-content">
-                    {% for key,method in methods %}
+                    <?php foreach ($methods as $key => $method): ?>
                         <div class="col-sm-12 col-md-6">
                             <div class="form-check">
-                                {% if method.is_available %}
-                                    {% if method.checked %}
-                                        <input type="radio" name="payment_type" class="form-check-input" id="{{ method.name }}" value="{{ method.name }}" checked>
-                                    {% else %}
-                                        <input type="radio" name="payment_type" class="form-check-input" id="{{ method.name }}" value="{{ method.name }}">
-                                    {% endif %}
-                                    <label for="{{ method.name }}" class="form-check-label"><b>{{ method.title }}</b></label>
+                                <?php if ($method['is_available']): ?>
+                                    <?php if ($method['checked']): ?>
+                                        <input type="radio" name="payment_type" class="form-check-input" id="<?php echo $method['name'] ?>" value="<?php echo $method['name'] ?>" checked>
+                                    <?php else: ?>
+                                        <input type="radio" name="payment_type" class="form-check-input" id="<?php echo $method['name'] ?>" value="<?php echo $method['name'] ?>">
+                                    <?php endif; ?>
+                                    <label for="<?php echo $method['name'] ?>" class="form-check-label"><b><?php echo $method['title'] ?></b></label>
                                     <br />
-                                {% else %}
-                                    <input type="radio" name="payment_type" class="form-check-input" id="{{ method.name }}" value="{{ method.name }}" disabled>
-                                    <label for="{{ method.name }}" class="form-check-label"><b>{{ method.title }}</b></label>
+                                <?php else: ?>
+                                    <input type="radio" name="payment_type" class="form-check-input" id="<?php echo $method['name'] ?>" value="<?php echo $method['name'] ?>" disabled>
+                                    <label for="<?php echo $method['name'] ?>" class="form-check-label"><b><?php echo $method['title'] ?></b></label>
                                     <br />
-                                {% endif %}
-                                <label for="{{ method.name }}" class="form-check-label"><b>{{ text_min_amount }}</b> {{ method.min_limit }} {{ method.currency }}</label>
+                                <?php endif; ?>
+                                <label for="<?php echo $method['name'] ?>" class="form-check-label"><b><?php echo $text_min_amount ?></b> <?php echo $method['min_limit'] ?> <?php echo $method['currency'] ?></label>
                                 <br />
-                                <label for="{{ method.name }}" class="form-check-label"><b>{{ text_max_amount }}</b> {{ method.max_limit }} {{ method.currency }}</label>
+                                <label for="<?php echo $method['name'] ?>" class="form-check-label"><b><?php echo $text_max_amount ?></b> <?php echo $method['max_limit'] ?> <?php echo $method['currency'] ?></label>
                                 <br />
-                                {% if method.is_available %}
-                                <label for="{{ method.name }}">
-                                    {% if method.name == 'PAY_BY_INSTALMENTS' %}
-                                        <a href="javascript:void(0)" class="tamara-product-widget" data-lang="{{ language_code }}" data-price="{{ order_data.total }}" data-currency="{{ method.currency }}" data-payment-type="installment" data-installment-minimum-amount="{{ method.min_limit }}" data-inject-template="false">{{ text_more_details }}</a>
-                                    {% else %}
-                                        <a href="javascript:void(0)" class="tamara-product-widget" data-lang="{{ language_code }}" data-inject-template="false">{{ text_more_details }}</a>
-                                    {% endif %}
+                                <?php if ($method['is_available']): ?>
+                                <label for="<?php echo $method['name'] ?>">
+                                    <?php if ($method['name'] == 'PAY_BY_INSTALMENTS'): ?>
+                                        <div class="tamara-product-widget" data-lang="<?php echo $language_code ?>" data-price="<?php echo $order_data['total'] ?>" data-currency="<?php echo $method['currency'] ?>" data-payment-type="installment" data-installment-minimum-amount="<?php echo $method['min_limit'] ?>" data-inject-template="false"><?php echo $text_more_details ?></div>
+                                    <?php else: ?>
+                                        <div class="tamara-product-widget" data-lang="<?php echo $language_code ?>" data-inject-template="false"><?php echo $text_more_details ?></div>
+                                    <?php endif; ?>
                                 </label>
-                                {% endif %}
+                                <?php endif; ?>
                             </div>
                         </div>
-                    {% endfor %}
+                    <?php endforeach; ?>
                 </div>
             </section>
-            {% if total_method_available > 0 %}
+            <?php if ($total_method_available > 0): ?>
             <div class="form-group form-submit col-sm-12 text-center">
-                <input id="button-confirm" type="button" value="{{ button_confirm }}" class="btn btn-primary submit-form" />
+                <input id="button-confirm" type="button" value="<?php echo $button_confirm ?>" class="btn btn-primary submit-form" />
             </div>
-            {% else %}
+            <?php else: ?>
                 <p class="text-danger font-weight-bold" style="font-weight: bold;">
-                    {{ error_no_method_available }}
+                    <?php echo $error_no_method_available ?>
                 </p>
-            {% endif %}
+            <?php endif; ?>
         </form>
     </div>
 
-    {% if use_iframe_checkout %}
+    <?php if ($use_iframe_checkout): ?>
         <script src="https://cdn.tamara.co/checkout/checkoutFrame.min.js?v=1.1"></script>
         <script type="text/javascript">
             function success() {
-                window.location = '{{ merchant_urls.success }}';
+                window.location = '<?php echo $merchant_urls["success"] ?>';
             }
 
             function failed() {
-                window.location = '{{ merchant_urls.failure }}';
+                window.location = '<?php echo $merchant_urls["failure"] ?>';
             }
 
             function cancel() {
-                window.location = '{{ merchant_urls.cancel }}';
+                window.location = '<?php echo $merchant_urls["cancel"] ?>';
             }
 
             function init() {
@@ -181,14 +185,14 @@
                 init: init,
             }
         </script>
-    {% endif %}
+    <?php endif; ?>
 
     <script charset="utf-8" src="https://cdn.tamara.co/widget/tamara-widget.min.js"></script>
     <script type="text/javascript">
         window.checkTamaraWidgetCount = 0;
         var existTamaraWidget = setInterval(function() {
             if (window.TamaraWidget) {
-                window.TamaraWidget.init({ lang: '{{ language_code }}' });
+                window.TamaraWidget.init({ lang: '<?php echo $language_code ?>' });
                 window.TamaraWidget.render();
                 clearInterval(existTamaraWidget);
             }
@@ -204,7 +208,7 @@
         window.checkTamaraProductWidgetCount = 0;
         var existTamaraProductWidget = setInterval(function() {
             if (window.TamaraProductWidget) {
-                window.TamaraProductWidget.init({ lang: '{{ language_code }}' });
+                window.TamaraProductWidget.init({ lang: '<?php echo $language_code ?>' });
                 window.TamaraProductWidget.render();
                 clearInterval(existTamaraProductWidget);
             }
@@ -218,7 +222,7 @@
     <script type="text/javascript">
         $('#button-confirm').on('click', function() {
             $.ajax({
-                url: 'index.php?route=extension/payment/tamarapay/send',
+                url: 'index.php?route=payment/tamarapay/send',
                 type: 'post',
                 data: $('#payment input:checked'),
                 dataType: 'json',
@@ -236,11 +240,11 @@
                 },
                 success: function(json) {
                     if (json['redirectUrl']) {
-                        {% if use_iframe_checkout %}
+                        <?php if ($use_iframe_checkout): ?>
                             TamaraFrame.checkout(json.redirectUrl);
-                        {% else %}
+                        <?php else: ?>
                             window.location = json['redirectUrl'];
-                        {% endif %}
+                        <?php endif; ?>
                     }
                     if (json['error']) {
                         $('#error-area').css('display', 'block');
@@ -251,4 +255,4 @@
             });
         });
     </script>
-{% endif %}
+<?php endif; ?>

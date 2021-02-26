@@ -1,22 +1,19 @@
 <?php
 
-use Symfony\Component\Cache\Adapter\FilesystemAdapter;
 use Tamara\Client;
 use Tamara\Configuration;
 
-class ModelExtensionPaymentTamarapay extends Model
+class ModelPaymentTamarapay extends Model
 {
 
     public const
         VERSION = '1.0.0',
-        COUNTRY_ISO = 'SA',
-        CACHE_TAMARAPAY_PAYMENT_TYPES = 'cache_tamarapay_payment_types',
-        TTL = 86400;
+        COUNTRY_ISO = 'SA';
+
+    protected $paymentTypes;
 
     private const TAMARA_EVENT_ORDER_STATUS_CHANGE_CODE = 'tamara_order_status_change';
     private const TAMARA_EVENT_ADD_PROMO_WIDGET_CODE = 'tamara_promo_wg';
-
-    private $cacheTamarapay;
 
     /**
      * Get extension version
@@ -28,7 +25,6 @@ class ModelExtensionPaymentTamarapay extends Model
     public function __construct($registry)
     {
         parent::__construct($registry);
-        $this->cacheTamarapay = new FilesystemAdapter('', self::TTL, DIR_CACHE);
     }
 
     public function getTamaraOrder($order_id)
@@ -50,7 +46,7 @@ class ModelExtensionPaymentTamarapay extends Model
 
     public function log($data)
     {
-        if ($this->config->get('payment_tamarapay_debug')) {
+        if ($this->config->get('tamarapay_debug')) {
             $backtrace = debug_backtrace();
             $log = new Log('tamarapay.log');
             $log->write('(' . $backtrace[1]['class'] . '::' . $backtrace[1]['function'] . ') - ' . print_r($data,
@@ -188,9 +184,8 @@ class ModelExtensionPaymentTamarapay extends Model
     }
 
     private function addEvents() {
-        $this->load->model('setting/event');
-        $this->model_setting_event->addEvent(self::TAMARA_EVENT_ORDER_STATUS_CHANGE_CODE, 'catalog/model/checkout/order/addOrderHistory/after', 'extension/payment/tamarapay/handleOrderStatusChange');
-        $this->model_setting_event->addEvent(self::TAMARA_EVENT_ADD_PROMO_WIDGET_CODE, 'catalog/view/product/product/after', 'extension/payment/tamarapay/addPromoWidgetForProduct');
+        $this->load->model('extension/event');
+        $this->model_extension_event->addEvent(self::TAMARA_EVENT_ORDER_STATUS_CHANGE_CODE, 'post.order.history.add', 'payment/tamarapay/handleOrderStatusChange');
     }
 
     public function uninstall()
@@ -209,9 +204,8 @@ class ModelExtensionPaymentTamarapay extends Model
     }
 
     private function removeEvents() {
-        $this->load->model('setting/event');
-        $this->model_setting_event->deleteEvent(self::TAMARA_EVENT_ORDER_STATUS_CHANGE_CODE);
-        $this->model_setting_event->deleteEvent(self::TAMARA_EVENT_ADD_PROMO_WIDGET_CODE);
+        $this->load->model('extension/event');
+        $this->model_extension_event->deleteEvent(self::TAMARA_EVENT_ORDER_STATUS_CHANGE_CODE);
     }
 
     /**
@@ -225,10 +219,8 @@ class ModelExtensionPaymentTamarapay extends Model
     public function getPaymentTypes($url, $token, $forceReload = false)
     {
         try {
-            // Initialize and check cache
-            $cacheItem = $this->cacheTamarapay->getItem(self::CACHE_TAMARAPAY_PAYMENT_TYPES);
 
-            if ($forceReload || !$cacheItem->isHit()) {
+            if ($forceReload || !$this->paymentTypes) {
 
                 $client = $this->createClient(['url' => $url, 'token' => $token]);
                 $paymentTypes = [];
@@ -243,12 +235,10 @@ class ModelExtensionPaymentTamarapay extends Model
                     $paymentTypes[] = $paymentType->toArray();
                 }
 
-                // Cache the response
-                $cacheItem->set($paymentTypes);
-                $this->cacheTamarapay->save($cacheItem);
+                $this->paymentTypes = $paymentTypes;
             }
 
-            return $cacheItem->get();
+            return $this->paymentTypes;
         } catch (Exception $exception) {
             $this->log($exception->getMessage());
             throw $exception;
