@@ -132,7 +132,7 @@
                                 <?php if ($method['is_available']): ?>
                                 <label for="<?php echo $method['name'] ?>">
                                     <?php if ($method['name'] == 'PAY_BY_INSTALMENTS'): ?>
-                                        <a href="javascript:void(0)" class="tamara-product-widget" data-lang="<?php echo $language_code ?>" data-price="<?php echo $order_data['total'] ?>" data-currency="<?php echo method['currency'] ?>" data-payment-type="installment" data-installment-minimum-amount="<?php echo $method['min_limit'] ?>" data-inject-template="false"><?php echo $text_more_details ?></a>
+                                        <a href="javascript:void(0)" class="tamara-product-widget" data-lang="<?php echo $language_code ?>" data-price="<?php echo $order_data['total'] ?>" data-currency="<?php $echo method['currency'] ?>" data-payment-type="installment" data-installment-minimum-amount="<?php echo $method['min_limit'] ?>" data-inject-template="false"><?php echo $text_more_details ?></a>
                                     <?php else: ?>
                                         <a href="javascript:void(0)" class="tamara-product-widget" data-lang="<?php echo $language_code ?>" data-inject-template="false"><?php echo $text_more_details ?></a>
                                     <?php endif; ?>

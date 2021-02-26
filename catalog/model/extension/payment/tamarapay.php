@@ -915,7 +915,7 @@ class ModelExtensionPaymentTamarapay extends Model
         $sql = "INSERT INTO ". DB_PREFIX ."order_history (order_history_id, order_id, order_status_id, notify, comment, date_added) VALUES(null, {$orderId}, {$orderStatusId}, {$notify}, '{$comment}', NOW())";
         $this->db->query($sql);
 
-        $sql = "UPDATE ". DB_PREFIX ."order SET order_status_id='{$orderStatusId}' WHERE order_id = '{$orderId}'";
+        $sql = "UPDATE `". DB_PREFIX ."order` SET order_status_id='{$orderStatusId}' WHERE order_id = '{$orderId}'";
         $this->db->query($sql);
     }
 
