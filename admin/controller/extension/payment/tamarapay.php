@@ -74,6 +74,7 @@ class ControllerExtensionPaymentTamarapay extends Controller {
         $data['entry_order_status_canceled'] = $this->language->get('entry_order_status_canceled');
         $data['entry_order_status_authorised'] = $this->language->get('entry_order_status_authorised');
         $data['entry_capture_order_status'] = $this->language->get('entry_capture_order_status');
+        $data['entry_cancel_order_status'] = $this->language->get('entry_cancel_order_status');
         $data['entry_enable_debug'] = $this->language->get('entry_enable_debug');
         $data['entry_geo_zone'] = $this->language->get('entry_geo_zone');
         $data['entry_status'] = $this->language->get('entry_status');
@@ -259,6 +260,12 @@ class ControllerExtensionPaymentTamarapay extends Controller {
             $data['tamarapay_capture_order_status_id'] = $this->config->get('tamarapay_capture_order_status_id');
         }
 
+        if (isset($this->request->post['tamarapay_cancel_order_status_id'])) {
+            $data['tamarapay_cancel_order_status_id'] = $this->request->post['tamarapay_cancel_order_status_id'];
+        } else {
+            $data['tamarapay_cancel_order_status_id'] = $this->config->get('tamarapay_cancel_order_status_id');
+        }
+
         $data['order_statuses'] = $this->model_localisation_order_status->getOrderStatuses();
 
         if (isset($this->request->post['tamarapay_geo_zone_id'])) {
@@ -329,14 +336,15 @@ class ControllerExtensionPaymentTamarapay extends Controller {
         if ($check_credentials) {
             $url = $this->request->post['tamarapay_url'];
             $token = $this->request->post['tamarapay_token'];
-
-            try {
-                $paymentTypes = $this->model_extension_payment_tamarapay->getPaymentTypes($url, $token, true);
-                if (empty($this->request->post['tamarapay_types_pay_by_later_min_limit'])){
-                    $this->request->post = $this->addPaymentsTypeToRequest($this->request->post, $paymentTypes);
+            if ($url != $this->getTamaraPaymentUrlFromConfig() || $token != $this->getTamaraPaymentTokenFromConfig()) {
+                try {
+                    $paymentTypes = $this->model_extension_payment_tamarapay->getPaymentTypes($url, $token, true);
+                    if (empty($this->request->post['tamarapay_types_pay_by_later_min_limit'])){
+                        $this->request->post = $this->addPaymentsTypeToRequest($this->request->post, $paymentTypes);
+                    }
+                } catch (\Exception $exception) {
+                    $this->error['token'] = $this->language->get('error_token_invalid');
                 }
-            } catch (\Exception $exception) {
-                $this->error['token'] = $this->language->get('error_token_invalid');
             }
         }
 

@@ -80,6 +80,10 @@
     a.tamara-widget {
         padding: 5px !important;
     }
+    div.tamara-product-widget {
+        text-decoration: underline;
+        cursor: pointer;
+    }
     section.payment-types {
         min-height: 200px; margin-bottom: 50px;
     }
@@ -130,11 +134,11 @@
                                 <label for="<?php echo $method['name'] ?>" class="form-check-label"><b><?php echo $text_max_amount ?></b> <?php echo $method['max_limit'] ?> <?php echo $method['currency'] ?></label>
                                 <br />
                                 <?php if ($method['is_available']): ?>
-                                <label for="<?php echo $method['name'] ?>">
+                                <label>
                                     <?php if ($method['name'] == 'PAY_BY_INSTALMENTS'): ?>
-                                        <a href="javascript:void(0)" class="tamara-product-widget" data-lang="<?php echo $language_code ?>" data-price="<?php echo $order_data['total'] ?>" data-currency="<?php $echo method['currency'] ?>" data-payment-type="installment" data-installment-minimum-amount="<?php echo $method['min_limit'] ?>" data-inject-template="false"><?php echo $text_more_details ?></a>
+                                        <div class="tamara-product-widget" data-lang="<?php echo $language_code ?>" data-price="<?php echo $order_data['total'] ?>" data-currency="<?php echo $method['currency'] ?>" data-payment-type="installment" data-installment-minimum-amount="<?php echo $method['min_limit'] ?>" data-inject-template="false"><?php echo $text_more_details ?></div>
                                     <?php else: ?>
-                                        <a href="javascript:void(0)" class="tamara-product-widget" data-lang="<?php echo $language_code ?>" data-inject-template="false"><?php echo $text_more_details ?></a>
+                                        <div class="tamara-product-widget" data-lang="<?php echo $language_code ?>" data-inject-template="false"><?php echo $text_more_details ?></div>
                                     <?php endif; ?>
                                 </label>
                                 <?php endif; ?>
