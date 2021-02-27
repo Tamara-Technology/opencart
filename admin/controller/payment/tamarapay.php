@@ -74,6 +74,7 @@ class ControllerPaymentTamarapay extends Controller {
         $data['entry_order_status_canceled'] = $this->language->get('entry_order_status_canceled');
         $data['entry_order_status_authorised'] = $this->language->get('entry_order_status_authorised');
         $data['entry_capture_order_status'] = $this->language->get('entry_capture_order_status');
+        $data['entry_cancel_order_status'] = $this->language->get('entry_cancel_order_status');
         $data['entry_enable_debug'] = $this->language->get('entry_enable_debug');
         $data['entry_geo_zone'] = $this->language->get('entry_geo_zone');
         $data['entry_status'] = $this->language->get('entry_status');
@@ -257,6 +258,12 @@ class ControllerPaymentTamarapay extends Controller {
             $data['tamarapay_capture_order_status_id'] = $this->request->post['tamarapay_capture_order_status_id'];
         } else {
             $data['tamarapay_capture_order_status_id'] = $this->config->get('tamarapay_capture_order_status_id');
+        }
+
+        if (isset($this->request->post['tamarapay_cancel_order_status_id'])) {
+            $data['tamarapay_cancel_order_status_id'] = $this->request->post['tamarapay_cancel_order_status_id'];
+        } else {
+            $data['tamarapay_cancel_order_status_id'] = $this->config->get('tamarapay_cancel_order_status_id');
         }
 
         $data['order_statuses'] = $this->model_localisation_order_status->getOrderStatuses();

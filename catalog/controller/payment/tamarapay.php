@@ -5,7 +5,6 @@ use Tamara\Notification\NotificationService;
 class ControllerPaymentTamarapay extends Controller
 {
     private const INDEX_TEMPLATE = "default/template/payment/tamarapay.tpl";
-    const ORDER_CANCELED_STATUS_ID = 7;
 
     public function index()
     {
@@ -255,7 +254,7 @@ class ControllerPaymentTamarapay extends Controller
                     $this->model_payment_tamarapay->captureOrder($tamaraOrder['tamara_order_id']);
                     return;
                 }
-                if ($statusId == self::ORDER_CANCELED_STATUS_ID) {
+                if ($statusId == $this->config->get('tamarapay_cancel_order_status_id')) {
                     $this->model_payment_tamarapay->cancelOrder($tamaraOrder['tamara_order_id']);
                 }
             } catch (\Exception $exception) {

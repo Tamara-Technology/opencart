@@ -258,7 +258,7 @@
                                                 <div class="col-sm-10">
                                                     <select name="tamarapay_order_status_canceled_id" id="input-order-status-canceled" class="form-control">
                                                         <?php foreach ($order_statuses as $order_status): ?>
-                                                        <?php if ($order_status['order_status_id'] == $$tamarapay_order_status_canceled_id): ?>
+                                                        <?php if ($order_status['order_status_id'] == $tamarapay_order_status_canceled_id): ?>
                                                         <option value="<?php echo $order_status['order_status_id'] ?>" selected="selected"><?php echo $order_status['name'] ?></option>
                                                         <?php else: ?>
                                                         <option value="<?php echo $order_status['order_status_id'] ?>"><?php echo $order_status['name'] ?></option>
@@ -293,7 +293,7 @@
                     <div class="panel-group" id="tamara-payment-capture-order-statuses">
                         <div class="panel panel-default">
                             <div class="panel-heading">
-                                <h4 class="panel-title"><a href="#collapse-capture-order-statuses" data-toggle="collapse" data-parent="#tamara-payment-capture-order-statuses" class="accordion-toggle collapsed" aria-expanded="false">Capture payment <i class="fa fa-caret-down"></i></a></h4>
+                                <h4 class="panel-title"><a href="#collapse-capture-order-statuses" data-toggle="collapse" data-parent="#tamara-payment-capture-order-statuses" class="accordion-toggle collapsed" aria-expanded="false">Tamara trigger configuration <i class="fa fa-caret-down"></i></a></h4>
                             </div>
                             <div class="panel-collapse collapse" id="collapse-capture-order-statuses" aria-expanded="false" style="height: 0px;">
                                 <div class="panel-body">
@@ -305,6 +305,24 @@
                                                     <select name="tamarapay_capture_order_status_id" id="input-capture-order-status" class="form-control">
                                                         <?php foreach ($order_statuses as $order_status): ?>
                                                         <?php if ($order_status['order_status_id'] == $tamarapay_capture_order_status_id): ?>
+                                                        <option value="<?php echo $order_status['order_status_id'] ?>" selected="selected"><?php echo $order_status['name'] ?></option>
+                                                        <?php else: ?>
+                                                        <option value="<?php echo $order_status['order_status_id'] ?>"><?php echo $order_status['name'] ?></option>
+                                                        <?php endif ?>
+                                                        <?php endforeach ?>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-sm-12">
+                                            <div class="form-group">
+                                                <label class="col-sm-6 control-label" for="input-cancel-order-status"><?php echo $entry_cancel_order_status ?></label>
+                                                <div class="col-sm-6">
+                                                    <select name="tamarapay_cancel_order_status_id" id="input-cancel-order-status" class="form-control">
+                                                        <?php foreach ($order_statuses as $order_status): ?>
+                                                        <?php if ($order_status['order_status_id'] == $tamarapay_cancel_order_status_id): ?>
                                                         <option value="<?php echo $order_status['order_status_id'] ?>" selected="selected"><?php echo $order_status['name'] ?></option>
                                                         <?php else: ?>
                                                         <option value="<?php echo $order_status['order_status_id'] ?>"><?php echo $order_status['name'] ?></option>
