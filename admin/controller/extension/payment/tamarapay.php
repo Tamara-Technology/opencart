@@ -1,44 +1,28 @@
 <?php
 class ControllerExtensionPaymentTamarapay extends Controller {
     private $error = array();
-    private $extensionVersion;
-    private $currentExtVersionInDb;
+    private $contextSchemaVersion;
 
-    private function getExtensionVersion() {
-        if ($this->extensionVersion === null) {
-            $this->load->model('extension/payment/tamarapay');
-            $this->extensionVersion = $this->model_extension_payment_tamarapay->getExtensionVersion();
-        }
-        return $this->extensionVersion;
+    private function getSchemaVersion() {
+        $this->load->model('extension/payment/tamarapay');
+        return $this->model_extension_payment_tamarapay->getSchemaVersion();
     }
 
     private function getCurrentDbVersion() {
-        if ($this->currentExtVersionInDb === null) {
-            $this->load->model('extension/payment/tamarapay');
-            $this->currentExtVersionInDb = $this->model_extension_payment_tamarapay->getCurrentVersionInDb();
-        }
-        return $this->currentExtVersionInDb;
+        $this->load->model('extension/payment/tamarapay');
+        return $this->model_extension_payment_tamarapay->getCurrentVersionInDb();
     }
 
     private function processUpgrade() {
-        if (version_compare($this->getCurrentDbVersion(), $this->getExtensionVersion(), '<')) {
-            $this->upgradeSchema();
-            $this->upgradeData();
-            return $this->processUpgrade();
-        } else {
-            return;
-        }
-    }
-
-    private function changeExtensionVersionInDb($newVersion) {
-        $this->db->query("UPDATE " . DB_PREFIX . "tamara_config SET value='{$newVersion}' WHERE `key`='version'");
-        $this->currentExtVersionInDb = $newVersion;
+        $this->contextSchemaVersion = $this->getCurrentDbVersion();
+        return $this->upgradeData();
     }
 
     public function index() {
         $this->load->language('extension/payment/tamarapay');
         $this->load->model('localisation/order_status');
-//        $this->processUpgrade();
+        $this->load->model('extension/payment/tamarapay');
+        $this->processUpgrade();
 
         $this->document->setTitle($this->language->get('heading_title'));
 
@@ -52,6 +36,7 @@ class ControllerExtensionPaymentTamarapay extends Controller {
             $this->response->redirect($this->url->link('extension/extension', 'token=' . $this->session->data['token'] . '&type=payment', true));
         }
 
+        $data['extension_version'] = $this->model_extension_payment_tamarapay->getExtensionVersion();
         $data['heading_title'] = $this->language->get('heading_title');
         $data['button_save'] = $this->language->get('button_save');
         $data['button_cancel'] = $this->language->get('button_cancel');
@@ -339,9 +324,7 @@ class ControllerExtensionPaymentTamarapay extends Controller {
             if ($url != $this->getTamaraPaymentUrlFromConfig() || $token != $this->getTamaraPaymentTokenFromConfig()) {
                 try {
                     $paymentTypes = $this->model_extension_payment_tamarapay->getPaymentTypes($url, $token, true);
-                    if (empty($this->request->post['tamarapay_types_pay_by_later_min_limit'])){
-                        $this->request->post = $this->addPaymentsTypeToRequest($this->request->post, $paymentTypes);
-                    }
+                    $this->request->post = $this->addPaymentsTypeToRequest($this->request->post, $paymentTypes);
                 } catch (\Exception $exception) {
                     $this->error['token'] = $this->language->get('error_token_invalid');
                 }
@@ -383,12 +366,32 @@ class ControllerExtensionPaymentTamarapay extends Controller {
         $this->model_extension_payment_tamarapay->uninstall();
     }
 
-    private function upgradeSchema() {
-
+    /**
+     * Upgrade data and schema
+     * Example
+     *  if (version_compare($this->contextSchemaVersion, '1.1.0', '<')) {
+            $query = "ALTER TABLE `".DB_PREFIX."tamara_config` ADD `email` varchar(255)";
+            $this->db->query($query);
+            $this->updateSchemaVersion("1.1.0");
+        }
+        if (version_compare($this->contextSchemaVersion, '1.2.0', '<')) {
+            $query = "ALTER TABLE `".DB_PREFIX."tamara_config` ADD `email_2` varchar(255)";
+            $this->db->query($query);
+            $this->updateSchemaVersion("1.2.0");
+        }
+     *
+     */
+    private function upgradeData() {
+        if (version_compare($this->contextSchemaVersion, $this->getSchemaVersion() , '<')) {
+            //Process upgrade here
+        }
+        return;
     }
 
-    private function upgradeData() {
-
+    private function updateSchemaVersion($newVersion) {
+        $this->load->model('extension/payment/tamarapay');
+        $this->model_extension_payment_tamarapay->updateTamaraConfig('version', $newVersion);
+        $this->contextSchemaVersion = $newVersion;
     }
 
     /**

@@ -1,22 +1,27 @@
 <?php
 
-use Symfony\Component\Cache\Adapter\FilesystemAdapter;
 use Tamara\Client;
 use Tamara\Configuration;
 
 class ModelExtensionPaymentTamarapay extends Model
 {
+    /**
+     * Define version of extension
+     */
+    public const VERSION = '1.2.0';
 
-    public const
-        VERSION = '1.0.0',
-        COUNTRY_ISO = 'SA',
-        CACHE_TAMARAPAY_PAYMENT_TYPES = 'cache_tamarapay_payment_types',
-        TTL = 86400;
+    public const COUNTRY_ISO = 'SA';
+
+    /**
+     * Define schema version
+     */
+    public const SCHEMA_VERSION = '1.0.0';
+
+    protected $paymentTypes;
 
     private const TAMARA_EVENT_ORDER_STATUS_CHANGE_CODE = 'tamara_order_status_change';
     private const TAMARA_EVENT_ADD_PROMO_WIDGET_CODE = 'tamara_promo_wg';
 
-    private $cacheTamarapay;
 
     /**
      * Get extension version
@@ -25,10 +30,13 @@ class ModelExtensionPaymentTamarapay extends Model
         return self::VERSION;
     }
 
+    public function getSchemaVersion() {
+        return self::SCHEMA_VERSION;
+    }
+
     public function __construct($registry)
     {
         parent::__construct($registry);
-        $this->cacheTamarapay = new FilesystemAdapter('', self::TTL, DIR_CACHE);
     }
 
     public function getTamaraOrder($order_id)
@@ -84,8 +92,13 @@ class ModelExtensionPaymentTamarapay extends Model
         return $query->row;
     }
 
+    public function updateTamaraConfig($key, $value) {
+        $query = "UPDATE `".DB_PREFIX."tamara_config` SET `value` = '{$value}', `updated_at` = NOW() WHERE `key` = '{$key}'";
+        $this->db->query($query);
+    }
+
     private function initData() {
-        $currentVersion = $this->getExtensionVersion();
+        $currentVersion = $this->getSchemaVersion();
         $sql = "INSERT INTO ". DB_PREFIX ."tamara_config (id, `key`, value, created_at, updated_at) VALUES(null, 'version', '{$currentVersion}', NOW(), NOW())";
         $this->db->query($sql);
     }
@@ -225,10 +238,8 @@ class ModelExtensionPaymentTamarapay extends Model
     public function getPaymentTypes($url, $token, $forceReload = false)
     {
         try {
-            // Initialize and check cache
-            $cacheItem = $this->cacheTamarapay->getItem(self::CACHE_TAMARAPAY_PAYMENT_TYPES);
 
-            if ($forceReload || !$cacheItem->isHit()) {
+            if ($forceReload || !$this->paymentTypes) {
 
                 $client = $this->createClient(['url' => $url, 'token' => $token]);
                 $paymentTypes = [];
@@ -243,12 +254,10 @@ class ModelExtensionPaymentTamarapay extends Model
                     $paymentTypes[] = $paymentType->toArray();
                 }
 
-                // Cache the response
-                $cacheItem->set($paymentTypes);
-                $this->cacheTamarapay->save($cacheItem);
+                $this->paymentTypes = $paymentTypes;
             }
 
-            return $cacheItem->get();
+            return $this->paymentTypes;
         } catch (Exception $exception) {
             $this->log($exception->getMessage());
             throw $exception;

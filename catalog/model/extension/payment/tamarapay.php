@@ -646,16 +646,19 @@ class ModelExtensionPaymentTamarapay extends Model
      */
     public function getPaymentMethodsForCheckoutPage()
     {
+        return $this->getPaymentsMethodsAvailableForPrice($this->getOrderTotalFromSession());
+    }
+
+    public function getPaymentsMethodsAvailableForPrice($price) {
         $result = [];
         $methods = $this->getPaymentMethodsConfig();
-        $orderTotal = $this->getOrderTotalFromSession();
         $chosenMethod = false;
         foreach ($methods as $method) {
             if (!$this->filterStatusMethod($method)) {
                 continue;
             }
             $isAvailable = true;
-            if (!$this->filterUnderOverLimitAmount($orderTotal, $method)) {
+            if (!$this->filterUnderOverLimitAmount($price, $method)) {
                 $isAvailable = false;
             }
             $method['is_available'] = $isAvailable;
