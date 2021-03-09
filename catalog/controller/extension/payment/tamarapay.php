@@ -265,8 +265,6 @@ class ControllerExtensionPaymentTamarapay extends Controller
         $productInfo = $this->model_catalog_product->getProduct($productId);
         if ($productInfo) {
             $this->load->model('extension/payment/tamarapay');
-            $installmentsConfig = $this->model_extension_payment_tamarapay->getPayByInstallmentsConfig();
-            $data['payByInstallmentsConfig'] = $installmentsConfig;
             $finalPrice = 0.00;
             if ((float)$productInfo['special']) {
                 $finalPrice = $this->tax->calculate($productInfo['special'], $productInfo['tax_class_id'], $this->config->get('config_tax'));
@@ -275,15 +273,23 @@ class ControllerExtensionPaymentTamarapay extends Controller
                     $finalPrice = $this->tax->calculate($productInfo['price'], $productInfo['tax_class_id'], $this->config->get('config_tax'));
                 }
             }
-            $canPayByInstallments = true;
-            if ($finalPrice < floatval($installmentsConfig['min_limit'])) {
-                $canPayByInstallments = false;
+
+            $availableMethods = $this->model_extension_payment_tamarapay->getPaymentsMethodsAvailableForPrice($finalPrice);
+            if (empty($availableMethods)) {
+                return $output;
             }
+
             $str = "";
-            if ($canPayByInstallments) {
-                $str .= ('<div id="tamara-product-widget" class="tamara-product-widget" data-lang="" data-price="'.$finalPrice.'" data-currency="' .$installmentsConfig['currency']. '" data-payment-type="installment" data-installment-minimum-amount="' .$installmentsConfig['min_limit']. '" ></div>');
-            } else {
-                $str .= ('<div id="tamara-product-widget" class="tamara-product-widget" data-lang="" data-inject-template="true"></div>');
+            foreach ($availableMethods as $method) {
+                if ($method['checked'] == true) {
+                    if ($method['name'] == "PAY_BY_INSTALMENTS") {
+                        $str .= ('<div id="tamara-product-widget" data-disable-paylater="true" class="tamara-product-widget" data-lang="" data-price="'.$finalPrice.'" data-currency="' .$method['currency']. '" data-payment-type="installment" data-installment-minimum-amount="' .$method['min_limit']. '" ></a>');
+
+                    } else {
+                        $str .= ('<div id="tamara-product-widget" data-payment-type="paylater" data-disable-installment="true" class="tamara-product-widget" data-lang="" data-inject-template="true"></div>');
+                    }
+                    break;
+                }
             }
             $str .= '<script charset="utf-8" src="https://cdn.tamara.co/widget/product-widget.min.js"></script> <script type="text/javascript">let langCode="'.$this->language->get('code').'";window.langCode=langCode;window.checkTamaraProductWidgetCount=0;document.getElementById("tamara-product-widget").setAttribute("data-lang",langCode);var existTamaraProductWidget=setInterval(function(){if(window.TamaraProductWidget){window.TamaraProductWidget.init({lang:window.langCode});window.TamaraProductWidget.render();clearInterval(existTamaraProductWidget);} window.checkTamaraProductWidgetCount+=1;if(window.checkTamaraProductWidgetCount>15){clearInterval(existTamaraProductWidget);}},300);</script>';
             $str = ("\n\n" . "<div class='tamara-promo' style='margin-bottom: 10px;'>" . $str . "</div>" . "\n\n");
