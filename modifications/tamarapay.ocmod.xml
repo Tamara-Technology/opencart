@@ -1,6 +1,6 @@
 <modification>
     <name>Tamara payment</name>
-    <version>1.0.0</version>
+    <version>1.2.0</version>
     <link>https://tamara.co/en/index.html#how-it-works</link>
     <author>Tamara</author>
     <code>tamarapay</code>
@@ -11,23 +11,18 @@
             <add position="after">
                 <![CDATA[
                 $this->load->model('payment/tamarapay');
-            $installmentsConfig = $this->model_payment_tamarapay->getPayByInstallmentsConfig();
-            $data['payByInstallmentsConfig'] = $installmentsConfig;
-            $finalPrice = 0.00;
-            if ((float)$product_info['special']) {
-                $finalPrice = $this->tax->calculate($product_info['special'], $product_info['tax_class_id'], $this->config->get('config_tax'));
-            } else {
-                if ($this->customer->isLogged() || !$this->config->get('config_customer_price')) {
-                    $finalPrice = $this->tax->calculate($product_info['price'], $product_info['tax_class_id'], $this->config->get('config_tax'));
+                $finalPrice = 0.00;
+                if ((float)$product_info['special']) {
+                    $finalPrice = $this->tax->calculate($product_info['special'], $product_info['tax_class_id'], $this->config->get('config_tax'));
+                } else {
+                    if ($this->customer->isLogged() || !$this->config->get('config_customer_price')) {
+                        $finalPrice = $this->tax->calculate($product_info['price'], $product_info['tax_class_id'], $this->config->get('config_tax'));
+                    }
                 }
-            }
-            $canPayByInstallments = true;
-            if ($finalPrice < floatval($installmentsConfig['min_limit'])) {
-                $canPayByInstallments = false;
-            }
-            $data['can_pay_by_installments'] = $canPayByInstallments;
-            $data['final_price'] = $finalPrice;
-            $data['language_code'] = $this->language->get('code');
+                $availableMethods = $this->model_payment_tamarapay->getPaymentsMethodsAvailableForPrice($finalPrice);
+                $data['tamara_available_methods'] = $availableMethods;
+                $data['final_price'] = $finalPrice;
+                $data['language_code'] = $this->language->get('code');
 				]]></add>
         </operation>
     </file>
@@ -37,29 +32,37 @@
             </search>
             <add position="before">
                 <![CDATA[
-				<?php if ($can_pay_by_installments): ?>
-          <div id="tamara-product-widget" class="tamara-product-widget" data-lang="" data-price="<?php echo $final_price ?>" data-currency="<?php echo $payByInstallmentsConfig['currency'] ?>" data-payment-type="installment" data-installment-minimum-amount="<?php echo $payByInstallmentsConfig['min_limit'] ?>" ></div>
-          <?php else: ?>
-          <div id="tamara-product-widget" class="tamara-product-widget" data-lang="" data-inject-template="true"></div>
-          <?php endif; ?>
-          <script charset="utf-8" src="https://cdn.tamara.co/widget/product-widget.min.js"></script>
-          <script type="text/javascript">
-            let siteLocale = '<?php echo $language_code ?>';
-            let langCode = siteLocale.split('-')[0];
-            window.checkTamaraProductWidgetCount = 0;
-            document.getElementById('tamara-product-widget').setAttribute("data-lang", langCode);
-            var existTamaraProductWidget = setInterval(function() {
-              if (window.TamaraProductWidget) {
-                window.TamaraProductWidget.init({ lang: window.langCode });
-                window.TamaraProductWidget.render();
-                clearInterval(existTamaraProductWidget);
-              }
-              window.checkTamaraProductWidgetCount += 1;
-              if (window.checkTamaraProductWidgetCount > 15) {
-                clearInterval(existTamaraProductWidget);
-              }
-            }, 300);
-          </script>
+				<?php if (!empty($tamara_available_methods)): ?>
+                  <?php foreach($tamara_available_methods as $method): ?>
+                    <?php if ($method['checked'] == true): ?>
+                      <?php if($method['name'] == "PAY_BY_INSTALMENTS"): ?>
+                        <a href="javascript:void(0)" id="tamara-product-widget" data-disable-paylater="true" class="tamara-product-widget" data-lang="" data-price="<?php echo $final_price ?>" data-currency="<?php echo $method['currency'] ?>" data-payment-type="installment" data-installment-minimum-amount="<?php echo $method['min_limit'] ?>" ></a>
+                      <?php else: ?>
+                        <a href="javascript:void(0)" id="tamara-product-widget" data-payment-type="paylater" data-disable-installment="true" class="tamara-product-widget" data-lang="" data-inject-template="true"></a>
+                      <?php endif; ?>
+                      <?php break; ?>
+                    <?php endif; ?>
+                  <?php endforeach; ?>
+
+                  <script charset="utf-8" src="https://cdn.tamara.co/widget/product-widget.min.js"></script>
+                  <script type="text/javascript">
+                    let siteLocale = '<?php echo $language_code ?>';
+                    let langCode = siteLocale.split('-')[0];
+                    window.checkTamaraProductWidgetCount = 0;
+                    document.getElementById('tamara-product-widget').setAttribute("data-lang", langCode);
+                    var existTamaraProductWidget = setInterval(function() {
+                      if (window.TamaraProductWidget) {
+                        window.TamaraProductWidget.init({ lang: window.langCode });
+                        window.TamaraProductWidget.render();
+                        clearInterval(existTamaraProductWidget);
+                      }
+                      window.checkTamaraProductWidgetCount += 1;
+                      if (window.checkTamaraProductWidgetCount > 15) {
+                        clearInterval(existTamaraProductWidget);
+                      }
+                    }, 300);
+                  </script>
+                <?php endif; ?>
 				]]></add>
         </operation>
     </file>

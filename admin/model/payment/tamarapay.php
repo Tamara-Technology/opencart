@@ -6,14 +6,26 @@ use Tamara\Configuration;
 class ModelPaymentTamarapay extends Model
 {
 
-    public const
-        VERSION = '1.0.0',
-        COUNTRY_ISO = 'SA';
+    /**
+     * Define version of extension
+     */
+    public const VERSION = '1.2.0';
+
+    public const COUNTRY_ISO = 'SA';
+
+    /**
+     * Define schema version
+     */
+    public const SCHEMA_VERSION = '1.0.0';
 
     protected $paymentTypes;
 
     private const TAMARA_EVENT_ORDER_STATUS_CHANGE_CODE = 'tamara_order_status_change';
-    private const TAMARA_EVENT_ADD_PROMO_WIDGET_CODE = 'tamara_promo_wg';
+
+    public function __construct($registry)
+    {
+        parent::__construct($registry);
+    }
 
     /**
      * Get extension version
@@ -22,9 +34,8 @@ class ModelPaymentTamarapay extends Model
         return self::VERSION;
     }
 
-    public function __construct($registry)
-    {
-        parent::__construct($registry);
+    public function getSchemaVersion() {
+        return self::SCHEMA_VERSION;
     }
 
     public function getTamaraOrder($order_id)
@@ -80,8 +91,13 @@ class ModelPaymentTamarapay extends Model
         return $query->row;
     }
 
+    public function updateTamaraConfig($key, $value) {
+        $query = "UPDATE `".DB_PREFIX."tamara_config` SET `value` = '{$value}', `updated_at` = NOW() WHERE `key` = '{$key}'";
+        $this->db->query($query);
+    }
+
     private function initData() {
-        $currentVersion = $this->getExtensionVersion();
+        $currentVersion = $this->getSchemaVersion();
         $sql = "INSERT INTO ". DB_PREFIX ."tamara_config (id, `key`, value, created_at, updated_at) VALUES(null, 'version', '{$currentVersion}', NOW(), NOW())";
         $this->db->query($sql);
     }
