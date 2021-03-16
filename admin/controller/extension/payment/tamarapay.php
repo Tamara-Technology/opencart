@@ -356,8 +356,24 @@ class ControllerExtensionPaymentTamarapay extends Controller {
     private function upgradeData() {
         if (version_compare($this->contextSchemaVersion, $this->getSchemaVersion() , '<')) {
             //Process upgrade here
+            if (version_compare($this->contextSchemaVersion, '1.1.0', '<')) {
+                $this->addConsoleColumnsToTamaraOrder();
+                $this->updateSchemaVersion("1.1.0");
+            }
         }
         return;
+    }
+
+    private function addConsoleColumnsToTamaraOrder() {
+        $addColumnsQuery = "ALTER TABLE `".DB_PREFIX."tamara_orders` 
+                            ADD `captured_from_console` tinyint(1) NOT NULL COMMENT 'Captured from console',
+                            ADD `canceled_from_console` tinyint(1) NOT NULL COMMENT 'Canceled from console',
+                            ADD `refunded_from_console` tinyint(1) NOT NULL COMMENT 'Refunded from console'";
+
+        $this->db->query($addColumnsQuery);
+
+        $addIndexQuery = "ALTER TABLE `".DB_PREFIX."tamara_orders` ADD INDEX `idx_console_query` (`is_authorised`,`created_at`)";
+        $this->db->query($addIndexQuery);
     }
 
     private function updateSchemaVersion($newVersion) {

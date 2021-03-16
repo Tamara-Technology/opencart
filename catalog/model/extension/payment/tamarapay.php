@@ -508,6 +508,19 @@ class ModelExtensionPaymentTamarapay extends Model
     public function log($data, $class_step = 6, $function_step = 6)
     {
         if ($this->config->get('payment_tamarapay_debug')) {
+            if ($this->isScannedFromConsole()) {
+                $consoleMessage = "";
+                if (is_string($data)) {
+                    $consoleMessage = $data;
+                } else {
+                    if (is_array($data) && is_string($data[0])) {
+                        $consoleMessage = $data[0];
+                    }
+                }
+                if (!empty($consoleMessage)) {
+                    $this->console->getOutput()->writeln($consoleMessage);
+                }
+            }
             $backtrace = debug_backtrace();
             $log = new Log('tamarapay.log');
             $log->write('(' . $backtrace[$class_step]['class'] . '::' . $backtrace[$function_step]['function'] . ') - ' . print_r($data,
@@ -723,6 +736,9 @@ class ModelExtensionPaymentTamarapay extends Model
     public function canCapture($tamaraOrderId)
     {
         $tamaraOrderData = $this->getTamaraOrderData($tamaraOrderId);
+        if ($tamaraOrderData['captured_from_console']) {
+            return false;
+        }
         $captures = $this->getCapturesByTamaraOrderId($tamaraOrderId);
         $totalAmountCaptured = 0.00;
         foreach ($captures as $capture) {
@@ -991,13 +1007,17 @@ class ModelExtensionPaymentTamarapay extends Model
      */
     public function cancelOrder($tamaraOrderId)
     {
-        $this->log("Start cancel order " . $tamaraOrderId);
-        $this->load->language('extension/payment/tamarapay');
-        $this->load->model('checkout/order');
-        $url = $this->config->get('payment_tamarapay_url');
-        $token = $this->config->get('payment_tamarapay_token');
-
         try {
+            if (!$this->canCancel($tamaraOrderId)) {
+                throw new Exception("Order {$tamaraOrderId} cannot be canceled");
+            }
+
+            $this->log("Start cancel order " . $tamaraOrderId);
+            $this->load->language('extension/payment/tamarapay');
+            $this->load->model('checkout/order');
+            $url = $this->config->get('payment_tamarapay_url');
+            $token = $this->config->get('payment_tamarapay_token');
+
             $client = Client::create(Configuration::create($url, $token));
             $orderData = $this->getTamaraOrderData($tamaraOrderId);
 
@@ -1024,6 +1044,14 @@ class ModelExtensionPaymentTamarapay extends Model
         } catch (Exception $exception) {
             $this->log($exception->getMessage());
         }
+    }
+
+    public function canCancel($tamaraOrderId){
+        $tamaraOrder = $this->getTamaraOrderByTamaraOrderId($tamaraOrderId);
+        if ($tamaraOrder['canceled_from_console']) {
+            return false;
+        }
+        return true;
     }
 
     public function createCancelRequest(array $orderData): CancelOrderRequest
@@ -1055,5 +1083,9 @@ class ModelExtensionPaymentTamarapay extends Model
             "NOW()"
         );
         $this->db->query($query);
+    }
+
+    public function isScannedFromConsole() {
+        return $this->registry->get('console') !== null;
     }
 }
