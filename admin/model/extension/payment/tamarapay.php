@@ -8,7 +8,7 @@ class ModelExtensionPaymentTamarapay extends Model
     /**
      * Define version of extension
      */
-    public const VERSION = '1.3.0';
+    public const VERSION = '1.4.0';
 
     public const COUNTRY_ISO = 'SA';
 
