@@ -110,7 +110,7 @@ class ModelPaymentTamarapay extends Model
         return $model;
     }
 
-    public function createCheckout($url, $token, $paymentType)
+    public function createCheckout($paymentType)
     {
         $this->log("Start create checkout");
         $this->load->language('payment/tamarapay');
@@ -123,7 +123,7 @@ class ModelPaymentTamarapay extends Model
             //deactivate recent session order
             $this->deactivateRecentTamaraOrder($this->session->data['order_id']);
 
-            $client = Client::create(Configuration::create($url, $token));
+            $client = $this->getTamaraClient();
             $request = new CreateCheckoutRequest($this->prepareOrder($paymentType));
 
             $response = $client->createCheckout($request);
@@ -509,7 +509,7 @@ class ModelPaymentTamarapay extends Model
         $token = $this->config->get('tamarapay_token');
 
         try {
-            $client = Client::create(Configuration::create($url, $token));
+            $client = $this->getTamaraClient();
             $request = new AuthoriseOrderRequest($tamaraOrderId);
 
             $response = $client->authoriseOrder($request);
@@ -725,9 +725,7 @@ class ModelPaymentTamarapay extends Model
                 throw new Exception("Order {$tamaraOrderId} cannot be captured");
             }
 
-            $url = $this->config->get('tamarapay_url');
-            $token = $this->config->get('tamarapay_token');
-            $client = Client::create(Configuration::create($url, $token));
+            $client = $this->getTamaraClient();
             $orderData = $this->getTamaraOrderData($tamaraOrderId);
             $captureRequest = $this->createCaptureRequest($orderData);
             $this->log("Capture order data: ");
@@ -935,11 +933,9 @@ class ModelPaymentTamarapay extends Model
         $this->log("Start cancel order " . $tamaraOrderId);
         $this->load->language('payment/tamarapay');
         $this->load->model('checkout/order');
-        $url = $this->config->get('tamarapay_url');
-        $token = $this->config->get('tamarapay_token');
 
         try {
-            $client = Client::create(Configuration::create($url, $token));
+            $client = $this->getTamaraClient();
             $orderData = $this->getTamaraOrderData($tamaraOrderId);
 
             /**
@@ -995,5 +991,16 @@ class ModelPaymentTamarapay extends Model
             "NOW()"
         );
         $this->db->query($query);
+    }
+
+    public function getTamaraClient() {
+        $url = $this->config->get('tamarapay_url');
+        $token = $this->config->get('tamarapay_token');
+
+        return Client::create(Configuration::create($url, $token));
+    }
+
+    public function getTamaraOrderFromRemote($orderId) {
+        return $this->getTamaraClient()->getOrderByReferenceId(new \Tamara\Request\Order\GetOrderByReferenceIdRequest($orderId));
     }
 }
