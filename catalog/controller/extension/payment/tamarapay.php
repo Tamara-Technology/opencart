@@ -4,6 +4,7 @@ use Tamara\Notification\NotificationService;
 
 class ControllerExtensionPaymentTamarapay extends Controller
 {
+    const ORDER_STATUS_APPROVED = "approved";
     private const INDEX_TEMPLATE = "extension/payment/tamarapay";
 
     public function index()
@@ -75,7 +76,7 @@ class ControllerExtensionPaymentTamarapay extends Controller
         $url = $this->config->get('tamarapay_url');
         $token = $this->config->get('tamarapay_token');
 
-        $response = $this->model_extension_payment_tamarapay->createCheckout($url, $token,
+        $response = $this->model_extension_payment_tamarapay->createCheckout(
             $this->request->post['payment_type']);
 
         $this->response->addHeader('Content-Type: application/json');
@@ -99,6 +100,12 @@ class ControllerExtensionPaymentTamarapay extends Controller
             //set order status
             $successStatusId = $this->config->get('tamarapay_order_status_success_id');
             $this->model_extension_payment_tamarapay->addOrderComment($this->session->data['order_id'], $successStatusId, "Tamara - Pay success", 0);
+
+            //call authorise
+            $tamaraOrderId = $tamaraOrder['tamara_order_id'];
+            if ($this->model_extension_payment_tamarapay->getTamaraOrderFromRemote($data['order_id'])->getStatus() == self::ORDER_STATUS_APPROVED) {
+                $this->model_extension_payment_tamarapay->authoriseOrder($tamaraOrderId);
+            }
         }
 
         //render success pay
@@ -220,15 +227,17 @@ class ControllerExtensionPaymentTamarapay extends Controller
         $orderId = $authorise->getOrderId();
 
         try {
-           $this->model_extension_payment_tamarapay->getTamaraOrderByTamaraOrderId($orderId);
+           $tamaraOrder = $this->model_extension_payment_tamarapay->getTamaraOrderByTamaraOrderId($orderId);
         } catch (Exception $exception) {
             $this->log($exception->getMessage());
             $response = ['error' => $this->language->get('error_not_found_order')];
             return $this->responseJson($response);
         }
 
-        $response = $this->model_extension_payment_tamarapay->authoriseOrder($orderId);
-        $this->responseJson($response);
+        if (!$tamaraOrder['is_authorised']) {
+            $response = $this->model_extension_payment_tamarapay->authoriseOrder($orderId);
+            $this->responseJson($response);
+        }
     }
 
     public function log($data, $class_step = 6, $function_step = 6)
