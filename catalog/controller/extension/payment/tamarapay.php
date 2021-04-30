@@ -103,8 +103,11 @@ class ControllerExtensionPaymentTamarapay extends Controller
 
             //call authorise
             $tamaraOrderId = $tamaraOrder['tamara_order_id'];
-            if ($this->model_extension_payment_tamarapay->getTamaraOrderFromRemote($data['order_id'])->getStatus() == self::ORDER_STATUS_APPROVED) {
+            $tamaraRemoteOrder = $this->model_extension_payment_tamarapay->getTamaraOrderFromRemote($data['order_id']);
+            if ($tamaraRemoteOrder->getStatus() == self::ORDER_STATUS_APPROVED) {
                 $this->model_extension_payment_tamarapay->authoriseOrder($tamaraOrderId);
+            } else {
+                $this->log("Order success but order status is not approved, status is " . $tamaraRemoteOrder->getStatus());
             }
         }
 

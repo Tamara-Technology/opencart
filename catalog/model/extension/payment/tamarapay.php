@@ -340,6 +340,9 @@ class ModelExtensionPaymentTamarapay extends Model
 
     private function getProductImageUrl($relativeImagePath)
     {
+        if ($this->isRunningFromConsole()) {
+            return $this->getBaseUrl() . 'image/' . $relativeImagePath;
+        }
         $this->load->model('tool/image');
         $width = $this->config->get('config_image_popup_width');
         $height = $this->config->get('config_image_popup_height');
@@ -386,7 +389,7 @@ class ModelExtensionPaymentTamarapay extends Model
         $orderItem->setName($item['name']);
         $orderItem->setSku($item['sku']);
         $orderItem->setType($item['type']);
-        $orderItem->setUnitPrice($this->formatMoney(($item['unit_price'])));
+        $orderItem->setUnitPrice($this->formatMoney($item['unit_price'], $item['currency']));
         $orderItem->setTotalAmount(new Money($item['total_amount'], $item['currency']));
         $orderItem->setTaxAmount(new Money($item['tax_amount'] ?? 0, $item['currency']));
         $orderItem->setDiscountAmount(new Money($item['discount_amount'] ?? 0, $item['currency']));
@@ -414,12 +417,7 @@ class ModelExtensionPaymentTamarapay extends Model
 
     public function getBaseUrl()
     {
-        $isHttps = stripos($_SERVER['SERVER_PROTOCOL'], 'https') === 0;
-        if ($isHttps) {
-            return HTTPS_SERVER;
-        } else {
-            return HTTP_SERVER;
-        }
+        return HTTPS_SERVER;
     }
 
     private function getOrderTotals($orderId, $forceReload = false)
@@ -483,6 +481,19 @@ class ModelExtensionPaymentTamarapay extends Model
     public function log($data, $class_step = 6, $function_step = 6)
     {
         if ($this->config->get('tamarapay_debug')) {
+            if ($this->isRunningFromConsole()) {
+                $consoleMessage = "";
+                if (is_string($data)) {
+                    $consoleMessage = $data;
+                } else {
+                    if (is_array($data) && isset($data[0]) && is_string($data[0])) {
+                        $consoleMessage = $data[0];
+                    }
+                }
+                if (!empty($consoleMessage)) {
+                    $this->console->getOutput()->writeln($consoleMessage);
+                }
+            }
             $backtrace = debug_backtrace();
             $log = new Log('tamarapay.log');
             $log->write('(' . $backtrace[$class_step]['class'] . '::' . $backtrace[$function_step]['function'] . ') - ' . print_r($data,
@@ -681,12 +692,15 @@ class ModelExtensionPaymentTamarapay extends Model
      */
     public function canCapture($tamaraOrderId) {
         $tamaraOrderData = $this->getTamaraOrderData($tamaraOrderId);
+        if ($tamaraOrderData['captured_from_console']) {
+            return false;
+        }
         $captures = $this->getCapturesByTamaraOrderId($tamaraOrderId);
         $totalAmountCaptured = 0.00;
         foreach ($captures as $capture) {
             $totalAmountCaptured += $capture['total_amount'];
         }
-        if ($totalAmountCaptured >= $tamaraOrderData['total_amount']) {
+        if ($totalAmountCaptured >= floatval($tamaraOrderData['total_amount'])) {
             return false;
         }
         return true;
@@ -780,6 +794,9 @@ class ModelExtensionPaymentTamarapay extends Model
                 'tracking_number' => $trackNumber
             ];
             $result['order_status_id'] = $orderData['order_status_id'];
+            $result['captured_from_console'] = $tamaraOrder['captured_from_console'];
+            $result['canceled_from_console'] = $tamaraOrder['canceled_from_console'];
+            $result['refunded_from_console'] = $tamaraOrder['refunded_from_console'];
         }
         return $result;
 
@@ -929,6 +946,9 @@ class ModelExtensionPaymentTamarapay extends Model
         $this->load->model('checkout/order');
 
         try {
+            if (!$this->canCancel($tamaraOrderId)) {
+                throw new Exception("Order {$tamaraOrderId} cannot be canceled");
+            }
             $client = $this->getTamaraClient();
             $orderData = $this->getTamaraOrderData($tamaraOrderId);
 
@@ -954,6 +974,14 @@ class ModelExtensionPaymentTamarapay extends Model
         } catch (Exception $exception) {
             $this->log($exception->getMessage());
         }
+    }
+
+    public function canCancel($tamaraOrderId){
+        $tamaraOrder = $this->getTamaraOrderByTamaraOrderId($tamaraOrderId);
+        if ($tamaraOrder['canceled_from_console']) {
+            return false;
+        }
+        return true;
     }
 
     public function createCancelRequest(array $orderData): CancelOrderRequest
@@ -992,6 +1020,10 @@ class ModelExtensionPaymentTamarapay extends Model
         $token = $this->config->get('tamarapay_token');
 
         return Client::create(Configuration::create($url, $token));
+    }
+
+    public function isRunningFromConsole() {
+        return $this->registry->get('console') !== null;
     }
 
     public function getTamaraOrderFromRemote($orderId) {
