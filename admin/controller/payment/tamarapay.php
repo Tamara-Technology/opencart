@@ -19,6 +19,10 @@ class ControllerPaymentTamarapay extends Controller {
     }
 
     public function index() {
+        $this->removeLegacyResources();
+        if (!$this->isVendorAutoloadExist()) {
+            $this->addVendorAutoload();
+        }
         $this->load->language('payment/tamarapay');
         $this->load->model('localisation/order_status');
         $this->load->model('payment/tamarapay');
@@ -357,9 +361,9 @@ class ControllerPaymentTamarapay extends Controller {
     private function addVendorAutoload() {
 
         //backup file
-        $backUpFilePath = DIR_SYSTEM. "startup-".date( "Y-m-d", strtotime( "now" )) .".php.bak";
+        $backUpFilePath = DIR_SYSTEM. "startup-".date( "Ymd-His", strtotime( "now" )) .".php.bak";
         copy($this->getSystemStartupFilePath(), $backUpFilePath);
-        $data = PHP_EOL . "//Add Tamara vendor autoload".PHP_EOL . "require_once DIR_SYSTEM . '../tamarapay/vendor/autoload.php';" . PHP_EOL;
+        $data = PHP_EOL . "//Add Tamara vendor autoload".PHP_EOL . "if (is_file(DIR_SYSTEM . '../tamara/vendor/autoload.php')) {require_once(DIR_SYSTEM . '../tamara/vendor/autoload.php');}";
         $fp = fopen($this->getSystemStartupFilePath(), 'a');
         fwrite($fp, $data);
     }
@@ -367,8 +371,59 @@ class ControllerPaymentTamarapay extends Controller {
     private function removeVendorAutoload() {
         $contents = file_get_contents($this->getSystemStartupFilePath());
         $contents = str_replace("//Add Tamara vendor autoload", '', $contents);
-        $contents = str_replace("require_once DIR_SYSTEM . '../tamarapay/vendor/autoload.php';", '', $contents);
+        $contents = str_replace("if (is_file(DIR_SYSTEM . '../tamara/vendor/autoload.php')) {require_once(DIR_SYSTEM . '../tamara/vendor/autoload.php');}", '', $contents);
         file_put_contents($this->getSystemStartupFilePath(), $contents);
+    }
+
+    private function isVendorAutoloadExist() {
+        $contents = file_get_contents($this->getSystemStartupFilePath());
+        if (strpos($contents, "require_once(DIR_SYSTEM . '../tamara/vendor/autoload.php')") !== false) {
+            return true;
+        }
+        return false;
+    }
+
+    private function removeLegacyResources() {
+        $this->removeLegacyVendorAutoloadIfExist();
+        $this->removeLegacyDirectoryIfExist();
+    }
+
+    private function removeLegacyVendorAutoloadIfExist() {
+        $contents = file_get_contents($this->getSystemStartupFilePath());
+        if (strpos($contents, "require_once DIR_SYSTEM . '../tamarapay/vendor/autoload.php'") !== false) {
+            $contents = str_replace("//Add Tamara vendor autoload", '', $contents);
+            $contents = str_replace("require_once DIR_SYSTEM . '../tamarapay/vendor/autoload.php';", '', $contents);
+            file_put_contents($this->getSystemStartupFilePath(), $contents);
+        }
+    }
+
+    private function removeLegacyDirectoryIfExist() {
+        $path = realpath ( DIR_SYSTEM . '../tamarapay');
+        if (is_dir($path)) {
+            $this->deleteDirectory($path);
+        }
+    }
+
+    public function deleteDirectory($dir) {
+        if (!file_exists($dir)) {
+            return true;
+        }
+
+        if (!is_dir($dir)) {
+            return unlink($dir);
+        }
+
+        foreach (scandir($dir) as $item) {
+            if ($item == '.' || $item == '..') {
+                continue;
+            }
+
+            if (!$this->deleteDirectory($dir . DIRECTORY_SEPARATOR . $item)) {
+                return false;
+            }
+
+        }
+        return rmdir($dir);
     }
 
     private function getSystemStartupFilePath() {
@@ -376,15 +431,19 @@ class ControllerPaymentTamarapay extends Controller {
     }
 
     public function install() {
-        $this->addVendorAutoload();
+        if (!$this->isVendorAutoloadExist()) {
+            $this->addVendorAutoload();
+        }
         $this->load->model('payment/tamarapay');
         $this->model_payment_tamarapay->install();
     }
 
     public function uninstall() {
+        if ($this->isVendorAutoloadExist()) {
+            $this->removeVendorAutoload();
+        }
         $this->load->model('payment/tamarapay');
         $this->model_payment_tamarapay->uninstall();
-        $this->removeVendorAutoload();
     }
 
     /**
@@ -405,8 +464,21 @@ class ControllerPaymentTamarapay extends Controller {
     private function upgradeData() {
         if (version_compare($this->contextSchemaVersion, $this->getSchemaVersion() , '<')) {
             //Process upgrade here
+            if (version_compare($this->contextSchemaVersion, '1.1.0', '<')) {
+                $this->addConsoleColumnsToTamaraOrder();
+                $this->updateSchemaVersion("1.1.0");
+            }
         }
         return;
+    }
+
+    private function addConsoleColumnsToTamaraOrder() {
+        $addColumnsQuery = "ALTER TABLE `".DB_PREFIX."tamara_orders` 
+                            ADD `captured_from_console` tinyint(1) NOT NULL DEFAULT 0 COMMENT 'Captured from console',
+                            ADD `canceled_from_console` tinyint(1) NOT NULL DEFAULT 0 COMMENT 'Canceled from console',
+                            ADD `refunded_from_console` tinyint(1) NOT NULL DEFAULT 0 COMMENT 'Refunded from console'";
+
+        $this->db->query($addColumnsQuery);
     }
 
     private function updateSchemaVersion($newVersion) {

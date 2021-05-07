@@ -1,6 +1,6 @@
 <?php
 
-use Tamara\Notification\NotificationService;
+use TMS\Tamara\Notification\NotificationService;
 
 class ControllerPaymentTamarapay extends Controller
 {

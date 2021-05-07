@@ -1,7 +1,7 @@
 <?php
 
-use Tamara\Client;
-use Tamara\Configuration;
+use TMS\Tamara\Client;
+use TMS\Tamara\Configuration;
 
 class ModelPaymentTamarapay extends Model
 {
@@ -9,14 +9,14 @@ class ModelPaymentTamarapay extends Model
     /**
      * Define version of extension
      */
-    public const VERSION = '1.3.0';
+    public const VERSION = '1.4.0';
 
     public const COUNTRY_ISO = 'SA';
 
     /**
      * Define schema version
      */
-    public const SCHEMA_VERSION = '1.0.0';
+    public const SCHEMA_VERSION = '1.1.0';
 
     protected $paymentTypes;
 
@@ -97,8 +97,7 @@ class ModelPaymentTamarapay extends Model
     }
 
     private function initData() {
-        $currentVersion = $this->getSchemaVersion();
-        $sql = "INSERT INTO ". DB_PREFIX ."tamara_config (id, `key`, value, created_at, updated_at) VALUES(null, 'version', '{$currentVersion}', NOW(), NOW())";
+        $sql = "INSERT INTO ". DB_PREFIX ."tamara_config (id, `key`, value, created_at, updated_at) VALUES(null, 'version', '1.0.0', NOW(), NOW())";
         $this->db->query($sql);
     }
 

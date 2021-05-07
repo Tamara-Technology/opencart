@@ -4,7 +4,7 @@
 * **Tamara payment for OpenCart 2.0.x**
 
 
-# Tamara payment 1.3.0 for OpenCart 2.0.x
+# Tamara payment 1.4.0 for OpenCart 2.0.x
 
 Tamara payment for OpenCart allows your users to pay with Tamara on Opencart
 
@@ -20,3 +20,40 @@ Tamara payment for OpenCart allows your users to pay with Tamara on Opencart
 After configure the extension, you need follow these steps to add Tamara widget to product detail page
 * Go to Admin dashboard > Extension Installer > Upload file tamarapay.ocmod.xml (this file is located in modifications directory)
 * Go to Modifications, you will see "Tamara payment" > Click Refresh button
+
+## Upgrade extension version
+* Download and extract the extension to your web root
+* Go to Admin dashboard > Extensions > Extensions
+* Choose Tamarapay under Payments
+* Click Edit button
+
+## Update orders from command line
+* We support updating orders manually via command line
+```text
+cd tamara
+chmod +x console.php
+```
+* After that, exec this command
+```text
+./console.php tamara:orders-scan --start-time="{start_time}" --end-time="{end_time}"
+```
+with {start_time} and {end_time} are the creation times of the orders to be scanned (yyyy-mm-dd hh:mm:ss)
+* For example 
+<br />
+to update orders created in the last 30 minutes
+```text
+./console.php tamara:orders-scan --start-time="-30 minutes"
+```
+<br />
+to update orders that created from 2021-01-01 00:00:00 to 2021-01-01 23:59:59
+
+```text
+./console.php tamara:orders-scan --start-time="2021-01-01 00:00:00" --end-time="2021-01-01 23:59:59"
+```
+
+## Get checkout information by order id via API
+End point:
+```text
+index.php?route=api/tamarapay/checkout_information&username={your_api_username}&password={your-api-password}&order_id={opencart_order_id}
+```
+Method: GET
