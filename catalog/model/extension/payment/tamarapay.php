@@ -1,22 +1,22 @@
 <?php
 
-use Tamara\Client;
-use Tamara\Configuration;
-use Tamara\Model\Money;
-use Tamara\Model\Order\Address;
-use Tamara\Model\Order\Consumer;
-use Tamara\Model\Order\Discount;
-use Tamara\Model\Order\MerchantUrl;
-use Tamara\Model\Order\Order;
-use Tamara\Model\Order\OrderItem;
-use Tamara\Model\Order\OrderItemCollection;
-use Tamara\Model\Payment\Capture;
-use Tamara\Model\ShippingInfo;
-use Tamara\Request\Checkout\CreateCheckoutRequest;
-use Tamara\Request\Order\AuthoriseOrderRequest;
-use Tamara\Request\Order\CancelOrderRequest;
-use Tamara\Request\Payment\CaptureRequest;
-use Tamara\Response\Payment\CancelResponse;
+use TMS\Tamara\Client;
+use TMS\Tamara\Configuration;
+use TMS\Tamara\Model\Money;
+use TMS\Tamara\Model\Order\Address;
+use TMS\Tamara\Model\Order\Consumer;
+use TMS\Tamara\Model\Order\Discount;
+use TMS\Tamara\Model\Order\MerchantUrl;
+use TMS\Tamara\Model\Order\Order;
+use TMS\Tamara\Model\Order\OrderItem;
+use TMS\Tamara\Model\Order\OrderItemCollection;
+use TMS\Tamara\Model\Payment\Capture;
+use TMS\Tamara\Model\ShippingInfo;
+use TMS\Tamara\Request\Checkout\CreateCheckoutRequest;
+use TMS\Tamara\Request\Order\AuthoriseOrderRequest;
+use TMS\Tamara\Request\Order\CancelOrderRequest;
+use TMS\Tamara\Request\Payment\CaptureRequest;
+use TMS\Tamara\Response\Payment\CancelResponse;
 
 class ModelExtensionPaymentTamarapay extends Model
 {
@@ -200,7 +200,17 @@ class ModelExtensionPaymentTamarapay extends Model
 
     private function getCurrencyCodeFromSession()
     {
-        return $this->session->data['currency'] ?? '';
+        $currencyCode = '';
+        if (!empty($this->session->data['currency'])) {
+            $currencyCode = $this->session->data['currency'];
+        }
+        if (empty($currencyCode)) {
+            $this->load->model('setting/setting');
+            if ($configCurrency = $this->model_setting_setting->getSettingValue('config_currency')) {
+                $currencyCode = $configCurrency;
+            }
+        }
+        return $currencyCode;
     }
 
     private function prepareOrder($paymentType)
@@ -211,7 +221,7 @@ class ModelExtensionPaymentTamarapay extends Model
 
         $order->setOrderReferenceId($orderData['order_id']);
         $order->setLocale($this->session->data['language'] ?? null);
-        $order->setCurrency($this->getCurrencyCodeFromSession());
+        $order->setCurrency($orderData['currency_code']);
         $order->setTotalAmount($this->formatMoney($orderData['total']));
         $order->setCountryCode($this->getIsoCountryFromSession());
         $order->setPaymentType($paymentType);
@@ -260,8 +270,8 @@ class ModelExtensionPaymentTamarapay extends Model
         $order->setMerchantUrl($merchantUrl);
 
         $orderTotals = $this->getOrderTotals($orderId);
-        $order->setShippingAmount($this->formatMoney($this->getShippingAmount($orderTotals)));
-        $order->setTaxAmount($this->formatMoney($this->getOrderTaxAmount($orderTotals)));
+        $order->setShippingAmount($this->getShippingAmount($orderTotals));
+        $order->setTaxAmount($this->getOrderTaxAmount($orderTotals));
         $order->setDiscount($this->getOrderDiscount($orderTotals));
 
         return $order;
@@ -390,9 +400,9 @@ class ModelExtensionPaymentTamarapay extends Model
         $orderItem->setSku($item['sku']);
         $orderItem->setType($item['type']);
         $orderItem->setUnitPrice($this->formatMoney($item['unit_price'], $item['currency']));
-        $orderItem->setTotalAmount(new Money($item['total_amount'], $item['currency']));
-        $orderItem->setTaxAmount(new Money($item['tax_amount'] ?? 0, $item['currency']));
-        $orderItem->setDiscountAmount(new Money($item['discount_amount'] ?? 0, $item['currency']));
+        $orderItem->setTotalAmount($this->formatMoney($item['total_amount'], $item['currency']));
+        $orderItem->setTaxAmount($this->formatMoney($item['tax_amount'] ?? 0, $item['currency']));
+        $orderItem->setDiscountAmount($this->formatMoney($item['discount_amount'] ?? 0, $item['currency']));
         $orderItem->setQuantity($item['quantity']);
         $orderItem->setImageUrl($item['image_url'] ?? '');
 
@@ -435,6 +445,11 @@ class ModelExtensionPaymentTamarapay extends Model
         return $this->cacheData($this->orderTotalsArr, $orderId, self::MAXIMUM_CACHED, $data);
     }
 
+    /**
+     * @param $orderTotals
+     * @return Money
+     * @throws Exception
+     */
     private function getShippingAmount($orderTotals)
     {
         $result = 0.00;
@@ -444,7 +459,7 @@ class ModelExtensionPaymentTamarapay extends Model
                 break;
             }
         }
-        return $result;
+        return $this->formatMoney($result);
     }
 
     private function getOrderTaxAmount(array $orderTotals)
@@ -455,7 +470,7 @@ class ModelExtensionPaymentTamarapay extends Model
                 $result += $orderTotal['value'];
             }
         }
-        return $result;
+        return $this->formatMoney($result);
     }
 
     private function getOrderDiscount($orderTotals): Discount
@@ -775,9 +790,9 @@ class ModelExtensionPaymentTamarapay extends Model
             $result['total_amount'] = $orderData['total'];
             $result['items'] = $this->getOrderItems($orderId);
             $orderTotals = $this->getOrderTotals($orderId);
-            $result['tax_amount'] = $this->getOrderTaxAmount($orderTotals);
-            $result['shipping_amount'] = $this->getShippingAmount($orderTotals);
-            $result['discount_amount'] = $this->getDiscountAmount($orderTotals);
+            $result['tax_amount'] = $this->getOrderTaxAmount($orderTotals)->getAmount();
+            $result['shipping_amount'] = $this->getShippingAmount($orderTotals)->getAmount();
+            $result['discount_amount'] = $this->getDiscountAmount($orderTotals)->getAmount();
             $result['currency'] = $orderData['currency_code'];
             $shippingData = $this->getShippingData($orderId);
             $companies = [];
@@ -810,7 +825,7 @@ class ModelExtensionPaymentTamarapay extends Model
                 $result += $total['value'];
             }
         }
-        return $result;
+        return $this->formatMoney($result);
     }
 
     /**
@@ -838,10 +853,10 @@ class ModelExtensionPaymentTamarapay extends Model
         );
         $capture = new Capture(
             $orderData['tamara_order_id'],
-            new Money($orderData['total_amount'], $orderData['currency']),
-            new Money($orderData['shipping_amount'], $orderData['currency']),
-            new Money($orderData['tax_amount'], $orderData['currency']),
-            new Money($orderData['discount_amount'], $orderData['currency']),
+            $this->formatMoney($orderData['total_amount'], $orderData['currency']),
+            $this->formatMoney($orderData['shipping_amount'], $orderData['currency']),
+            $this->formatMoney($orderData['tax_amount'], $orderData['currency']),
+            $this->formatMoney($orderData['discount_amount'], $orderData['currency']),
             $this->getOrderItemCollection($orderData['items']),
             $shippingInfo
         );
@@ -988,11 +1003,11 @@ class ModelExtensionPaymentTamarapay extends Model
     {
         return new CancelOrderRequest(
             $orderData['tamara_order_id'],
-            new Money($orderData['total_amount'], $orderData['currency']),
+            $this->formatMoney($orderData['total_amount'], $orderData['currency']),
             $this->getOrderItemCollection($orderData['items']),
-            new Money($orderData['shipping_amount'], $orderData['currency']),
-            new Money($orderData['tax_amount'], $orderData['currency']),
-            new Money($orderData['discount_amount'], $orderData['currency'])
+            $this->formatMoney($orderData['shipping_amount'], $orderData['currency']),
+            $this->formatMoney($orderData['tax_amount'], $orderData['currency']),
+            $this->formatMoney($orderData['discount_amount'], $orderData['currency'])
         );
     }
 
@@ -1027,6 +1042,6 @@ class ModelExtensionPaymentTamarapay extends Model
     }
 
     public function getTamaraOrderFromRemote($orderId) {
-        return $this->getTamaraClient()->getOrderByReferenceId(new \Tamara\Request\Order\GetOrderByReferenceIdRequest($orderId));
+        return $this->getTamaraClient()->getOrderByReferenceId(new \TMS\Tamara\Request\Order\GetOrderByReferenceIdRequest($orderId));
     }
 }

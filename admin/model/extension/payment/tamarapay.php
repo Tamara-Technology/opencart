@@ -1,14 +1,14 @@
 <?php
 
-use Tamara\Client;
-use Tamara\Configuration;
+use TMS\Tamara\Client;
+use TMS\Tamara\Configuration;
 
 class ModelExtensionPaymentTamarapay extends Model
 {
     /**
      * Define version of extension
      */
-    public const VERSION = '1.4.0';
+    public const VERSION = '1.6.0';
 
     public const COUNTRY_ISO = 'SA';
 

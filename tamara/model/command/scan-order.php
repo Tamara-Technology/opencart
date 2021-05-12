@@ -1,6 +1,6 @@
 <?php
 
-use Symfony\Component\Console\Input\InputOption;
+use TMS\Symfony\Component\Console\Input\InputOption;
 
 class TamaraScanOrder extends TamaraAbstractCommand
 {
