@@ -1,7 +1,7 @@
 <?php
 
-use Tamara\Notification\NotificationService;
-use Tamara\Request\Order\AuthoriseOrderRequest;
+use TMS\Tamara\Notification\NotificationService;
+use TMS\Tamara\Request\Order\AuthoriseOrderRequest;
 
 class ControllerExtensionPaymentTamarapay extends Controller
 {

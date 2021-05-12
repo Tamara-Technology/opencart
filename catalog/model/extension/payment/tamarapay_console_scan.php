@@ -2,6 +2,8 @@
 
 class ModelExtensionPaymentTamarapayConsoleScan extends Model {
 
+    const ORDER_STATUS_APPROVED = 'approved';
+
     private $totalOrderProcessed = 0;
 
     /**
@@ -28,10 +30,16 @@ class ModelExtensionPaymentTamarapayConsoleScan extends Model {
 
         $sql = "select oto.tamara_id , oto.tamara_order_id, oto.captured_from_console, oto.canceled_from_console, oo.* FROM `".DB_PREFIX."tamara_orders` oto INNER JOIN oc_order oo 
                 ON oto.order_id  = oo.order_id 
-                WHERE oto.is_authorised = 1 AND oto.is_active = 1 AND oto.created_at >= '{$startTime}' AND oto.created_at <= '{$endTime}'";
+                WHERE oto.is_active = 1 AND oto.created_at >= '{$startTime}' AND oto.created_at <= '{$endTime}'";
 
         $tamaraOrders = $this->db->query($sql)->rows;
         if (!empty($tamaraOrders)) {
+
+            //scan authorise
+            $authoriseStatusId = $this->config->get('payment_tamarapay_order_status_success_id');
+            $authoriseOrders = $this->getOrdersFiltered($tamaraOrders, $authoriseStatusId, 'is_authorised');
+            $this->doAction(array_keys($authoriseOrders), 'authorise');
+            $this->updateTamaraOrdersAfterScan($authoriseOrders, 'is_authorised');
 
             //scan capture
             $captureStatusId = $this->config->get('payment_tamarapay_capture_order_status_id');
@@ -100,6 +108,13 @@ class ModelExtensionPaymentTamarapayConsoleScan extends Model {
 
     public function cancelOrder($tamaraOrderId) {
         $this->model_extension_payment_tamarapay->cancelOrder($tamaraOrderId);
+    }
+
+    public function authoriseOrder($tamaraOrderId) {
+        $tamaraOrder = $this->model_extension_payment_tamarapay->getTamaraOrderByTamaraOrderId($tamaraOrderId);
+        if ($this->model_extension_payment_tamarapay->getTamaraOrderFromRemote($tamaraOrder['order_id'])->getStatus() == self::ORDER_STATUS_APPROVED) {
+            $this->model_extension_payment_tamarapay->authoriseOrder($tamaraOrderId);
+        }
     }
 
     private function updateTamaraOrdersAfterScan($orders, $fieldToUpdate) {

@@ -12,7 +12,7 @@ require_once(DIR_SYSTEM . 'startup.php');
 //Load needed components
 require_once('framework.php');
 
-use Symfony\Component\Console\Application;
+use TMS\Symfony\Component\Console\Application;
 
 $app = new Application('Tamara Console', 'v1.0.0');
 $app->add(new TamaraScanOrder($registry, $log));

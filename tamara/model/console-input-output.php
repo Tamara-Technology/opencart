@@ -1,7 +1,7 @@
 <?php
 
-use Symfony\Component\Console\Input\InputInterface;
-use Symfony\Component\Console\Output\OutputInterface;
+use TMS\Symfony\Component\Console\Input\InputInterface;
+use TMS\Symfony\Component\Console\Output\OutputInterface;
 
 class TamaraConsoleInputOutput {
 
