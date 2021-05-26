@@ -130,13 +130,16 @@
                                 <label for="{{ method.name }}" class="form-check-label"><b>{{ text_max_amount }}</b> {{ method.max_limit }} {{ method.currency }}</label>
                                 <br />
                                 {% if method.is_available %}
-                                <label for="{{ method.name }}">
                                     {% if method.name == 'PAY_BY_INSTALMENTS' %}
-                                        <a href="javascript:void(0)" class="tamara-product-widget" data-lang="{{ language_code }}" data-price="{{ order_data.total }}" data-currency="{{ method.currency }}" data-payment-type="installment" data-installment-minimum-amount="{{ method.min_limit }}" data-inject-template="false">{{ text_more_details }}</a>
+                                    <div id="tamara-installment-plan" style="margin-bottom: 10px;" class="tamara-installment-plan-widget" data-lang="{{ language_code }}" data-price="{{ order_data.total_in_currency }}" data-currency="{{ method.currency }}" data-installment-minimum-amount="{{ method.min_limit }}" data-installment-maximum-amount="{{ method.max_limit }}" data-number-of-installments="3"
+                                    ></div>
                                     {% else %}
-                                        <a href="javascript:void(0)" class="tamara-product-widget" data-lang="{{ language_code }}" data-inject-template="false">{{ text_more_details }}</a>
+                                    <label for="{{ method.name }}">
+                                        <a href="javascript:void(0)" class="tamara-product-widget" data-disable-paylater="false" data-lang="{{ language_code }}" data-pay-later-max-amount="{{ method.max_limit }}" data-inject-template="false">{{ text_more_details }}</a>
+                                    </label>
                                     {% endif %}
-                                </label>
+                                {% else %}
+                                    <p class="text-warning"><i class="fa fa-exclamation-triangle"></i> {{ text_under_over_limit }}</p>
                                 {% endif %}
                             </div>
                         </div>
@@ -155,35 +158,7 @@
         </form>
     </div>
 
-    {% if use_iframe_checkout %}
-        <script src="https://cdn.tamara.co/checkout/checkoutFrame.min.js?v=1.1"></script>
-        <script type="text/javascript">
-            function success() {
-                window.location = '{{ merchant_urls.success }}';
-            }
-
-            function failed() {
-                window.location = '{{ merchant_urls.failure }}';
-            }
-
-            function cancel() {
-                window.location = '{{ merchant_urls.cancel }}';
-            }
-
-            function init() {
-                TamaraFrame.addEventHandlers(TamaraFrame.Events.SUCCESS, success);
-                TamaraFrame.addEventHandlers(TamaraFrame.Events.FAILED, failed);
-                TamaraFrame.addEventHandlers(TamaraFrame.Events.CANCELED, cancel);
-            }
-
-            var tamaraCKOConfig = {
-                namespace: 'TamaraFrame',
-                init: init,
-            }
-        </script>
-    {% endif %}
-
-    <script charset="utf-8" src="https://cdn.tamara.co/widget/tamara-widget.min.js"></script>
+    <script charset="utf-8" src="https://cdn.tamara.co/widget/tamara-widget.min.js?t={{ current_time }}"></script>
     <script type="text/javascript">
         window.checkTamaraWidgetCount = 0;
         var existTamaraWidget = setInterval(function() {
@@ -199,18 +174,32 @@
         }, 300);
     </script>
 
-    <script charset="utf-8" src="https://cdn.tamara.co/widget/product-widget.min.js"></script>
+    <script charset="utf-8" src="https://cdn.tamara.co/widget/product-widget.min.js?t={{ current_time }}"></script>
+    <script charset="utf-8" src="https://cdn.tamara.co/widget/installment-plan.min.js?t={{ current_time }}"></script>
     <script type="text/javascript">
-        window.checkTamaraProductWidgetCount = 0;
+        var checkTamaraProductWidgetCount = 0;
         var existTamaraProductWidget = setInterval(function() {
             if (window.TamaraProductWidget) {
                 window.TamaraProductWidget.init({ lang: '{{ language_code }}' });
                 window.TamaraProductWidget.render();
                 clearInterval(existTamaraProductWidget);
             }
-            window.checkTamaraProductWidgetCount += 1;
-            if (window.checkTamaraProductWidgetCount > 15) {
+            checkTamaraProductWidgetCount += 1;
+            if (checkTamaraProductWidgetCount > 33) {
                 clearInterval(existTamaraProductWidget);
+            }
+        }, 300);
+
+        var countExistTamaraInstallmentsPlan = 0;
+        var existTamaraInstallmentsPlan = setInterval(function() {
+            if ($('.tamara-installment-plan-widget').length) {
+                if (window.TamaraInstallmentPlan) {
+                    window.TamaraInstallmentPlan.render();
+                    clearInterval(existTamaraInstallmentsPlan);
+                }
+            }
+            if (++countExistTamaraInstallmentsPlan > 33) {
+                clearInterval(existTamaraInstallmentsPlan);
             }
         }, 300);
     </script>
@@ -236,11 +225,7 @@
                 },
                 success: function(json) {
                     if (json['redirectUrl']) {
-                        {% if use_iframe_checkout %}
-                            TamaraFrame.checkout(json.redirectUrl);
-                        {% else %}
-                            window.location = json['redirectUrl'];
-                        {% endif %}
+                        window.location = json['redirectUrl'];
                     }
                     if (json['error']) {
                         $('#error-area').css('display', 'block');

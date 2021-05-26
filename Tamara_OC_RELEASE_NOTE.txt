@@ -1,0 +1,13 @@
+Version 1.6.0
+- Bugs fixed:
+    - Fixed bug display tamara widget
+    - Fixed bug related to currency
+- News:
+    - Remove Iframe checkout
+    - Introduce web hook function
+    - Sync payment types on Tamara and local site
+    - Add function don't display tamara widget on specific products, categories
+    - Trim spaces, tab, end line for api url, merchant token while save the configuration
+    - Add more conditions to validate Tamara payment on checkout
+    - Add more translation
+    - Add config to use default checkout success page

@@ -124,12 +124,6 @@ class ControllerExtensionPaymentTamarapay extends Controller {
             $data['payment_tamarapay_trigger_actions_enabled'] = $this->config->get('payment_tamarapay_trigger_actions_enabled');
         }
 
-        if (isset($this->request->post['payment_tamarapay_iframe_checkout_enabled'])) {
-            $data['payment_tamarapay_iframe_checkout_enabled'] = $this->request->post['payment_tamarapay_iframe_checkout_enabled'];
-        } else {
-            $data['payment_tamarapay_iframe_checkout_enabled'] = $this->config->get('payment_tamarapay_iframe_checkout_enabled');
-        }
-
         if (isset($this->request->post['payment_tamarapay_order_status_success_id'])) {
             $data['payment_tamarapay_order_status_success_id'] = $this->request->post['payment_tamarapay_order_status_success_id'];
         } else {
@@ -166,24 +160,6 @@ class ControllerExtensionPaymentTamarapay extends Controller {
             $data['payment_tamarapay_types_pay_by_later_title'] = $this->config->get('payment_tamarapay_types_pay_by_later_title');
         }
 
-        if (isset($this->request->post['payment_tamarapay_types_pay_by_later_min_limit'])) {
-            $data['payment_tamarapay_types_pay_by_later_min_limit'] = $this->request->post['payment_tamarapay_types_pay_by_later_min_limit'];
-        } else {
-            $data['payment_tamarapay_types_pay_by_later_min_limit'] = $this->config->get('payment_tamarapay_types_pay_by_later_min_limit');
-        }
-
-        if (isset($this->request->post['payment_tamarapay_types_pay_by_later_max_limit'])) {
-            $data['payment_tamarapay_types_pay_by_later_max_limit'] = $this->request->post['payment_tamarapay_types_pay_by_later_max_limit'];
-        } else {
-            $data['payment_tamarapay_types_pay_by_later_max_limit'] = $this->config->get('payment_tamarapay_types_pay_by_later_max_limit');
-        }
-
-        if (isset($this->request->post['payment_tamarapay_types_pay_by_later_currency'])) {
-            $data['payment_tamarapay_types_pay_by_later_currency'] = $this->request->post['payment_tamarapay_types_pay_by_later_currency'];
-        } else {
-            $data['payment_tamarapay_types_pay_by_later_currency'] = $this->config->get('payment_tamarapay_types_pay_by_later_currency');
-        }
-
         if (isset($this->request->post['payment_tamarapay_types_pay_by_instalments_enabled'])) {
             $data['payment_tamarapay_types_pay_by_instalments_enabled'] = $this->request->post['payment_tamarapay_types_pay_by_instalments_enabled'];
         } else {
@@ -196,24 +172,6 @@ class ControllerExtensionPaymentTamarapay extends Controller {
             $data['payment_tamarapay_types_pay_by_instalments_title'] = $this->config->get('payment_tamarapay_types_pay_by_instalments_title');
         }
 
-        if (isset($this->request->post['payment_tamarapay_types_pay_by_instalments_min_limit'])) {
-            $data['payment_tamarapay_types_pay_by_instalments_min_limit'] = $this->request->post['payment_tamarapay_types_pay_by_instalments_min_limit'];
-        } else {
-            $data['payment_tamarapay_types_pay_by_instalments_min_limit'] = $this->config->get('payment_tamarapay_types_pay_by_instalments_min_limit');
-        }
-
-        if (isset($this->request->post['payment_tamarapay_types_pay_by_instalments_max_limit'])) {
-            $data['payment_tamarapay_types_pay_by_instalments_max_limit'] = $this->request->post['payment_tamarapay_types_pay_by_instalments_max_limit'];
-        } else {
-            $data['payment_tamarapay_types_pay_by_instalments_max_limit'] = $this->config->get('payment_tamarapay_types_pay_by_instalments_max_limit');
-        }
-
-        if (isset($this->request->post['payment_tamarapay_types_pay_by_instalments_currency'])) {
-            $data['payment_tamarapay_types_pay_by_instalments_currency'] = $this->request->post['payment_tamarapay_types_pay_by_instalments_currency'];
-        } else {
-            $data['payment_tamarapay_types_pay_by_instalments_currency'] = $this->config->get('payment_tamarapay_types_pay_by_instalments_currency');
-        }
-
         if (isset($this->request->post['payment_tamarapay_capture_order_status_id'])) {
             $data['payment_tamarapay_capture_order_status_id'] = $this->request->post['payment_tamarapay_capture_order_status_id'];
         } else {
@@ -224,6 +182,45 @@ class ControllerExtensionPaymentTamarapay extends Controller {
             $data['payment_tamarapay_cancel_order_status_id'] = $this->request->post['payment_tamarapay_cancel_order_status_id'];
         } else {
             $data['payment_tamarapay_cancel_order_status_id'] = $this->config->get('payment_tamarapay_cancel_order_status_id');
+        }
+
+        if (isset($this->request->post['payment_tamarapay_enable_tamara_checkout_success_page'])) {
+            $data['payment_tamarapay_enable_tamara_checkout_success_page'] = $this->request->post['payment_tamarapay_enable_tamara_checkout_success_page'];
+        } else {
+            $data['payment_tamarapay_enable_tamara_checkout_success_page'] = $this->config->get('payment_tamarapay_enable_tamara_checkout_success_page');
+        }
+
+        if (isset($this->request->post['payment_tamarapay_pdp_wg_exclude_product_ids'])) {
+            $data['payment_tamarapay_pdp_wg_exclude_product_ids'] = $this->request->post['payment_tamarapay_pdp_wg_exclude_product_ids'];
+        } else {
+            $data['payment_tamarapay_pdp_wg_exclude_product_ids'] = $this->config->get('payment_tamarapay_pdp_wg_exclude_product_ids');
+        }
+
+        if (isset($this->request->post['payment_tamarapay_pdp_wg_exclude_category_ids'])) {
+            $data['payment_tamarapay_pdp_wg_exclude_category_ids'] = $this->request->post['payment_tamarapay_pdp_wg_exclude_category_ids'];
+        } else {
+            $data['payment_tamarapay_pdp_wg_exclude_category_ids'] = $this->config->get('payment_tamarapay_pdp_wg_exclude_category_ids');
+        }
+
+        if (isset($this->request->post['payment_tamarapay_webhook_enabled'])) {
+            $webHookEnabled = $this->request->post['payment_tamarapay_webhook_enabled'];
+        } else {
+            $webHookEnabled = $this->config->get('payment_tamarapay_webhook_enabled');
+            if ($webHookEnabled === null) {
+                $webHookEnabled = 1;
+            }
+        }
+        $webHookEnabled = intval($webHookEnabled);
+        $data['payment_tamarapay_webhook_enabled'] = $webHookEnabled;
+
+        if ($webHookEnabled) {
+            if (!empty($this->config->get('payment_tamarapay_webhook_id'))) {
+                $data['payment_tamarapay_webhook_id'] = $this->config->get('payment_tamarapay_webhook_id');
+            } else {
+                $data['payment_tamarapay_webhook_id'] = $this->language->get('text_save_config_get_webhook_id');
+            }
+        } else {
+            $data['payment_tamarapay_webhook_id'] = $this->language->get("text_none_webhook_id");
         }
 
         $data['order_statuses'] = $this->model_localisation_order_status->getOrderStatuses();
@@ -293,18 +290,23 @@ class ControllerExtensionPaymentTamarapay extends Controller {
             $check_credentials = false;
         }
 
+        $this->request->post['payment_tamarapay_url'] = preg_replace("/\s+/", "", $this->request->post['payment_tamarapay_url']);
+        $this->request->post['payment_tamarapay_token'] = preg_replace("/\s+/", "", $this->request->post['payment_tamarapay_token']);
+        $this->request->post['payment_tamarapay_token_notification'] = preg_replace("/\s+/", "", $this->request->post['payment_tamarapay_token_notification']);
+
         if ($check_credentials) {
             $url = $this->request->post['payment_tamarapay_url'];
             $token = $this->request->post['payment_tamarapay_token'];
-            if ($url != $this->getTamaraPaymentUrlFromConfig() || $token != $this->getTamaraPaymentTokenFromConfig()) {
+            if ($this->isChangedConfig('payment_tamarapay_url') || $this->isChangedConfig('payment_tamarapay_token')) {
                 try {
-                    $paymentTypes = $this->model_extension_payment_tamarapay->getPaymentTypes($url, $token, true);
-                    $this->request->post = $this->addPaymentsTypeToRequest($this->request->post, $paymentTypes);
+                    $this->model_extension_payment_tamarapay->getPaymentTypes($url, $token, true);
                 } catch (\Exception $exception) {
                     $this->error['token'] = $this->language->get('error_token_invalid');
                 }
             }
         }
+
+        $this->validateWebhook();
 
         if ($this->error && !isset($this->error['warning'])) {
             $this->error['warning'] = $this->language->get('error_warning');
@@ -313,20 +315,53 @@ class ControllerExtensionPaymentTamarapay extends Controller {
         return !$this->error;
     }
 
-    private function addPaymentsTypeToRequest($requestData, $paymentTypes) {
-        $keys = ['min_limit', 'max_limit', 'currency'];
-        foreach ($paymentTypes as $type) {
-            $name = strtolower($type['name']);
-            foreach ($keys as $key) {
-                $_key = 'payment_tamarapay_types_'.$name.'_' . $key;
-                if ($key == 'currency') {
-                    $requestData[$_key] = $type['max_limit']['currency'];
-                } else {
-                    $requestData[$_key] = $type[$key]['amount'];
+    /**
+     * @return bool
+     */
+    private function validateWebhook() {
+        if ($this->request->post['payment_tamarapay_webhook_id'] == $this->language->get('text_none_webhook_id')
+            || $this->request->post['payment_tamarapay_webhook_id'] == $this->language->get('text_save_config_get_webhook_id')) {
+            $this->request->post['payment_tamarapay_webhook_id'] = "";
+        }
+        if (!$this->isChangedConfig('payment_tamarapay_webhook_enabled')) {
+            return true;
+        }
+        $result = true;
+        $webhookEnabled = $this->request->post['payment_tamarapay_webhook_enabled'];
+        $webhookId = $this->config->get("payment_tamarapay_webhook_id");
+        if (!empty($webhookEnabled)) {
+            if (empty($webhookId)) {
+                try {
+                    $webhookId = $this->model_extension_payment_tamarapay->registerWebhook($this->request->post['payment_tamarapay_url'], $this->request->post['payment_tamarapay_token']);
+                } catch (\Exception $exception) {
+                    $webhookEnabled = 0;
+                    $this->error['warning'] = $exception->getMessage();
+                    $result = false;
+                }
+            }
+        } else {
+            if (!empty($webhookId)) {
+                try {
+                    $this->model_extension_payment_tamarapay->removeWebhook();
+                    $webhookId = "";
+                } catch (\Exception $exception) {
+                    $webhookEnabled = 1;
+                    $this->error['warning'] = $exception->getMessage();
+                    $result = false;
                 }
             }
         }
-        return $requestData;
+        $this->request->post['payment_tamarapay_webhook_enabled'] = $webhookEnabled;
+        $this->request->post['payment_tamarapay_webhook_id'] = $webhookId;
+        return $result;
+    }
+
+    /**
+     * @param $key
+     * @return bool
+     */
+    private function isChangedConfig($key) {
+        return $this->request->post[$key] != $this->config->get($key);
     }
 
     private function addVendorAutoload() {
@@ -398,8 +433,19 @@ class ControllerExtensionPaymentTamarapay extends Controller {
                 $this->addConsoleColumnsToTamaraOrder();
                 $this->updateSchemaVersion("1.1.0");
             }
+            if (version_compare($this->contextSchemaVersion, '1.2.0', '<')) {
+                $this->removeWrongValueWebhookIdConfig();
+                $this->updateSchemaVersion("1.2.0");
+            }
         }
         return;
+    }
+
+    private function removeWrongValueWebhookIdConfig() {
+        $webhookId = $this->config->get("payment_tamarapay_webhook_id");
+        if ($webhookId == $this->language->get('text_none_webhook_id') || $webhookId == $this->language->get('text_save_config_get_webhook_id')) {
+            $this->db->query("DELETE FROM " .DB_PREFIX . "setting WHERE `key`='payment_tamarapay_webhook_id'");
+        }
     }
 
     private function addConsoleColumnsToTamaraOrder() {

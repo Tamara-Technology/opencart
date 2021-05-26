@@ -103,17 +103,23 @@ class ModelExtensionPaymentTamarapayConsoleScan extends Model {
     }
 
     public function captureOrder($tamaraOrderId) {
+        $this->model_extension_payment_tamarapay->log(["Console: capture order, order id: " . $tamaraOrderId]);
         $this->model_extension_payment_tamarapay->captureOrder($tamaraOrderId);
     }
 
     public function cancelOrder($tamaraOrderId) {
+        $this->model_extension_payment_tamarapay->log(["Console: capture order, order id: " . $tamaraOrderId]);
         $this->model_extension_payment_tamarapay->cancelOrder($tamaraOrderId);
     }
 
     public function authoriseOrder($tamaraOrderId) {
         $tamaraOrder = $this->model_extension_payment_tamarapay->getTamaraOrderByTamaraOrderId($tamaraOrderId);
-        if ($this->model_extension_payment_tamarapay->getTamaraOrderFromRemote($tamaraOrder['order_id'])->getStatus() == self::ORDER_STATUS_APPROVED) {
+        $currentRemoteStatus = $this->model_extension_payment_tamarapay->getTamaraOrderFromRemote($tamaraOrder['order_id'])->getStatus();
+        if ($currentRemoteStatus == self::ORDER_STATUS_APPROVED) {
+            $this->model_extension_payment_tamarapay->log(["Console: authorise order, order id: " . $tamaraOrderId]);
             $this->model_extension_payment_tamarapay->authoriseOrder($tamaraOrderId);
+        } else {
+            $this->model_extension_payment_tamarapay->log(["Console: Order was not approve by Tamara, order id: " . $tamaraOrderId . ", current status: " . $currentRemoteStatus]);
         }
     }
 

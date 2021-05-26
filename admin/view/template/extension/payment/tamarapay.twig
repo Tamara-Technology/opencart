@@ -77,11 +77,12 @@
                                                     </select>
                                                 </div>
                                             </div>
+
                                             <div class="form-group">
-                                                <label class="col-sm-2 control-label" for="input-iframe-checkout-enabled">{{ entry_enable_iframe_checkout }}</label>
+                                                <label class="col-sm-2 control-label" for="input-tamara-success-page-enabled">{{ entry_enable_tamara_checkout_success_page}}</label>
                                                 <div class="col-sm-10">
-                                                    <select name="payment_tamarapay_iframe_checkout_enabled" id="input-iframe-checkout-enabled" class="form-control">
-                                                        {% if payment_tamarapay_iframe_checkout_enabled %}
+                                                    <select name="payment_tamarapay_enable_tamara_checkout_success_page" id="input-tamara-success-page-enabled" class="form-control">
+                                                        {% if payment_tamarapay_enable_tamara_checkout_success_page %}
                                                             <option value="1" selected="selected">{{ text_enabled }}</option>
                                                             <option value="0">{{ text_disabled }}</option>
                                                         {% else %}
@@ -89,6 +90,45 @@
                                                             <option value="0" selected="selected">{{ text_disabled }}</option>
                                                         {% endif %}
                                                     </select>
+                                                    <span>If no, we will use default checkout success page</span>
+                                                </div>
+                                            </div>
+
+                                            <div class="form-group">
+                                                <label class="col-sm-2 control-label" for="input-pdp-wg-exclude-product-ids">{{ entry_pdp_wg_exclude_product_ids }}</label>
+                                                <div class="col-sm-10">
+                                                    <input id="input-pdp-wg-exclude-product-ids" name="payment_tamarapay_pdp_wg_exclude_product_ids" value="{{ payment_tamarapay_pdp_wg_exclude_product_ids }}" type="text" class="form-control" />
+                                                    <span>Each value is separated by comma (,)</span>
+                                                </div>
+                                            </div>
+
+                                            <div class="form-group">
+                                                <label class="col-sm-2 control-label" for="input-pdp-wg-exclude-category-ids">{{ entry_pdp_wg_exclude_category_ids }}</label>
+                                                <div class="col-sm-10">
+                                                    <input id="input-pdp-wg-exclude-category-ids" name="payment_tamarapay_pdp_wg_exclude_category_ids" value="{{ payment_tamarapay_pdp_wg_exclude_category_ids }}" type="text" class="form-control" />
+                                                    <span>Each value is separated by comma (,)</span>
+                                                </div>
+                                            </div>
+
+                                            <div class="form-group">
+                                                <label class="col-sm-2 control-label" for="input-webhook-enabled">{{ entry_enable_webhook }}</label>
+                                                <div class="col-sm-10">
+                                                    <select name="payment_tamarapay_webhook_enabled" id="input-webhook-enabled" class="form-control">
+                                                        {% if payment_tamarapay_webhook_enabled %}
+                                                            <option value="1" selected="selected">{{ text_enabled }}</option>
+                                                            <option value="0">{{ text_disabled }}</option>
+                                                        {% else %}
+                                                            <option value="1">{{ text_enabled }}</option>
+                                                            <option value="0" selected="selected">{{ text_disabled }}</option>
+                                                        {% endif %}
+                                                    </select>
+                                                </div>
+                                            </div>
+
+                                            <div class="form-group">
+                                                <label class="col-sm-2 control-label" for="input-webhook-id">{{ entry_webhook_id }}</label>
+                                                <div class="col-sm-10">
+                                                    <input id="input-webhook-id" name="payment_tamarapay_webhook_id" value="{{ payment_tamarapay_webhook_id }}" type="text" class="form-control" readonly />
                                                 </div>
                                             </div>
 
@@ -133,19 +173,6 @@
 
                                                             </div>
                                                         </div>
-                                                        <div class="row form-group">
-                                                            <label class="col-sm-4 control-label" for="payment_tamarapay_types_pay_by_later_min_limit">{{ entry_min_limit_amount }}</label>
-                                                            <div class="col-sm-8">
-                                                                <input type="text" data-toggle="tooltip" title="{{ entry_auto_fetching }}" id="payment_tamarapay_types_pay_by_later_min_limit" name="payment_tamarapay_types_pay_by_later_min_limit" value="{{ payment_tamarapay_types_pay_by_later_min_limit }}" placeholder="{{ entry_min_limit_amount }}" class="form-control" readonly/>
-                                                            </div>
-                                                        </div>
-                                                        <div class="row form-group">
-                                                            <label class="col-sm-4 control-label" for="payment_tamarapay_types_pay_by_later_max_limit">{{ entry_max_limit_amount }}</label>
-                                                            <div class="col-sm-8">
-                                                                <input type="text" data-toggle="tooltip" title="{{ entry_auto_fetching }}" id="payment_tamarapay_types_pay_by_later_max_limit" name="payment_tamarapay_types_pay_by_later_max_limit" value="{{ payment_tamarapay_types_pay_by_later_max_limit }}" placeholder="{{ entry_max_limit_amount }}" class="form-control" readonly/>
-                                                                <input type="hidden" id="payment_tamarapay_types_pay_by_later_currency" name="payment_tamarapay_types_pay_by_later_currency" value="{{ payment_tamarapay_types_pay_by_later_currency }}" />
-                                                            </div>
-                                                        </div>
 
                                                     </div>
                                                 </div>
@@ -178,19 +205,6 @@
 
                                                             </div>
                                                         </div>
-                                                        <div class="row form-group">
-                                                            <label class="col-sm-4 control-label" for="payment_tamarapay_types_pay_by_instalments_min_limit">{{ entry_min_limit_amount }}</label>
-                                                            <div class="col-sm-8">
-                                                                <input type="text" data-toggle="tooltip" title="{{ entry_auto_fetching }}" id="payment_tamarapay_types_pay_by_instalments_min_limit" name="payment_tamarapay_types_pay_by_instalments_min_limit" value="{{ payment_tamarapay_types_pay_by_instalments_min_limit }}" placeholder="{{ entry_min_limit_amount }}" class="form-control" readonly />
-                                                            </div>
-                                                        </div>
-                                                        <div class="row form-group">
-                                                            <label class="col-sm-4 control-label" for="payment_tamarapay_types_pay_by_instalments_max_limit">{{ entry_max_limit_amount }}</label>
-                                                            <div class="col-sm-8">
-                                                                <input type="text" data-toggle="tooltip" title="{{ entry_auto_fetching }}" id="payment_tamarapay_types_pay_by_instalments_max_limit" name="payment_tamarapay_types_pay_by_instalments_max_limit" value="{{ payment_tamarapay_types_pay_by_instalments_max_limit }}" placeholder="{{ entry_max_limit_amount }}" class="form-control" readonly />
-                                                                <input type="hidden" id="payment_tamarapay_types_pay_by_instalments_currency" name="payment_tamarapay_types_pay_by_instalments_currency" value="{{ payment_tamarapay_types_pay_by_instalments_currency }}" />
-                                                            </div>
-                                                        </div>
 
                                                     </div>
                                                 </div>
@@ -198,14 +212,12 @@
                                         </div>
                                     </div>
 
-                                    {% if payment_tamarapay_types_pay_by_instalments_max_limit %}
                                     <div class="form-group">
                                         <div class="col-sm-12">
-                                            <button type="button" id="update-payment-config">Update config</button>
+                                            <button type="button" id="update-payment-config">Test retrieve payment types</button>
                                             <span id="update-payment-config-message" style="display: none;"></span>
                                         </div>
                                     </div>
-                                    {% endif %}
 
 
                                 </div>
@@ -424,19 +436,9 @@
             },
             success: function(rs) {
                 if (rs.success == true) {
-                    let paymentTypes = rs.payment_types;
-                    for (let i = 0; i < paymentTypes.length; i++) {
-                        let name = paymentTypes[i].name.toLowerCase();
-                        let elementMinLimit = '#payment_tamarapay_types_' + name  + '_min_limit';
-                        $(elementMinLimit).val(paymentTypes[i].min_limit.amount);
-                        let elementMaxLimit = '#payment_tamarapay_types_' + name  + '_max_limit';
-                        $(elementMaxLimit).val(paymentTypes[i].max_limit.amount);
-                        let elementCurrency = '#payment_tamarapay_types_' + name  + '_currency';
-                        $(elementCurrency).val(paymentTypes[i].max_limit.currency);
-                        $('#update-payment-config-message').text("Update config successful").addClass("text-success").show();
-                    }
+                    $('#update-payment-config-message').text("Retrieve payment types successfully").addClass("text-success").show();
                 } else {
-                    $('#update-payment-config-message').text("Update config failed, please check log file").addClass("text-danger").show();
+                    $('#update-payment-config-message').text("Retrieve payment types failed, please check log file").addClass("text-danger").show();
                 }
 
                 $('#update-payment-config').attr("disabled", false);

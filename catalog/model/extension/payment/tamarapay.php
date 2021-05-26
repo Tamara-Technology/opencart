@@ -21,7 +21,6 @@ use TMS\Tamara\Response\Payment\CancelResponse;
 class ModelExtensionPaymentTamarapay extends Model
 {
     public const
-        COUNTRY_ISO = 'SA',
         MAX_LIMIT = 'max_limit',
         MIN_LIMIT = 'min_limit',
         NAME = 'name',
@@ -42,15 +41,23 @@ class ModelExtensionPaymentTamarapay extends Model
         TEXT_PAY_BY_LATER = 'text_pay_by_later',
         TEXT_PAY_BY_INSTALMENTS = 'text_pay_by_instalments';
 
+    const WEBHOOK_URL = 'index.php?route=extension/payment/tamarapay/webhook', ALLOWED_WEBHOOKS = ['order_expired', 'order_declined'];
+    const PAYMENT_TYPES_CACHED_TIME = 1800;
+
     private const SUPPORTED_CURRENCIES = [
         self::SA_CURRENCY,
         self::AE_CURRENCY,
+    ];
+
+    private const SUPPORTED_COUNTRIES = [
+        'SA', 'AE'
     ];
 
     private $orders = [];
     private $tamaraOrders = [];
     private $tamaraOrdersByOrderId = [];
     private $orderTotalsArr = [];
+    private $currencies = [];
 
     public function getMethod($address, $total)
     {
@@ -70,6 +77,13 @@ class ModelExtensionPaymentTamarapay extends Model
 
     private function validateTamaraPaymentByAddress($address)
     {
+        //validate country
+        $addressCountryCode = strtoupper($address['iso_code_2'] ?? "");
+        if (!in_array($addressCountryCode, self::SUPPORTED_COUNTRIES) || $addressCountryCode != $this->getStoreCountryCode()) {
+            return false;
+        }
+
+        //validate geo zone
         if (!$this->config->get('payment_tamarapay_geo_zone_id')) {
             return true;
         }
@@ -79,6 +93,15 @@ class ModelExtensionPaymentTamarapay extends Model
         }
 
         return false;
+    }
+
+    public function getStoreCountry() {
+        $this->load->model('localisation/country');
+        return $this->model_localisation_country->getCountry($this->config->get('config_country_id'));
+    }
+
+    public function getStoreCountryCode() {
+        return strtoupper($this->getStoreCountry()['iso_code_2']);
     }
 
     /**
@@ -129,7 +152,12 @@ class ModelExtensionPaymentTamarapay extends Model
             $this->deactivateRecentTamaraOrder($this->session->data['order_id']);
 
             $client = $this->getTamaraClient();
-            $request = new CreateCheckoutRequest($this->prepareOrder($paymentType));
+            $this->log(["Session data: "]);
+            $this->log($this->session->data);
+            $order = $this->prepareOrder($paymentType);
+            $this->log(["Prepare order " . $this->session->data['order_id']]);
+            $this->log($order->toArray());
+            $request = new CreateCheckoutRequest($order);
 
             $response = $client->createCheckout($request);
 
@@ -293,6 +321,7 @@ class ModelExtensionPaymentTamarapay extends Model
         if ($forceReload || empty($this->orders[$orderId])) {
             $this->load->model('checkout/order');
             $order = $this->model_checkout_order->getOrder($orderId);
+            $order['total_in_currency'] = $this->getValueInCurrency($order['total'], $order['currency_code']);
             $this->cacheData($this->orders, $orderId, self::MAXIMUM_CACHED, $order);
         }
 
@@ -306,21 +335,21 @@ class ModelExtensionPaymentTamarapay extends Model
 
     private function formatMoney($price, $currencyCode = null)
     {
-        $price = round($price, 2);
-        $price = (float) number_format($price, 2, '.', '');
         if (is_null($currencyCode)) {
             $currencyCode = $this->getCurrencyCodeFromSession();
             if (empty($currencyCode)) {
                 throw new Exception("Currency does not exist");
             }
         }
-
+        $price = $this->getValueInCurrency($price, $currencyCode);
+        $price = round($price, 2);
+        $price = (float) number_format($price, 2, '.', '');
         return new Money($price, $currencyCode);
     }
 
     private function getIsoCountryFromSession()
     {
-        return $this->session->data['payment_address']['iso_code_2'] ?? '';
+        return strtoupper($this->session->data['payment_address']['iso_code_2'] ?? $this->session->data['shipping_address']['iso_code_2'] ?? '');
     }
 
     private function getOrderItems($orderId)
@@ -330,6 +359,7 @@ class ModelExtensionPaymentTamarapay extends Model
         foreach ($orderProducts as $orderProduct) {
             $productData = $this->getProductById($orderProduct['product_id']);
             $sku = empty($productDetails['sku']) ? $productData['product_id'] : $productData['sku'];
+            $itemType = empty($productData['model']) ? "simple product" : $productData['model'];
             $items[$orderProduct['order_product_id']] = [
                 'order_item_id' => $orderProduct['order_product_id'],
                 'product_id' => $orderProduct['product_id'],
@@ -339,7 +369,7 @@ class ModelExtensionPaymentTamarapay extends Model
                 'unit_price' => $orderProduct['price'],
                 'name' => $orderProduct['name'],
                 'sku' => $sku,
-                'type' => $productData['model'],
+                'type' => $itemType,
                 'reward' => $productData['reward'],
                 'quantity' => $orderProduct['quantity'],
                 'image_url' => $this->getProductImageUrl($productData['image']),
@@ -623,12 +653,9 @@ class ModelExtensionPaymentTamarapay extends Model
     public function getAvailableMethodForCurrentOrder()
     {
         $result = [];
-        $methods = $this->getPaymentMethodsConfig();
+        $methods = $this->getCurrentAvailableMethods();
         $orderTotal = $this->getOrderTotalFromSession();
         foreach ($methods as $method) {
-            if (!$this->filterStatusMethod($method)) {
-                continue;
-            }
             if (!$this->filterUnderOverLimitAmount($orderTotal, $method)) {
                 continue;
             }
@@ -645,8 +672,8 @@ class ModelExtensionPaymentTamarapay extends Model
     public function getPaymentMethodsConfig()
     {
         return [
-            $this->getPayLaterConfig(),
-            $this->getPayByInstallmentsConfig(),
+            self::PAY_LATER => $this->getPayLaterConfig(),
+            self::PAY_BY_INSTALMENTS => $this->getPayByInstallmentsConfig(),
         ];
     }
 
@@ -655,10 +682,7 @@ class ModelExtensionPaymentTamarapay extends Model
         return [
             self::NAME => self::PAY_LATER,
             self::ENABLED => $this->config->get('payment_tamarapay_types_pay_by_later_enabled'),
-            self::TITLTE => $this->language->get(self::TEXT_PAY_BY_LATER),
-            self::MIN_LIMIT => $this->config->get('payment_tamarapay_types_pay_by_later_min_limit'),
-            self::MAX_LIMIT => $this->config->get('payment_tamarapay_types_pay_by_later_max_limit'),
-            self::CURRENCY => $this->config->get('payment_tamarapay_types_pay_by_later_currency'),
+            self::TITLTE => $this->language->get(self::TEXT_PAY_BY_LATER)
         ];
     }
 
@@ -667,27 +691,14 @@ class ModelExtensionPaymentTamarapay extends Model
         return [
             self::NAME => self::PAY_BY_INSTALMENTS,
             self::ENABLED => $this->config->get('payment_tamarapay_types_pay_by_instalments_enabled'),
-            self::TITLTE => $this->language->get(self::TEXT_PAY_BY_INSTALMENTS),
-            self::MIN_LIMIT => $this->config->get('payment_tamarapay_types_pay_by_instalments_min_limit'),
-            self::MAX_LIMIT => $this->config->get('payment_tamarapay_types_pay_by_instalments_max_limit'),
-            self::CURRENCY => $this->config->get('payment_tamarapay_types_pay_by_instalments_currency'),
+            self::TITLTE => $this->language->get(self::TEXT_PAY_BY_INSTALMENTS)
         ];
     }
 
     private function getOrderTotalFromSession()
     {
         $order = $this->getOrder($this->getOrderIdFromSession());
-
-        return $order['total'];
-    }
-
-    private function filterStatusMethod($method)
-    {
-        if (empty($method[self::ENABLED])) {
-            return false;
-        }
-
-        return true;
+        return $order['total_in_currency'];
     }
 
     private function filterUnderOverLimitAmount($orderTotal, $method)
@@ -708,15 +719,24 @@ class ModelExtensionPaymentTamarapay extends Model
         return $this->getPaymentsMethodsAvailableForPrice($this->getOrderTotalFromSession());
     }
 
+    public function getCurrentAvailableMethods() {
+        $result = [];
+        $configMethods = $this->getPaymentMethodsConfig();
+        $availableMethods = $this->getPaymentTypes();
+        foreach ($configMethods as $method) {
+            if (!empty($method[self::ENABLED]) && isset($availableMethods[$method[self::NAME]])) {
+                $result[$method[self::NAME]] = array_merge($method, $availableMethods[$method[self::NAME]]);;
+            }
+        }
+        return $result;
+    }
+
     public function getPaymentsMethodsAvailableForPrice($price)
     {
         $result = [];
-        $methods = $this->getPaymentMethodsConfig();
+        $availableMethods = $this->getCurrentAvailableMethods();
         $chosenMethod = false;
-        foreach ($methods as $method) {
-            if (!$this->filterStatusMethod($method)) {
-                continue;
-            }
+        foreach ($availableMethods as $method) {
             $isAvailable = true;
             if (!$this->filterUnderOverLimitAmount($price, $method)) {
                 $isAvailable = false;
@@ -816,7 +836,7 @@ class ModelExtensionPaymentTamarapay extends Model
 
             return $captureId;
         } catch (Exception $exception) {
-            $this->log($exception->getMessage());
+            $this->log("Error when capture order " . $tamaraOrderId . ": " . $exception->getMessage());
         }
     }
 
@@ -1044,13 +1064,13 @@ class ModelExtensionPaymentTamarapay extends Model
             $cancelId = $response->getCancelId();
             $orderData['cancel_id'] = $cancelId;
             $this->saveCancel($orderData, $cancelRequest);
-            $comment = 'Tamara order was canceled, cancel id: ' . $cancelId;
+            $comment = 'Tamara order was canceled, tamara order id: '. $tamaraOrderId .', cancel id: ' . $cancelId;
             $this->addOrderComment($orderData['order_id'], $orderData['order_status_id'], $comment, 0);
             $this->log("Order " . $tamaraOrderId . " was canceled. Cancel id: " . $cancelId);
 
             return $cancelId;
         } catch (Exception $exception) {
-            $this->log($exception->getMessage());
+            $this->log("Error when cancel order " . $tamaraOrderId . ": " . $exception->getMessage());
         }
     }
 
@@ -1106,5 +1126,171 @@ class ModelExtensionPaymentTamarapay extends Model
 
     public function getTamaraOrderFromRemote($orderId) {
         return $this->getTamaraClient()->getOrderByReferenceId(new \TMS\Tamara\Request\Order\GetOrderByReferenceIdRequest($orderId));
+    }
+
+    public function webhook()
+    {
+        $webhookMessage = $this->getNotificationService()->processWebhook();
+        $eventType = $webhookMessage->getEventType();
+        if (!in_array($eventType, self::ALLOWED_WEBHOOKS)) {
+            $this->log([
+                'msg' => 'Webhook event type is not allowed',
+                'Event type: ' => $eventType,
+                'Webhook tamara order id: ' => $webhookMessage->getOrderId(),
+                'Webhook reference order id: ' => $webhookMessage->getOrderReferenceId(),
+            ]);
+            throw new \Exception($this->language->get("error_webhook_event_type_not_allowed"));
+        }
+        $comment = sprintf('Tamara - order was %s by webhook', $eventType);
+        $this->addOrderComment($webhookMessage->getOrderReferenceId(), $this->config->get("payment_tamarapay_order_status_canceled_id"), $comment, 0);
+        $this->log(["Webhook processed successful for order " . $webhookMessage->getOrderReferenceId()]);
+    }
+
+    public function createNotificationService($notificationToken) {
+        return \TMS\Tamara\Notification\NotificationService::create($notificationToken);
+    }
+
+    public function getNotificationService() {
+        return $this->createNotificationService($this->config->get("payment_tamarapay_token_notification"));
+    }
+
+    /**
+     * Get Tamara payment types
+     * @return array
+     * @throws Exception
+     */
+    public function getPaymentTypes()
+    {
+        try {
+            $cachedPaymentTypes = $this->getCachedPaymentTypes();
+            if (empty($cachedPaymentTypes)) {
+
+                /**
+                 * @var $response \TMS\Tamara\Response\Checkout\GetPaymentTypesResponse
+                 */
+                $response = $this->getPaymentTypesOfClient($this->getTamaraClient());
+
+                if (!$response->isSuccess()) {
+                    throw new Exception($response->getMessage());
+                }
+
+                $cachedPaymentTypes['payment_types'] = $this->parsePaymentTypesFromResponse($response);
+                $this->cachePaymentTypes($cachedPaymentTypes);
+            }
+            return $cachedPaymentTypes['payment_types'];
+        } catch (Exception $exception) {
+            $this->log($exception->getMessage());
+            throw $exception;
+        }
+        return [];
+    }
+
+    private function parsePaymentTypesFromResponse($response) {
+        $result = [];
+
+        /**
+         * @var $response \TMS\Tamara\Response\Checkout\GetPaymentTypesResponse
+         */
+        if ($response->isSuccess()) {
+            foreach ($response->getPaymentTypes() as $paymentType) {
+                $paymentTypeAsArray = $paymentType->toArray();
+                $paymentTypeData = $paymentTypeAsArray;
+                $paymentTypeData[self::MIN_LIMIT] = $paymentTypeAsArray[self::MIN_LIMIT][self::AMOUNT];
+                $paymentTypeData[self::MAX_LIMIT] = $paymentTypeAsArray[self::MAX_LIMIT][self::AMOUNT];
+                $paymentTypeData[self::CURRENCY] = $paymentTypeAsArray[self::MIN_LIMIT][self::CURRENCY];
+                $result[$paymentTypeAsArray[self::NAME]] = $paymentTypeData;
+            }
+        }
+        return $result;
+    }
+
+    /**
+     * @return array|mixed
+     */
+    private function getPaymentTypesFromDb() {
+        $query = "SELECT * FROM `" . DB_PREFIX . "tamara_config` WHERE `key`='payment_types' LIMIT 1";
+        $result = $this->db->query($query);
+        if ($result->num_rows > 0) {
+            return json_decode($result->row['value'], true);
+        } else {
+            return [];
+        }
+    }
+
+    private function savePaymentTypesToDb($paymentTypesAsJson) {
+        $this->db->query("DELETE FROM `" . DB_PREFIX . "tamara_config` WHERE `key`='payment_types'");
+        $this->db->query("INSERT INTO `" . DB_PREFIX . "tamara_config`(id, `key`, value, created_at, updated_at) VALUES(NULL, 'payment_types', '{$paymentTypesAsJson}', NOW(), NOW())");
+    }
+
+    /**
+     * @param $paymentTypes array
+     */
+    private function cachePaymentTypes($paymentTypes) {
+        $paymentTypes['cached_time'] = time();
+        $this->savePaymentTypesToDb(json_encode($paymentTypes));
+    }
+
+    /**
+     * @return array
+     */
+    private function getCachedPaymentTypes() {
+        $dbPaymentTypes = $this->getPaymentTypesFromDb();
+        if (isset($dbPaymentTypes['cached_time'])) {
+            if ((time() - intval($dbPaymentTypes['cached_time'])) > self::PAYMENT_TYPES_CACHED_TIME) {
+                return [];
+            } else {
+                return $dbPaymentTypes;
+            }
+        }
+        return [];
+    }
+
+    /**
+     * @param \TMS\Tamara\Client $client
+     * @return mixed
+     * @throws \TMS\Tamara\Exception\RequestDispatcherException
+     */
+    public function getPaymentTypesOfClient($client) {
+        return $client->getPaymentTypes($this->getStoreCountryCode());
+    }
+
+
+    public function getValueInCurrency($number, $currency, $value = '', $format = true) {
+        $currencies = $this->getCurrencies();
+        $decimal_place = $currencies[$currency]['decimal_place'];
+
+        if (!$value) {
+            $value = $currencies[$currency]['value'];
+        }
+
+        $amount = $value ? (float)$number * $value : (float)$number;
+
+        $amount = round($amount, (int)$decimal_place);
+
+        if (!$format) {
+            return $amount;
+        }
+
+        $string = '';
+        $string .= number_format($amount, (int)$decimal_place, $this->language->get('decimal_point'), $this->language->get('thousand_point'));
+        return floatval($string);
+    }
+
+    public function getCurrencies() {
+        if (empty($this->currencies)) {
+            $query = $this->db->query("SELECT * FROM " . DB_PREFIX . "currency");
+
+            foreach ($query->rows as $result) {
+                $this->currencies[$result['code']] = array(
+                    'currency_id'   => $result['currency_id'],
+                    'title'         => $result['title'],
+                    'symbol_left'   => $result['symbol_left'],
+                    'symbol_right'  => $result['symbol_right'],
+                    'decimal_place' => $result['decimal_place'],
+                    'value'         => $result['value']
+                );
+            }
+        }
+        return $this->currencies;
     }
 }
