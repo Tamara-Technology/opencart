@@ -36,15 +36,22 @@
                                     <div class="row">
                                         <div class="col-sm-12">
 
-                                            <div class="form-group required">
-                                                <label class="col-sm-2 control-label" for="input-url">{{ entry_url }}</label>
+                                            <div class="form-group">
+                                                <label class="col-sm-2 control-label" for="input-api-environment">{{ entry_api_environment }}</label>
                                                 <div class="col-sm-10">
-                                                    <input type="text" name="payment_tamarapay_url" value="{{ payment_tamarapay_url }}" placeholder="{{ entry_url }}" id="input-url" class="form-control"/>
-                                                    {% if error_url %}
-                                                        <div class="text-danger">{{ error_url }}</div>
-                                                    {% endif %}
+                                                    <select name="payment_tamarapay_api_environment" id="input-api-environment" class="form-control">
+                                                        {% if payment_tamarapay_api_environment == "1" %}
+                                                            <option value="1" selected="selected">{{ text_sandbox }}</option>
+                                                            <option value="2">{{ text_production }}</option>
+                                                        {% else %}
+                                                            <option value="1">{{ text_sandbox }}</option>
+                                                            <option value="2" selected="selected">{{ text_production }}</option>
+                                                        {% endif %}
+                                                    </select>
+                                                    <span>The sandbox environment is used for testing, not actual orders. Please make sure sandbox testing goes well before moving to production.</span>
                                                 </div>
                                             </div>
+
                                             <div class="form-group required">
                                                 <label class="col-sm-2 control-label" for="input-token">{{ entry_token }}</label>
                                                 <div class="col-sm-10">
@@ -436,9 +443,15 @@
             },
             success: function(rs) {
                 if (rs.success == true) {
-                    $('#update-payment-config-message').text("Retrieve payment types successfully").addClass("text-success").show();
+                    $('#update-payment-config-message').text("Retrieve payment types successfully").removeClass("text-danger").addClass("text-success").show();
                 } else {
-                    $('#update-payment-config-message').text("Retrieve payment types failed, please check log file").addClass("text-danger").show();
+                    let msg = "Retrieve payment types failed";
+                    if (rs.error) {
+                        msg += (", error: " + rs.error);
+                    } else {
+                        msg += ", please check log file";
+                    }
+                    $('#update-payment-config-message').text(msg).removeClass("text-success").addClass("text-danger").show();
                 }
 
                 $('#update-payment-config').attr("disabled", false);

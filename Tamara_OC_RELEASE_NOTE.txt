@@ -1,3 +1,9 @@
+Version 1.6.1
+- Bugs fixed:
+    - Fixed a minor bug get number value based on currency
+- News:
+    - Move api url from input to dropdown
+    - Show errors when test payment types in extension configuration
 Version 1.6.0
 - Bugs fixed:
     - Fixed bug display tamara widget

@@ -70,10 +70,10 @@ class ControllerExtensionPaymentTamarapay extends Controller {
 
         $data['cancel'] = $this->url->link('marketplace/extension', 'user_token=' . $this->session->data['user_token'] . '&type=payment', true);
 
-        if (isset($this->request->post['payment_tamarapay_url'])) {
-            $data['payment_tamarapay_url'] = $this->request->post['payment_tamarapay_url'];
+        if (isset($this->request->post['payment_tamarapay_api_environment'])) {
+            $data['payment_tamarapay_api_environment'] = $this->request->post['payment_tamarapay_api_environment'];
         } else {
-            $data['payment_tamarapay_url'] = $this->config->get('payment_tamarapay_url');
+            $data['payment_tamarapay_api_environment'] = $this->config->get('payment_tamarapay_api_environment');
         }
 
         if (isset($this->request->post['payment_tamarapay_token_notification'])) {
@@ -272,12 +272,6 @@ class ControllerExtensionPaymentTamarapay extends Controller {
             $check_credentials = false;
         }
 
-        if (!$this->request->post['payment_tamarapay_url']) {
-            $this->error['url'] = $this->language->get('error_url');
-
-            $check_credentials = false;
-        }
-
         if (!$this->request->post['payment_tamarapay_token']) {
             $this->error['token'] = $this->language->get('error_token');
 
@@ -290,14 +284,13 @@ class ControllerExtensionPaymentTamarapay extends Controller {
             $check_credentials = false;
         }
 
-        $this->request->post['payment_tamarapay_url'] = preg_replace("/\s+/", "", $this->request->post['payment_tamarapay_url']);
         $this->request->post['payment_tamarapay_token'] = preg_replace("/\s+/", "", $this->request->post['payment_tamarapay_token']);
         $this->request->post['payment_tamarapay_token_notification'] = preg_replace("/\s+/", "", $this->request->post['payment_tamarapay_token_notification']);
 
         if ($check_credentials) {
-            $url = $this->request->post['payment_tamarapay_url'];
+            $url = $this->model_extension_payment_tamarapay->getApiUrl($this->request->post['payment_tamarapay_api_environment']);
             $token = $this->request->post['payment_tamarapay_token'];
-            if ($this->isChangedConfig('payment_tamarapay_url') || $this->isChangedConfig('payment_tamarapay_token')) {
+            if ($this->isChangedConfig('payment_tamarapay_api_environment') || $this->isChangedConfig('payment_tamarapay_token')) {
                 try {
                     $this->model_extension_payment_tamarapay->getPaymentTypes($url, $token, true);
                 } catch (\Exception $exception) {
@@ -332,8 +325,10 @@ class ControllerExtensionPaymentTamarapay extends Controller {
         if (!empty($webhookEnabled)) {
             if (empty($webhookId)) {
                 try {
-                    $webhookId = $this->model_extension_payment_tamarapay->registerWebhook($this->request->post['payment_tamarapay_url'], $this->request->post['payment_tamarapay_token']);
+                    $webhookId = $this->model_extension_payment_tamarapay->registerWebhook($this->model_extension_payment_tamarapay->getApiUrl($this->request->post['payment_tamarapay_api_environment']),
+                        $this->request->post['payment_tamarapay_token']);
                 } catch (\Exception $exception) {
+                    $this->model_extension_payment_tamarapay->log($exception->getMessage());
                     $webhookEnabled = 0;
                     $this->error['warning'] = $exception->getMessage();
                     $result = false;
@@ -343,12 +338,11 @@ class ControllerExtensionPaymentTamarapay extends Controller {
             if (!empty($webhookId)) {
                 try {
                     $this->model_extension_payment_tamarapay->removeWebhook();
-                    $webhookId = "";
                 } catch (\Exception $exception) {
-                    $webhookEnabled = 1;
-                    $this->error['warning'] = $exception->getMessage();
-                    $result = false;
+                    $this->model_extension_payment_tamarapay->log("Error when remove webhook: " . $exception->getMessage());
                 }
+                $webhookId = "";
+                $result = true;
             }
         }
         $this->request->post['payment_tamarapay_webhook_enabled'] = $webhookEnabled;
@@ -437,8 +431,23 @@ class ControllerExtensionPaymentTamarapay extends Controller {
                 $this->removeWrongValueWebhookIdConfig();
                 $this->updateSchemaVersion("1.2.0");
             }
+            if (version_compare($this->contextSchemaVersion, '1.3.0', '<')) {
+                $this->moveApiUrlConfig();
+                $this->updateSchemaVersion("1.3.0");
+            }
         }
         return;
+    }
+
+    private function moveApiUrlConfig() {
+        $url = $this->config->get("payment_tamarapay_url");
+        if ($url == $this->model_extension_payment_tamarapay->getProductionApiUrl()) {
+            $apiEnvironment = $this->model_extension_payment_tamarapay->getProductionApiEnvironment();
+        } else {
+            $apiEnvironment = $this->model_extension_payment_tamarapay->getSandboxApiEnvironment();
+        }
+        $this->model_extension_payment_tamarapay->saveConfig("payment_tamarapay_api_environment", $apiEnvironment);
+        $this->config->set("payment_tamarapay_api_environment", $apiEnvironment);
     }
 
     private function removeWrongValueWebhookIdConfig() {
@@ -475,7 +484,11 @@ class ControllerExtensionPaymentTamarapay extends Controller {
         $result = ['success' => false];
         if (!empty($url) && !empty($token)) {
             $this->load->model('extension/payment/tamarapay');
-            $paymentTypes = $this->model_extension_payment_tamarapay->getPaymentTypes($url, $token, true);
+            try {
+                $paymentTypes = $this->model_extension_payment_tamarapay->getPaymentTypes($url, $token, true);
+            } catch (\Exception $exception) {
+                $result['error'] = $exception->getMessage();
+            }
             if (!empty($paymentTypes)) {
                 $result['payment_types'] = $paymentTypes;
                 $result['success'] = true;
@@ -489,7 +502,8 @@ class ControllerExtensionPaymentTamarapay extends Controller {
      * @return string
      */
     private function getTamaraPaymentUrlFromConfig() {
-        return $this->config->get('payment_tamarapay_url');
+        $this->load->model('extension/payment/tamarapay');
+        return $this->model_extension_payment_tamarapay->getApiUrl();
     }
 
     /**

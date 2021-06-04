@@ -101,10 +101,7 @@ class ControllerExtensionPaymentTamarapay extends Controller
             $this->model_extension_payment_tamarapay->addOrderComment($this->session->data['order_id'], $successStatusId, "Tamara - Pay success", 0);
 
             //call authorise
-            $tamaraOrderId = $tamaraOrder['tamara_order_id'];
-            if ($this->model_extension_payment_tamarapay->getTamaraOrderFromRemote($data['order_id'])->getStatus() == self::ORDER_STATUS_APPROVED) {
-                $this->model_extension_payment_tamarapay->authoriseOrder($tamaraOrderId);
-            }
+            $this->model_extension_payment_tamarapay->authoriseOrder($tamaraOrder['tamara_order_id']);
         }
 
         if (!$this->config->get('payment_tamarapay_enable_tamara_checkout_success_page')) {
@@ -316,13 +313,9 @@ class ControllerExtensionPaymentTamarapay extends Controller
         $productInfo = $this->model_catalog_product->getProduct($productId);
         if ($productInfo) {
             $this->load->model('extension/payment/tamarapay');
-            $finalPrice = 0.00;
+            $finalPrice = $finalPrice = $this->model_extension_payment_tamarapay->getValueInCurrency($this->tax->calculate($productInfo['price'], $productInfo['tax_class_id'], $this->config->get('config_tax')), $this->session->data['currency']);
             if ((float)$productInfo['special']) {
                 $finalPrice = $this->model_extension_payment_tamarapay->getValueInCurrency($this->tax->calculate($productInfo['special'], $productInfo['tax_class_id'], $this->config->get('config_tax')), $this->session->data['currency']);
-            } else {
-                if ($this->customer->isLogged() || !$this->config->get('config_customer_price')) {
-                    $finalPrice = $this->model_extension_payment_tamarapay->getValueInCurrency($this->tax->calculate($productInfo['price'], $productInfo['tax_class_id'], $this->config->get('config_tax')), $this->session->data['currency']);
-                }
             }
 
             $availableMethods = $this->model_extension_payment_tamarapay->getPaymentsMethodsAvailableForPrice($finalPrice);

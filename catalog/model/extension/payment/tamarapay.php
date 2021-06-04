@@ -43,6 +43,10 @@ class ModelExtensionPaymentTamarapay extends Model
 
     const WEBHOOK_URL = 'index.php?route=extension/payment/tamarapay/webhook', ALLOWED_WEBHOOKS = ['order_expired', 'order_declined'];
     const PAYMENT_TYPES_CACHED_TIME = 1800;
+    const SANDBOX_API_URL = "https://api-sandbox.tamara.co";
+    const SANDBOX_API_ENVIRONMENT = "1";
+    const PRODUCTION_API_URL = "https://api.tamara.co";
+    const PRODUCTION_API_ENVIRONMENT = "2";
 
     private const SUPPORTED_CURRENCIES = [
         self::SA_CURRENCY,
@@ -1118,7 +1122,7 @@ class ModelExtensionPaymentTamarapay extends Model
     }
 
     public function getTamaraClient() {
-        $url = $this->config->get('payment_tamarapay_url');
+        $url = $this->getApiUrl();
         $token = $this->config->get('payment_tamarapay_token');
 
         return Client::create(Configuration::create($url, $token));
@@ -1255,7 +1259,7 @@ class ModelExtensionPaymentTamarapay extends Model
     }
 
 
-    public function getValueInCurrency($number, $currency, $value = '', $format = true) {
+    public function getValueInCurrency($number, $currency, $value = '') {
         $currencies = $this->getCurrencies();
         $decimal_place = $currencies[$currency]['decimal_place'];
 
@@ -1265,15 +1269,7 @@ class ModelExtensionPaymentTamarapay extends Model
 
         $amount = $value ? (float)$number * $value : (float)$number;
 
-        $amount = round($amount, (int)$decimal_place);
-
-        if (!$format) {
-            return $amount;
-        }
-
-        $string = '';
-        $string .= number_format($amount, (int)$decimal_place, $this->language->get('decimal_point'), $this->language->get('thousand_point'));
-        return floatval($string);
+        return round($amount, (int)$decimal_place);
     }
 
     public function getCurrencies() {
@@ -1292,5 +1288,29 @@ class ModelExtensionPaymentTamarapay extends Model
             }
         }
         return $this->currencies;
+    }
+
+    public function getProductionApiUrl() {
+        return self::PRODUCTION_API_URL;
+    }
+
+    public function getProductionApiEnvironment() {
+        return self::PRODUCTION_API_ENVIRONMENT;
+    }
+
+    public function getSandboxApiUrl() {
+        return self::SANDBOX_API_URL;
+    }
+
+    public function getSandboxApiEnvironment() {
+        return self::SANDBOX_API_ENVIRONMENT;
+    }
+
+    public function getApiUrl() {
+        if ($this->config->get('payment_tamarapay_api_environment') == self::PRODUCTION_API_ENVIRONMENT) {
+            return $this->getProductionApiUrl();
+        } else {
+            return $this->getSandboxApiUrl();
+        }
     }
 }

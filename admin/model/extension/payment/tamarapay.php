@@ -9,12 +9,12 @@ class ModelExtensionPaymentTamarapay extends Model
     /**
      * Define version of extension
      */
-    public const VERSION = '1.6.0';
+    public const VERSION = '1.6.1';
 
     /**
      * Define schema version
      */
-    public const SCHEMA_VERSION = '1.2.0';
+    public const SCHEMA_VERSION = '1.3.0';
 
     protected $paymentTypes;
 
@@ -22,6 +22,11 @@ class ModelExtensionPaymentTamarapay extends Model
     private const TAMARA_EVENT_ADD_PROMO_WIDGET_CODE = 'tamara_promo_wg';
 
     const WEBHOOK_URL = 'index.php?route=extension/payment/tamarapay/webhook', ALLOWED_WEBHOOKS = ['order_expired', 'order_declined'];
+
+    const SANDBOX_API_URL = "https://api-sandbox.tamara.co";
+    const SANDBOX_API_ENVIRONMENT = "1";
+    const PRODUCTION_API_URL = "https://api.tamara.co";
+    const PRODUCTION_API_ENVIRONMENT = "2";
 
     /**
      * Get extension version
@@ -325,7 +330,12 @@ class ModelExtensionPaymentTamarapay extends Model
     }
 
     public function insertConfig($key, $value, $serialized = false, $storeId = 0) {
-        $this->db->query("INSERT INTO `" . DB_PREFIX . "setting`(`setting_id`,`store_id`,`code`,`key`,`value`, `serialized`) VALUES (null,'{$storeId}','payment_tamarapay','{$key}','{$value}', {$serialized})");
+        if (!$serialized) {
+            $serialized = 0;
+        } else {
+            $serialized = 1;
+        }
+        $this->db->query("INSERT INTO `" . DB_PREFIX . "setting`(`setting_id`,`store_id`,`code`,`key`,`value`, `serialized`) VALUES (null,'{$storeId}','payment_tamarapay','{$key}','{$value}', '{$serialized}')");
     }
 
     public function deleteConfig($key, $storeId = 0) {
@@ -333,13 +343,48 @@ class ModelExtensionPaymentTamarapay extends Model
     }
 
     public function saveConfig($key, $value, $serialized = false, $storeId = 0) {
+        if (!$serialized) {
+            $serialized = 0;
+        } else {
+            $serialized = 1;
+        }
         $this->deleteConfig($key, $storeId);
         $this->insertConfig($key, $value, $serialized, $storeId);
     }
 
     public function getTamaraClient() {
-        $url = $this->config->get('payment_tamarapay_url');
+        $url = $this->getApiUrl();
         $token = $this->config->get('payment_tamarapay_token');
         return $this->createClient(['url' => $url, 'token' => $token]);
+    }
+
+    public function getProductionApiUrl() {
+        return self::PRODUCTION_API_URL;
+    }
+
+    public function getProductionApiEnvironment() {
+        return self::PRODUCTION_API_ENVIRONMENT;
+    }
+
+    public function getSandboxApiUrl() {
+        return self::SANDBOX_API_URL;
+    }
+
+    public function getSandboxApiEnvironment() {
+        return self::SANDBOX_API_ENVIRONMENT;
+    }
+
+    public function getApiUrl($environment = null) {
+        if ($environment !== null && $environment != self::PRODUCTION_API_ENVIRONMENT && $environment != self::SANDBOX_API_ENVIRONMENT) {
+            throw new \Exception("API environment incorrect!");
+        }
+        if ($environment === null) {
+            $environment = $this->config->get('payment_tamarapay_api_environment');
+        }
+        if ($environment == self::PRODUCTION_API_ENVIRONMENT) {
+            return $this->getProductionApiUrl();
+        } else {
+            return $this->getSandboxApiUrl();
+        }
     }
 }

@@ -37,6 +37,7 @@ $_['entry_geo_zone']		            = 'Geo Zone';
 $_['entry_status']			            = 'Status';
 $_['entry_sort_order']		            = 'Sort Order';
 $_['entry_url']				            = 'API URL';
+$_['entry_api_environment']				= 'API Environment';
 $_['entry_token']			            = 'Merchant Token';
 $_['entry_debug']			            = 'Debug';
 $_['entry_merchant_success_url']	    = 'Merchant Success URL';
