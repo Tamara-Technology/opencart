@@ -66,6 +66,9 @@ class ModelExtensionPaymentTamarapay extends Model
     public function getMethod($address, $total)
     {
         $this->load->language('extension/payment/tamarapay');
+        if (!$this->isTamaraAvailableForThisCustomer()) {
+            return [];
+        }
         $method_data = array();
         if ($this->validateTamaraPaymentByAddress($address)) {
             $method_data = array(
@@ -466,9 +469,18 @@ class ModelExtensionPaymentTamarapay extends Model
     public function getMerchantUrls()
     {
         $baseUrl = $this->getBaseUrl();
-        $successUrl = $baseUrl . 'index.php?route=extension/payment/tamarapay/success';
-        $failureUrl = $baseUrl . 'index.php?route=extension/payment/tamarapay/failure';
-        $cancelUrl = $baseUrl . 'index.php?route=extension/payment/tamarapay/cancel';
+        $successUrl = $this->config->get('payment_tamarapay_checkout_success_url');
+        if (empty($successUrl)) {
+            $successUrl = $baseUrl . 'index.php?route=extension/payment/tamarapay/success';
+        }
+        $failureUrl = $this->config->get('payment_tamarapay_checkout_failure_url');
+        if (empty($failureUrl)) {
+            $failureUrl = $baseUrl . 'index.php?route=extension/payment/tamarapay/failure';
+        }
+        $cancelUrl = $this->config->get('payment_tamarapay_checkout_cancel_url');
+        if (empty($cancelUrl)) {
+            $cancelUrl = $baseUrl . 'index.php?route=extension/payment/tamarapay/cancel';
+        }
         $notificationUrl = $baseUrl . 'index.php?route=extension/payment/tamarapay/notification';
         $result = [
             'success' => $successUrl,
@@ -724,6 +736,9 @@ class ModelExtensionPaymentTamarapay extends Model
     }
 
     public function getCurrentAvailableMethods() {
+        if (!$this->isTamaraAvailableForThisCustomer()) {
+            return [];
+        }
         $result = [];
         $configMethods = $this->getPaymentMethodsConfig();
         $availableMethods = $this->getPaymentTypes();
@@ -1184,7 +1199,6 @@ class ModelExtensionPaymentTamarapay extends Model
             return $cachedPaymentTypes['payment_types'];
         } catch (Exception $exception) {
             $this->log($exception->getMessage());
-            throw $exception;
         }
         return [];
     }
@@ -1312,5 +1326,17 @@ class ModelExtensionPaymentTamarapay extends Model
         } else {
             return $this->getSandboxApiUrl();
         }
+    }
+
+    public function isTamaraAvailableForThisCustomer() {
+        $availableForTheseCustomers =  $this->config->get('payment_tamarapay_only_show_for_these_customer');
+        if (empty($availableForTheseCustomers)) {
+            return true;
+        }
+        $availableForTheseCustomers = explode(",", $availableForTheseCustomers);
+        if ($this->customer->isLogged() && in_array($this->customer->getEmail(), $availableForTheseCustomers)) {
+            return true;
+        }
+        return false;
     }
 }

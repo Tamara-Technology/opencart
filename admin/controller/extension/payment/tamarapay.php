@@ -202,6 +202,30 @@ class ControllerExtensionPaymentTamarapay extends Controller {
             $data['payment_tamarapay_pdp_wg_exclude_category_ids'] = $this->config->get('payment_tamarapay_pdp_wg_exclude_category_ids');
         }
 
+        if (isset($this->request->post['payment_tamarapay_only_show_for_these_customer'])) {
+            $data['payment_tamarapay_only_show_for_these_customer'] = $this->request->post['payment_tamarapay_only_show_for_these_customer'];
+        } else {
+            $data['payment_tamarapay_only_show_for_these_customer'] = $this->config->get('payment_tamarapay_only_show_for_these_customer');
+        }
+
+        if (isset($this->request->post['payment_tamarapay_checkout_success_url'])) {
+            $data['payment_tamarapay_checkout_success_url'] = $this->request->post['payment_tamarapay_checkout_success_url'];
+        } else {
+            $data['payment_tamarapay_checkout_success_url'] = $this->config->get('payment_tamarapay_checkout_success_url');
+        }
+
+        if (isset($this->request->post['payment_tamarapay_checkout_cancel_url'])) {
+            $data['payment_tamarapay_checkout_cancel_url'] = $this->request->post['payment_tamarapay_checkout_cancel_url'];
+        } else {
+            $data['payment_tamarapay_checkout_cancel_url'] = $this->config->get('payment_tamarapay_checkout_cancel_url');
+        }
+
+        if (isset($this->request->post['payment_tamarapay_checkout_failure_url'])) {
+            $data['payment_tamarapay_checkout_failure_url'] = $this->request->post['payment_tamarapay_checkout_failure_url'];
+        } else {
+            $data['payment_tamarapay_checkout_failure_url'] = $this->config->get('payment_tamarapay_checkout_failure_url');
+        }
+
         if (isset($this->request->post['payment_tamarapay_webhook_enabled'])) {
             $webHookEnabled = $this->request->post['payment_tamarapay_webhook_enabled'];
         } else {
