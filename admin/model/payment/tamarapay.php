@@ -1,5 +1,6 @@
 <?php
 
+use TMS\Tamara\Request\Webhook\RegisterWebhookRequest;
 use TMS\Tamara\Client;
 use TMS\Tamara\Configuration;
 
@@ -9,7 +10,7 @@ class ModelPaymentTamarapay extends Model
     /**
      * Define version of extension
      */
-    public const VERSION = '1.4.0';
+    public const VERSION = '1.4.1';
 
     public const COUNTRY_ISO = 'SA';
 
@@ -21,6 +22,8 @@ class ModelPaymentTamarapay extends Model
     protected $paymentTypes;
 
     private const TAMARA_EVENT_ORDER_STATUS_CHANGE_CODE = 'tamara_order_status_change';
+
+    const WEBHOOK_URL = 'index.php?route=payment/tamarapay/webhook', ALLOWED_WEBHOOKS = ['order_expired', 'order_declined'];
 
     public function __construct($registry)
     {
@@ -263,5 +266,82 @@ class ModelPaymentTamarapay extends Model
 
     public function getPaymentTypesOfClient($client) {
         return $client->getPaymentTypes(self::COUNTRY_ISO);
+    }
+
+    public function getCatalogBaseUrl()
+    {
+        return HTTPS_CATALOG;
+    }
+
+    /**
+     * Register webhook
+     * @param $url
+     * @param $token
+     * @return string
+     * @throws \TMS\Tamara\Exception\RequestDispatcherException
+     */
+    public function registerWebhook($url, $token) {
+        $webhookUrl = rtrim($this->getCatalogBaseUrl(),"/") . '/' . self::WEBHOOK_URL;
+        $request = new RegisterWebhookRequest(
+            $webhookUrl,
+            self::ALLOWED_WEBHOOKS
+        );
+        $credentials = ['url' => $url, 'token' => $token];
+        $response = $this->createClient($credentials)->registerWebhook($request);
+        if (!$response->isSuccess()) {
+            $errorLogs = [$response->getContent()];
+            $this->log($errorLogs);
+            throw new \Exception($response->getMessage());
+        }
+        return $response->getWebhookId();
+    }
+
+    /**
+     * Remove webhook
+     * @throws \TMS\Tamara\Exception\RequestDispatcherException
+     */
+    public function removeWebhook() {
+        $webhookId = $this->config->get('tamarapay_webhook_id');
+        if (!empty($webhookId)) {
+            $request = new \TMS\Tamara\Request\Webhook\RemoveWebhookRequest($webhookId);
+            $response = $this->getTamaraClient()->removeWebhook($request);
+            if (!$response->isSuccess()) {
+                $errorLogs = [$response->getContent()];
+                $this->log($errorLogs);
+                throw new \Exception($response->getMessage());
+            }
+            $this->deleteConfig('tamarapay_webhook_id');
+        }
+        return true;
+    }
+
+
+    public function insertConfig($key, $value, $serialized = false, $storeId = 0) {
+        if (empty($serialized)) {
+            $serialized = 0;
+        } else {
+            $serialized = 1;
+        }
+        $this->db->query("INSERT INTO `" . DB_PREFIX . "setting`(`setting_id`,`store_id`,`code`,`key`,`value`, `serialized`) VALUES (null,'{$storeId}','payment_tamarapay','{$key}','{$value}', '{$serialized}')");
+    }
+
+    public function deleteConfig($key, $storeId = 0) {
+        $this->db->query("DELETE FROM `".DB_PREFIX."setting` WHERE `key` = '{$key}' AND store_id = '{$storeId}'");
+    }
+
+    public function saveConfig($key, $value, $serialized = false, $storeId = 0) {
+        if (empty($serialized)) {
+            $serialized = 0;
+        } else {
+            $serialized = 1;
+        }
+        $this->deleteConfig($key, $storeId);
+        $this->insertConfig($key, $value, $serialized, $storeId);
+    }
+
+    public function getTamaraClient() {
+        $url = $this->config->get('tamarapay_url');
+        $token = $this->config->get('tamarapay_token');
+        return $this->createClient(['url' => $url, 'token' => $token]);
     }
 }

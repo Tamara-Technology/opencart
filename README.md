@@ -4,7 +4,7 @@
 * **Tamara payment for OpenCart 2.0.x**
 
 
-# Tamara payment 1.4.0 for OpenCart 2.0.x
+# Tamara payment 1.4.1 for OpenCart 2.0.x
 
 Tamara payment for OpenCart allows your users to pay with Tamara on Opencart
 

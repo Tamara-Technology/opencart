@@ -21,7 +21,6 @@ use TMS\Tamara\Response\Payment\CancelResponse;
 class ModelPaymentTamarapay extends Model
 {
     public const
-        COUNTRY_ISO = 'SA',
         MAX_LIMIT = 'max_limit',
         MIN_LIMIT = 'min_limit',
         NAME = 'name',
@@ -42,6 +41,8 @@ class ModelPaymentTamarapay extends Model
         TEXT_PAY_BY_LATER = 'text_pay_by_later',
         TEXT_PAY_BY_INSTALMENTS = 'text_pay_by_instalments';
 
+    const WEBHOOK_URL = 'index.php?route=extension/payment/tamarapay/webhook', ALLOWED_WEBHOOKS = ['order_expired', 'order_declined'];
+
     private const SUPPORTED_CURRENCIES = [
         self::SA_CURRENCY,
         self::AE_CURRENCY,
@@ -55,6 +56,9 @@ class ModelPaymentTamarapay extends Model
     public function getMethod($address, $total)
     {
         $this->load->language('payment/tamarapay');
+        if (!$this->isTamaraAvailableForThisCustomer()) {
+            return [];
+        }
         $method_data = array();
         if ($this->validateTamaraPaymentByAddress($address)) {
             $method_data = array(
@@ -318,6 +322,7 @@ class ModelPaymentTamarapay extends Model
         foreach ($orderProducts as $orderProduct) {
             $productData = $this->getProductById($orderProduct['product_id']);
             $sku = empty($productDetails['sku']) ? $productData['product_id'] : $productData['sku'];
+            $itemType = empty($productData['model']) ? "simple product" : $productData['model'];
             $items[$orderProduct['order_product_id']] = [
                 'order_item_id' => $orderProduct['order_product_id'],
                 'product_id' => $orderProduct['product_id'],
@@ -327,7 +332,7 @@ class ModelPaymentTamarapay extends Model
                 'unit_price' => $orderProduct['price'],
                 'name' => $orderProduct['name'],
                 'sku' => $sku,
-                'type' => $productData['model'],
+                'type' => $itemType,
                 'reward' => $productData['reward'],
                 'quantity' => $orderProduct['quantity'],
                 'image_url' => $this->getProductImageUrl($productData['image']),
@@ -989,7 +994,7 @@ class ModelPaymentTamarapay extends Model
             $cancelId = $response->getCancelId();
             $orderData['cancel_id'] = $cancelId;
             $this->saveCancel($orderData, $cancelRequest);
-            $comment = 'Tamara order was canceled, cancel id: ' . $cancelId;
+            $comment = 'Tamara order was canceled, tamara order id: '. $tamaraOrderId .', cancel id: ' . $cancelId;
             $this->addOrderComment($orderData['order_id'], $orderData['order_status_id'], $comment, 0);
             $this->log("Order " . $tamaraOrderId . " was canceled. Cancel id: " . $cancelId);
             return $cancelId;
@@ -1050,5 +1055,42 @@ class ModelPaymentTamarapay extends Model
 
     public function getTamaraOrderFromRemote($orderId) {
         return $this->getTamaraClient()->getOrderByReferenceId(new \TMS\Tamara\Request\Order\GetOrderByReferenceIdRequest($orderId));
+    }
+
+    public function webhook()
+    {
+        $webhookMessage = $this->getNotificationService()->processWebhook();
+        $eventType = $webhookMessage->getEventType();
+        if (!in_array($eventType, self::ALLOWED_WEBHOOKS)) {
+            $this->log([
+                'Event type: ' => $eventType,
+                'Webhook tamara order id: ' => $webhookMessage->getOrderId(),
+                'Webhook reference order id: ' => $webhookMessage->getOrderReferenceId(),
+            ]);
+            throw new \Exception($this->language->get("error_webhook_event_type_not_allowed"));
+        }
+        $comment = sprintf('Tamara - order was %s by webhook', $eventType);
+        $this->addOrderComment($webhookMessage->getOrderReferenceId(), $this->config->get("tamarapay_order_status_canceled_id"), $comment, 0);
+        $this->log(["Webhook processed successful for order " . $webhookMessage->getOrderReferenceId()]);
+    }
+
+    public function createNotificationService($notificationToken) {
+        return \TMS\Tamara\Notification\NotificationService::create($notificationToken);
+    }
+
+    public function getNotificationService() {
+        return $this->createNotificationService($this->config->get("tamarapay_token_notification"));
+    }
+
+    public function isTamaraAvailableForThisCustomer() {
+        $availableForTheseCustomers =  $this->config->get('tamarapay_only_show_for_these_customer');
+        if (empty($availableForTheseCustomers)) {
+            return true;
+        }
+        $availableForTheseCustomers = explode(",", $availableForTheseCustomers);
+        if ($this->customer->isLogged() && in_array($this->customer->getEmail(), $availableForTheseCustomers)) {
+            return true;
+        }
+        return false;
     }
 }

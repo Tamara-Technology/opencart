@@ -77,18 +77,50 @@
                                                     </select>
                                                 </div>
                                             </div>
+
                                             <div class="form-group">
-                                                <label class="col-sm-2 control-label" for="input-iframe-checkout-enabled"><?php echo $entry_enable_iframe_checkout ?></label>
+                                                <label class="col-sm-2 control-label" for="input-tamara-success-page-enabled"><?= $entry_enable_tamara_checkout_success_page; ?></label>
                                                 <div class="col-sm-10">
-                                                    <select name="tamarapay_iframe_checkout_enabled" id="input-iframe-checkout-enabled" class="form-control">
-                                                        <?php if ($tamarapay_iframe_checkout_enabled): ?>
-                                                        <option value="1" selected="selected"><?php echo $text_enabled ?></option>
-                                                        <option value="0"><?php echo $text_disabled ?></option>
+                                                    <select name="tamarapay_enable_tamara_checkout_success_page" id="input-tamara-success-page-enabled" class="form-control">
+                                                        <?php if($tamarapay_enable_tamara_checkout_success_page): ?>
+                                                        <option value="1" selected="selected"><?= $text_enabled; ?></option>
+                                                        <option value="0"><?= $text_disabled; ?></option>
                                                         <?php else: ?>
-                                                        <option value="1"><?php echo $text_enabled ?></option>
-                                                        <option value="0" selected="selected"><?php echo $text_disabled ?></option>
-                                                        <?php endif ?>
+                                                        <option value="1"><?= $text_enabled; ?></option>
+                                                        <option value="0" selected="selected"><?= $text_disabled; ?></option>
+                                                        <?php endif; ?>
                                                     </select>
+                                                    <span>If no, we will use default checkout success page</span>
+                                                </div>
+                                            </div>
+
+                                            <div class="form-group">
+                                                <label class="col-sm-2 control-label" for="input-only-show-tamara-for-these-emails"><?= $entry_only_show_for_these_customer; ?></label>
+                                                <div class="col-sm-10">
+                                                    <input id="input-only-show-tamara-for-these-emails" name="tamarapay_only_show_for_these_customer" value="<?= $tamarapay_only_show_for_these_customer; ?>" type="text" class="form-control" />
+                                                    <span>Useful in case you want to limit the customers who can use Tamara, for example testing. Each email is separated by comma (,)</span>
+                                                </div>
+                                            </div>
+
+                                            <div class="form-group">
+                                                <label class="col-sm-2 control-label" for="input-webhook-enabled"><?php echo $entry_enable_webhook; ?></label>
+                                                <div class="col-sm-10">
+                                                    <select name="tamarapay_webhook_enabled" id="input-webhook-enabled" class="form-control">
+                                                        <?php if ($tamarapay_webhook_enabled): ?>
+                                                        <option value="1" selected="selected"><?php echo $text_enabled; ?></option>
+                                                        <option value="0"><?php echo $text_disabled; ?></option>
+                                                        <?php else: ?>
+                                                        <option value="1"><?php echo $text_enabled; ?></option>
+                                                        <option value="0" selected="selected"><?php echo $text_disabled; ?></option>
+                                                        <?php endif; ?>
+                                                    </select>
+                                                </div>
+                                            </div>
+
+                                            <div class="form-group">
+                                                <label class="col-sm-2 control-label" for="input-webhook-id"><?php echo $entry_webhook_id; ?></label>
+                                                <div class="col-sm-10">
+                                                    <input id="input-webhook-id" name="tamarapay_webhook_id" value="<?php echo $tamarapay_webhook_id ?>" type="text" class="form-control" readonly />
                                                 </div>
                                             </div>
 

@@ -14,6 +14,8 @@ $_['text_no_refund']		= 'No refund history';
 $_['text_confirm_refund']	= 'Are you sure you want to refund';
 $_['text_na']				= 'N/A';
 $_['text_success_action']	= 'Success';
+$_['text_none_webhook_id']	= 'You need to enable webhook to get webhook id';
+$_['text_save_config_get_webhook_id']	= 'Save the config to get webhook id';
 $_['text_error_generic']	= 'Error: There was an error with your request. Please check the logs.';
 
 // Column
@@ -44,6 +46,10 @@ $_['entry_merchant_notification_url']   = 'Merchant Notification URL';
 $_['entry_token_notification']          = 'Notification Token';
 $_['entry_enable_trigger_actions']      = 'Enable trigger to Tamara';
 $_['entry_enable_iframe_checkout']      = 'Enable Iframe checkout';
+$_['entry_enable_webhook']              = 'Enable Webhook';
+$_['entry_webhook_id']              = 'Webhook id';
+$_['entry_enable_tamara_checkout_success_page'] = "Enable Tamara checkout success page";
+$_['entry_only_show_for_these_customer']  = "Only show Tamara for these customers";
 $_['entry_enable_debug']                = 'Enable debug';
 $_['entry_capture_order_status']        = 'Which order status do you want to trigger Tamara capture API? (You should set it to the status after the order is shipped)';
 $_['entry_cancel_order_status']         = 'Which order status do you want to trigger Tamara cancel API? (You should set it to the status when order is canceled)';

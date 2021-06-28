@@ -37,6 +37,8 @@ $_['error_create_checkout']             = 'We cannot checkout with Tamara right 
 $_['error_wrong_currency']              = 'Tamara does not support this currency, please contact to administrator to help';
 $_['error_cannot_authorise']            = 'The order cannot be authorised right now, please choose another payment method';
 $_['error_cannot_process_authorise_notification'] = 'Cannot process authorise notification';
+$_['error_cannot_process_webhook'] = 'Cannot process webhook';
+$_['error_webhook_event_type_not_allowed'] = 'Webhook event type is not allowed';
 $_['error_no_method_available']         = 'All methods unavailable right now, make sure order total is not over / under limit amount';
 
 $_['consumer_invalid_phone_number']     = 'Your phone number is invalid, please check again.';

@@ -33,7 +33,7 @@ class ControllerPaymentTamarapay extends Controller
         $data['installment_min_limit'] = $installmentMinLimit;
         $data['methods'] = $methods;
         $data['total_method_available'] = $totalTypeAvailable;
-        $data['use_iframe_checkout'] = $this->config->get('tamarapay_iframe_checkout_enabled');
+        $data['use_iframe_checkout'] = false;
         $data['merchant_urls'] = $this->model_payment_tamarapay->getMerchantUrls();
         $data['order_data'] = $this->model_payment_tamarapay->getOrder( $this->model_payment_tamarapay->getOrderIdFromSession());
         $data['language_code'] = $this->language->get('code');
@@ -106,6 +106,10 @@ class ControllerPaymentTamarapay extends Controller
             if ($this->model_payment_tamarapay->getTamaraOrderFromRemote($data['order_id'])->getStatus() == self::ORDER_STATUS_APPROVED) {
                 $this->model_payment_tamarapay->authoriseOrder($tamaraOrderId);
             }
+        }
+
+        if (!$this->config->get('tamarapay_enable_tamara_checkout_success_page')) {
+            $this->response->redirect($this->url->link('checkout/success', '', true));
         }
 
         //render success pay
@@ -181,10 +185,12 @@ class ControllerPaymentTamarapay extends Controller
         $this->load->language('payment/tamarapay');
 
         if (isset($this->session->data['order_id'])) {
+            if (!$this->canCancelByRedirect($this->session->data['order_id'])) {
+                return $this->response->redirect($this->url->link('checkout/cart', '', true));
+            }
             $this->model_payment_tamarapay->addOrderComment($this->session->data['order_id'], $this->config->get('tamarapay_order_status_failure_id'), "Tamara - Pay failed", 0);
+            $this->session->data['error'] = $this->language->get('text_order_pay_failure');
         }
-
-        $this->session->data['error'] = $this->language->get('text_order_pay_failure');
         $this->response->redirect($this->url->link('checkout/cart', '', true));
     }
 
@@ -194,10 +200,13 @@ class ControllerPaymentTamarapay extends Controller
         $this->load->model('payment/tamarapay');
         $this->load->language('payment/tamarapay');
         if (isset($this->session->data['order_id'])) {
+            if (!$this->canCancelByRedirect($this->session->data['order_id'])) {
+                return $this->response->redirect($this->url->link('checkout/cart', '', true));
+            }
             $this->model_payment_tamarapay->addOrderComment($this->session->data['order_id'], $this->config->get('tamarapay_order_status_canceled_id'), "Tamara - Pay canceled", 0);
+            $this->session->data['error'] = $this->language->get('text_order_canceled');
         }
 
-        $this->session->data['error'] = $this->language->get('text_order_canceled');
         $this->response->redirect($this->url->link('checkout/cart', '', true));
     }
 
@@ -238,6 +247,20 @@ class ControllerPaymentTamarapay extends Controller
             $response = $this->model_payment_tamarapay->authoriseOrder($orderId);
             $this->responseJson($response);
         }
+    }
+
+    public function webhook() {
+        $this->log(['Start to webhook']);
+        $response = ['status' => "success", 'success' => "Webhook processed"];
+        try {
+            $this->load->model('payment/tamarapay');
+            $this->model_payment_tamarapay->webhook();
+        } catch (\Exception $exception) {
+            $this->log(["Error when execute webhook: " . $exception->getMessage()]);
+            $response = ['status' => 'error', 'error' => $exception->getMessage()];
+        }
+        $this->log(['End Webhook']);
+        return $this->responseJson($response);
     }
 
     public function log($data, $class_step = 1, $function_step = 1)
@@ -307,6 +330,23 @@ class ControllerPaymentTamarapay extends Controller
 
             $output = substr_replace($output, $str, $positionToInsert, 0);
             return $output;
+        }
+    }
+
+
+    public function canCancelByRedirect($orderId) {
+        try {
+            $tamaraOrder = $this->model_payment_tamarapay->getTamaraOrder($orderId);
+            if ($tamaraOrder['is_authorised']) {
+                return false;
+            } else {
+                if ($this->model_payment_tamarapay->getTamaraOrderFromRemote($tamaraOrder['order_id'])->getStatus() == "approved") {
+                    return false;
+                }
+            }
+            return true;
+        } catch (\Exception $exception) {
+            return false;
         }
     }
 }

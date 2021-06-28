@@ -1,0 +1,9 @@
+Version 1.4.1
+- Bugs fixed:
+    - Fixed a minor bug related to redirect to cancel page
+- News:
+    - Remove Iframe checkout
+    - Introduce web hook function
+    - Add option to use Tamara success page
+    - Add feature to show Tamara pay only for specified customers
+    - Trim spaces, tab, end line for api url, merchant token while save the configuration
