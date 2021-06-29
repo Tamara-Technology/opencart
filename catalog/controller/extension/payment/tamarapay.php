@@ -180,6 +180,9 @@ class ControllerExtensionPaymentTamarapay extends Controller
         $this->load->language('extension/payment/tamarapay');
 
         if (isset($this->session->data['order_id'])) {
+            if (!$this->canCancelByRedirect($this->session->data['order_id'])) {
+                return $this->response->redirect($this->url->link('checkout/cart', '', true));
+            }
             $this->model_extension_payment_tamarapay->addOrderComment($this->session->data['order_id'], $this->config->get('payment_tamarapay_order_status_failure_id'), "Tamara - Pay failed", 0);
         }
 
@@ -193,6 +196,9 @@ class ControllerExtensionPaymentTamarapay extends Controller
         $this->load->model('extension/payment/tamarapay');
         $this->load->language('extension/payment/tamarapay');
         if (isset($this->session->data['order_id'])) {
+            if (!$this->canCancelByRedirect($this->session->data['order_id'])) {
+                return $this->response->redirect($this->url->link('checkout/cart', '', true));
+            }
             $this->model_extension_payment_tamarapay->addOrderComment($this->session->data['order_id'], $this->config->get('payment_tamarapay_order_status_canceled_id'), "Tamara - Pay canceled", 0);
         }
 
@@ -313,7 +319,7 @@ class ControllerExtensionPaymentTamarapay extends Controller
         $productInfo = $this->model_catalog_product->getProduct($productId);
         if ($productInfo) {
             $this->load->model('extension/payment/tamarapay');
-            $finalPrice = $finalPrice = $this->model_extension_payment_tamarapay->getValueInCurrency($this->tax->calculate($productInfo['price'], $productInfo['tax_class_id'], $this->config->get('config_tax')), $this->session->data['currency']);
+            $finalPrice = $this->model_extension_payment_tamarapay->getValueInCurrency($this->tax->calculate($productInfo['price'], $productInfo['tax_class_id'], $this->config->get('config_tax')), $this->session->data['currency']);
             if ((float)$productInfo['special']) {
                 $finalPrice = $this->model_extension_payment_tamarapay->getValueInCurrency($this->tax->calculate($productInfo['special'], $productInfo['tax_class_id'], $this->config->get('config_tax')), $this->session->data['currency']);
             }
@@ -325,7 +331,7 @@ class ControllerExtensionPaymentTamarapay extends Controller
 
             $str = "";
             foreach ($availableMethods as $method) {
-                if ($method['checked'] == true) {
+                if ($method['is_available'] && $method['checked']) {
                     if ($method['name'] == "PAY_BY_INSTALMENTS") {
                         $str .= ('<div id="tamara-product-widget" data-disable-paylater="false" class="tamara-product-widget" data-lang="" data-price="'.$finalPrice.'" data-currency="' .$method['currency']. '" data-payment-type="installment" data-installment-minimum-amount="' .$method['min_limit']. '" data-installment-max-amount="'.$method['max_limit'].'"></a>');
 
@@ -335,12 +341,31 @@ class ControllerExtensionPaymentTamarapay extends Controller
                     break;
                 }
             }
+            if (empty($str)) {
+                return $output;
+            }
             $str .= '<script charset="utf-8" src="https://cdn.tamara.co/widget/product-widget.min.js?t='.time().'"></script> <script type="text/javascript">let langCode="'.$this->language->get('code').'";window.langCode=langCode;window.checkTamaraProductWidgetCount=0;document.getElementById("tamara-product-widget").setAttribute("data-lang",langCode);var existTamaraProductWidget=setInterval(function(){if(window.TamaraProductWidget){window.TamaraProductWidget.init({lang:window.langCode});window.TamaraProductWidget.render();clearInterval(existTamaraProductWidget);} window.checkTamaraProductWidgetCount+=1;if(window.checkTamaraProductWidgetCount>33){clearInterval(existTamaraProductWidget);}},300);</script>';
             $str = ("\n\n" . "<div class='tamara-promo' style='margin-bottom: 10px;'>" . $str . "</div>" . "\n\n");
             $positionToInsert = strpos($output, '<div id="product"');
 
             $output = substr_replace($output, $str, $positionToInsert, 0);
             return $output;
+        }
+    }
+
+    public function canCancelByRedirect($orderId) {
+        try {
+            $tamaraOrder = $this->model_extension_payment_tamarapay->getTamaraOrder($orderId);
+            if ($tamaraOrder['is_authorised']) {
+                return false;
+            } else {
+                if ($this->model_extension_payment_tamarapay->getTamaraOrderFromRemote($tamaraOrder['order_id'])->getStatus() == "approved") {
+                    return false;
+                }
+            }
+            return true;
+        } catch (\Exception $exception) {
+            return false;
         }
     }
 }

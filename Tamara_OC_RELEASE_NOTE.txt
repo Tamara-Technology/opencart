@@ -1,3 +1,6 @@
+Version 1.6.3
+- Bugs fixed:
+    - Fixed a minor bug when show product widget
 Version 1.6.2
 - News:
     - Add redirect url config

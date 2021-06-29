@@ -3,7 +3,7 @@
 * [Tamara payment for OpenCart 2.3.x](https://github.com/tamara-solution/opencart/tree/v2)
 * [Tamara payment for OpenCart 2.0.x](https://github.com/tamara-solution/opencart/tree/v20x)
 
-# Tamara payment 1.6.2 for OpenCart 3.x
+# Tamara payment 1.6.3 for OpenCart 3.x
 * Tamara payment for OpenCart allows your users to pay with Tamara on Opencart
 
 # Technical Requirements
@@ -19,7 +19,8 @@
 If you already install tamara-php-sdk via composer, you need to remove it before continue
 ```text
 composer remove tamara-solution/php-sdk
-composer remove remove symfony/console
+composer remove symfony/console
+composer remove symfony/cache
 ```
 
 * Download and extract the extension to your web root
