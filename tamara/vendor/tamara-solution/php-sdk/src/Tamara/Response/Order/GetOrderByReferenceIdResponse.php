@@ -7,6 +7,7 @@ use TMS\Tamara\Model\Money;
 use TMS\Tamara\Model\Order\Address;
 use TMS\Tamara\Model\Order\Consumer;
 use TMS\Tamara\Model\Order\Discount;
+use TMS\Tamara\Model\Order\Order;
 use TMS\Tamara\Model\Order\OrderItemCollection;
 use TMS\Tamara\Model\Order\Transactions;
 use TMS\Tamara\Response\ClientResponse;
@@ -46,6 +47,10 @@ class GetOrderByReferenceIdResponse extends \TMS\Tamara\Response\ClientResponse
      * @var Money
      */
     private $totalAmount;
+    /**
+     * @var null|int
+     */
+    private $instalments = null;
     /**
      * @var Money
      */
@@ -166,6 +171,10 @@ class GetOrderByReferenceIdResponse extends \TMS\Tamara\Response\ClientResponse
     {
         return $this->transactions;
     }
+    public function getInstalments() : ?int
+    {
+        return $this->instalments;
+    }
     protected function parse(array $responseData) : void
     {
         $settlementDate = !empty($responseData[self::SETTLEMENT_DATE]) ? new \DateTimeImmutable($responseData[self::SETTLEMENT_DATE]) : null;
@@ -188,5 +197,6 @@ class GetOrderByReferenceIdResponse extends \TMS\Tamara\Response\ClientResponse
         $this->settlementDate = $settlementDate;
         $this->createdAt = new \DateTimeImmutable($responseData[self::CREATED_AT]);
         $this->transactions = \TMS\Tamara\Model\Order\Transactions::fromArray($responseData[self::TRANSACTIONS]);
+        $this->instalments = $responseData[\TMS\Tamara\Model\Order\Order::INSTALMENTS] ?? null;
     }
 }

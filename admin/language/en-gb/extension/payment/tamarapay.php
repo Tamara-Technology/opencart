@@ -29,6 +29,7 @@ $_['column_description']	= 'Description';
 
 // Entry
 $_['entry_total']			            = 'Total';
+$_['entry_order_status_create']	    = 'Order status when order is created';
 $_['entry_order_status_success']	    = 'Order status when checkout is success (after redirect)';
 $_['entry_order_status_failure']	    = 'Order status when checkout is failure';
 $_['entry_order_status_canceled']	    = 'Order status when checkout is cancelled';
@@ -61,6 +62,7 @@ $_['entry_enable']                      = 'Enabled';
 $_['entry_min_limit_amount']            = 'Min Limit Amount of Order';
 $_['entry_max_limit_amount']            = 'Max Limit Amount of Order';
 $_['entry_auto_fetching']               = 'Auto fetching in the first time after you save the credential';
+$_['entry_enable_under_over_warning']               = 'Display under/over warning message at checkout page';
 
 // Help
 $_['help_debug']			= 'Enabling debug will write sensitive data to a log file. You should always disable unless instructed otherwise.';

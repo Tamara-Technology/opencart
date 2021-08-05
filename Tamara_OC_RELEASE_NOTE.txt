@@ -1,3 +1,11 @@
+Version 1.7.0
+- Bugs fixed:
+    - Fixed a minor bug when render html product widget
+    - Fixed a bug get time in order scan
+- News:
+    - Add more instalments payment method
+    - Add config to display warning at checkout if total amount is under / over Tamara limit
+    - Refactor code
 Version 1.6.3
 - Bugs fixed:
     - Fixed a minor bug when show product widget

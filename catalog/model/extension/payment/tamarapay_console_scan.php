@@ -13,6 +13,17 @@ class ModelExtensionPaymentTamarapayConsoleScan extends Model {
      */
     public function scan($startTime = '-10 days', $endTime = 'now')
     {
+        $dateTimePattern = '/[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[1-2][0-9]|3[0-1]) (2[0-3]|[01][0-9]):[0-5][0-9]:[0-5][0-9]/';
+        if (!preg_match($dateTimePattern, $startTime)) {
+            $timeDiff = $this->db->query("SELECT TIMEDIFF(NOW(), UTC_TIMESTAMP) as time_diff")->rows[0]['time_diff'];
+            $parts = explode(":", $timeDiff);
+            if (intval($parts[0]) < 0) {
+                $additionTime = " {$parts[0]} hours -{$parts[1]} minutes -{$parts[2]} seconds";
+            } else {
+                $additionTime = " +{$parts[0]} hours +{$parts[1]} minutes +{$parts[2]} seconds";
+            }
+            $startTime = $startTime . $additionTime;
+        }
         $this->load->model('extension/payment/tamarapay');
         $this->model_extension_payment_tamarapay->log(["Start scan orders"]);
 

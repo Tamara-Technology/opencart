@@ -102,6 +102,22 @@
                                             </div>
 
                                             <div class="form-group">
+                                                <label class="col-sm-2 control-label" for="input-warning-under-over-message-enabled">{{ entry_enable_under_over_warning}}</label>
+                                                <div class="col-sm-10">
+                                                    <select name="payment_tamarapay_enable_under_over_warning" id="input-warning-under-over-message-enabled" class="form-control">
+                                                        {% if payment_tamarapay_enable_under_over_warning %}
+                                                            <option value="1" selected="selected">{{ text_enabled }}</option>
+                                                            <option value="0">{{ text_disabled }}</option>
+                                                        {% else %}
+                                                            <option value="1">{{ text_enabled }}</option>
+                                                            <option value="0" selected="selected">{{ text_disabled }}</option>
+                                                        {% endif %}
+                                                    </select>
+                                                    <span>Enable warning message if the cart total amount is under / over payment limit. If disabled, we will hide unavailable methods</span>
+                                                </div>
+                                            </div>
+
+                                            <div class="form-group">
                                                 <label class="col-sm-2 control-label" for="input-checkout-success-url">{{ entry_merchant_success_url }}</label>
                                                 <div class="col-sm-10">
                                                     <input id="input-checkout-success-url" name="payment_tamarapay_checkout_success_url" value="{{ payment_tamarapay_checkout_success_url }}" type="text" class="form-control" />
@@ -251,6 +267,294 @@
                                         </div>
                                     </div>
 
+                                    <div class="panel-group" id="pay-by-instalments-4-group">
+                                        <div class="panel panel-default">
+                                            <div class="panel-heading">
+                                                <h4 class="panel-title"><a href="#collapse-pay-by-instalments-4" data-toggle="collapse" data-parent="#pay-by-instalments-4-group" class="accordion-toggle" aria-expanded="true">Pay in 4 instalments <i class="fa fa-caret-down"></i></a></h4>
+                                            </div>
+                                            <div class="panel-collapse collapse in" id="collapse-pay-by-instalments-4" aria-expanded="true">
+                                                <div class="panel-body">
+                                                    <div class="row">
+
+                                                        <div class="row form-group required">
+                                                            <label class="col-sm-4 control-label" for="pay-by-instalments-4-enabled">{{ entry_enable }}</label>
+                                                            <div class="col-sm-8">
+
+                                                                <select name="payment_tamarapay_types_pay_by_instalments_4_enabled" id="pay-by-instalments-4-enabled" class="form-control">
+                                                                    {% if payment_tamarapay_types_pay_by_instalments_4_enabled %}
+                                                                        <option value="1" selected="selected">{{ text_enabled }}</option>
+                                                                        <option value="0">{{ text_disabled }}</option>
+                                                                    {% else %}
+                                                                        <option value="1">{{ text_enabled }}</option>
+                                                                        <option value="0" selected="selected">{{ text_disabled }}</option>
+                                                                    {% endif %}
+                                                                </select>
+
+                                                            </div>
+                                                        </div>
+
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="panel-group" id="pay-by-instalments-5-group">
+                                        <div class="panel panel-default">
+                                            <div class="panel-heading">
+                                                <h4 class="panel-title"><a href="#collapse-pay-by-instalments-5" data-toggle="collapse" data-parent="#pay-by-instalments-5-group" class="accordion-toggle" aria-expanded="true">Pay in 5 instalments <i class="fa fa-caret-down"></i></a></h4>
+                                            </div>
+                                            <div class="panel-collapse collapse in" id="collapse-pay-by-instalments-5" aria-expanded="true">
+                                                <div class="panel-body">
+                                                    <div class="row">
+
+                                                        <div class="row form-group required">
+                                                            <label class="col-sm-4 control-label" for="pay-by-instalments-5-enabled">{{ entry_enable }}</label>
+                                                            <div class="col-sm-8">
+
+                                                                <select name="payment_tamarapay_types_pay_by_instalments_5_enabled" id="pay-by-instalments-5-enabled" class="form-control">
+                                                                    {% if payment_tamarapay_types_pay_by_instalments_5_enabled %}
+                                                                        <option value="1" selected="selected">{{ text_enabled }}</option>
+                                                                        <option value="0">{{ text_disabled }}</option>
+                                                                    {% else %}
+                                                                        <option value="1">{{ text_enabled }}</option>
+                                                                        <option value="0" selected="selected">{{ text_disabled }}</option>
+                                                                    {% endif %}
+                                                                </select>
+
+                                                            </div>
+                                                        </div>
+
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="panel-group" id="pay-by-instalments-6-group">
+                                        <div class="panel panel-default">
+                                            <div class="panel-heading">
+                                                <h4 class="panel-title"><a href="#collapse-pay-by-instalments-6" data-toggle="collapse" data-parent="#pay-by-instalments-6-group" class="accordion-toggle" aria-expanded="true">Pay in 6 instalments <i class="fa fa-caret-down"></i></a></h4>
+                                            </div>
+                                            <div class="panel-collapse collapse in" id="collapse-pay-by-instalments-6" aria-expanded="true">
+                                                <div class="panel-body">
+                                                    <div class="row">
+
+                                                        <div class="row form-group required">
+                                                            <label class="col-sm-4 control-label" for="pay-by-instalments-6-enabled">{{ entry_enable }}</label>
+                                                            <div class="col-sm-8">
+
+                                                                <select name="payment_tamarapay_types_pay_by_instalments_6_enabled" id="pay-by-instalments-6-enabled" class="form-control">
+                                                                    {% if payment_tamarapay_types_pay_by_instalments_6_enabled %}
+                                                                        <option value="1" selected="selected">{{ text_enabled }}</option>
+                                                                        <option value="0">{{ text_disabled }}</option>
+                                                                    {% else %}
+                                                                        <option value="1">{{ text_enabled }}</option>
+                                                                        <option value="0" selected="selected">{{ text_disabled }}</option>
+                                                                    {% endif %}
+                                                                </select>
+
+                                                            </div>
+                                                        </div>
+
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="panel-group" id="pay-by-instalments-7-group">
+                                        <div class="panel panel-default">
+                                            <div class="panel-heading">
+                                                <h4 class="panel-title"><a href="#collapse-pay-by-instalments-7" data-toggle="collapse" data-parent="#pay-by-instalments-7-group" class="accordion-toggle" aria-expanded="true">Pay in 7 instalments <i class="fa fa-caret-down"></i></a></h4>
+                                            </div>
+                                            <div class="panel-collapse collapse in" id="collapse-pay-by-instalments-7" aria-expanded="true">
+                                                <div class="panel-body">
+                                                    <div class="row">
+
+                                                        <div class="row form-group required">
+                                                            <label class="col-sm-4 control-label" for="pay-by-instalments-7-enabled">{{ entry_enable }}</label>
+                                                            <div class="col-sm-8">
+
+                                                                <select name="payment_tamarapay_types_pay_by_instalments_7_enabled" id="pay-by-instalments-7-enabled" class="form-control">
+                                                                    {% if payment_tamarapay_types_pay_by_instalments_7_enabled %}
+                                                                        <option value="1" selected="selected">{{ text_enabled }}</option>
+                                                                        <option value="0">{{ text_disabled }}</option>
+                                                                    {% else %}
+                                                                        <option value="1">{{ text_enabled }}</option>
+                                                                        <option value="0" selected="selected">{{ text_disabled }}</option>
+                                                                    {% endif %}
+                                                                </select>
+
+                                                            </div>
+                                                        </div>
+
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="panel-group" id="pay-by-instalments-8-group">
+                                        <div class="panel panel-default">
+                                            <div class="panel-heading">
+                                                <h4 class="panel-title"><a href="#collapse-pay-by-instalments-8" data-toggle="collapse" data-parent="#pay-by-instalments-8-group" class="accordion-toggle" aria-expanded="true">Pay in 8 instalments <i class="fa fa-caret-down"></i></a></h4>
+                                            </div>
+                                            <div class="panel-collapse collapse in" id="collapse-pay-by-instalments-8" aria-expanded="true">
+                                                <div class="panel-body">
+                                                    <div class="row">
+
+                                                        <div class="row form-group required">
+                                                            <label class="col-sm-4 control-label" for="pay-by-instalments-8-enabled">{{ entry_enable }}</label>
+                                                            <div class="col-sm-8">
+
+                                                                <select name="payment_tamarapay_types_pay_by_instalments_8_enabled" id="pay-by-instalments-8-enabled" class="form-control">
+                                                                    {% if payment_tamarapay_types_pay_by_instalments_8_enabled %}
+                                                                        <option value="1" selected="selected">{{ text_enabled }}</option>
+                                                                        <option value="0">{{ text_disabled }}</option>
+                                                                    {% else %}
+                                                                        <option value="1">{{ text_enabled }}</option>
+                                                                        <option value="0" selected="selected">{{ text_disabled }}</option>
+                                                                    {% endif %}
+                                                                </select>
+
+                                                            </div>
+                                                        </div>
+
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="panel-group" id="pay-by-instalments-9-group">
+                                        <div class="panel panel-default">
+                                            <div class="panel-heading">
+                                                <h4 class="panel-title"><a href="#collapse-pay-by-instalments-9" data-toggle="collapse" data-parent="#pay-by-instalments-9-group" class="accordion-toggle" aria-expanded="true">Pay in 9 instalments <i class="fa fa-caret-down"></i></a></h4>
+                                            </div>
+                                            <div class="panel-collapse collapse in" id="collapse-pay-by-instalments-9" aria-expanded="true">
+                                                <div class="panel-body">
+                                                    <div class="row">
+
+                                                        <div class="row form-group required">
+                                                            <label class="col-sm-4 control-label" for="pay-by-instalments-9-enabled">{{ entry_enable }}</label>
+                                                            <div class="col-sm-8">
+
+                                                                <select name="payment_tamarapay_types_pay_by_instalments_9_enabled" id="pay-by-instalments-9-enabled" class="form-control">
+                                                                    {% if payment_tamarapay_types_pay_by_instalments_9_enabled %}
+                                                                        <option value="1" selected="selected">{{ text_enabled }}</option>
+                                                                        <option value="0">{{ text_disabled }}</option>
+                                                                    {% else %}
+                                                                        <option value="1">{{ text_enabled }}</option>
+                                                                        <option value="0" selected="selected">{{ text_disabled }}</option>
+                                                                    {% endif %}
+                                                                </select>
+
+                                                            </div>
+                                                        </div>
+
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="panel-group" id="pay-by-instalments-10-group">
+                                        <div class="panel panel-default">
+                                            <div class="panel-heading">
+                                                <h4 class="panel-title"><a href="#collapse-pay-by-instalments-10" data-toggle="collapse" data-parent="#pay-by-instalments-10-group" class="accordion-toggle" aria-expanded="true">Pay in 10 instalments <i class="fa fa-caret-down"></i></a></h4>
+                                            </div>
+                                            <div class="panel-collapse collapse in" id="collapse-pay-by-instalments-10" aria-expanded="true">
+                                                <div class="panel-body">
+                                                    <div class="row">
+
+                                                        <div class="row form-group required">
+                                                            <label class="col-sm-4 control-label" for="pay-by-instalments-10-enabled">{{ entry_enable }}</label>
+                                                            <div class="col-sm-8">
+
+                                                                <select name="payment_tamarapay_types_pay_by_instalments_10_enabled" id="pay-by-instalments-10-enabled" class="form-control">
+                                                                    {% if payment_tamarapay_types_pay_by_instalments_10_enabled %}
+                                                                        <option value="1" selected="selected">{{ text_enabled }}</option>
+                                                                        <option value="0">{{ text_disabled }}</option>
+                                                                    {% else %}
+                                                                        <option value="1">{{ text_enabled }}</option>
+                                                                        <option value="0" selected="selected">{{ text_disabled }}</option>
+                                                                    {% endif %}
+                                                                </select>
+
+                                                            </div>
+                                                        </div>
+
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="panel-group" id="pay-by-instalments-11-group">
+                                        <div class="panel panel-default">
+                                            <div class="panel-heading">
+                                                <h4 class="panel-title"><a href="#collapse-pay-by-instalments-11" data-toggle="collapse" data-parent="#pay-by-instalments-11-group" class="accordion-toggle" aria-expanded="true">Pay in 11 instalments <i class="fa fa-caret-down"></i></a></h4>
+                                            </div>
+                                            <div class="panel-collapse collapse in" id="collapse-pay-by-instalments-11" aria-expanded="true">
+                                                <div class="panel-body">
+                                                    <div class="row">
+
+                                                        <div class="row form-group required">
+                                                            <label class="col-sm-4 control-label" for="pay-by-instalments-11-enabled">{{ entry_enable }}</label>
+                                                            <div class="col-sm-8">
+
+                                                                <select name="payment_tamarapay_types_pay_by_instalments_11_enabled" id="pay-by-instalments-11-enabled" class="form-control">
+                                                                    {% if payment_tamarapay_types_pay_by_instalments_11_enabled %}
+                                                                        <option value="1" selected="selected">{{ text_enabled }}</option>
+                                                                        <option value="0">{{ text_disabled }}</option>
+                                                                    {% else %}
+                                                                        <option value="1">{{ text_enabled }}</option>
+                                                                        <option value="0" selected="selected">{{ text_disabled }}</option>
+                                                                    {% endif %}
+                                                                </select>
+
+                                                            </div>
+                                                        </div>
+
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="panel-group" id="pay-by-instalments-12-group">
+                                        <div class="panel panel-default">
+                                            <div class="panel-heading">
+                                                <h4 class="panel-title"><a href="#collapse-pay-by-instalments-12" data-toggle="collapse" data-parent="#pay-by-instalments-12-group" class="accordion-toggle" aria-expanded="true">Pay in 12 instalments <i class="fa fa-caret-down"></i></a></h4>
+                                            </div>
+                                            <div class="panel-collapse collapse in" id="collapse-pay-by-instalments-12" aria-expanded="true">
+                                                <div class="panel-body">
+                                                    <div class="row">
+
+                                                        <div class="row form-group required">
+                                                            <label class="col-sm-4 control-label" for="pay-by-instalments-12-enabled">{{ entry_enable }}</label>
+                                                            <div class="col-sm-8">
+
+                                                                <select name="payment_tamarapay_types_pay_by_instalments_12_enabled" id="pay-by-instalments-12-enabled" class="form-control">
+                                                                    {% if payment_tamarapay_types_pay_by_instalments_12_enabled %}
+                                                                        <option value="1" selected="selected">{{ text_enabled }}</option>
+                                                                        <option value="0">{{ text_disabled }}</option>
+                                                                    {% else %}
+                                                                        <option value="1">{{ text_enabled }}</option>
+                                                                        <option value="0" selected="selected">{{ text_disabled }}</option>
+                                                                    {% endif %}
+                                                                </select>
+
+                                                            </div>
+                                                        </div>
+
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
                                     <div class="form-group">
                                         <div class="col-sm-12">
                                             <button type="button" id="update-payment-config">Test retrieve payment types</button>
@@ -273,10 +577,20 @@
                                 <div class="panel-body">
                                     <div class="row">
                                         <div class="col-sm-12">
-
-
-
-
+                                            <div class="form-group">
+                                                <label class="col-sm-2 control-label" for="input-order-status-create">{{ entry_order_status_create }}</label>
+                                                <div class="col-sm-10">
+                                                    <select name="payment_tamarapay_order_status_create_id" id="input-order-status-create" class="form-control">
+                                                        {% for order_status in order_statuses %}
+                                                            {% if order_status.order_status_id == payment_tamarapay_order_status_create_id %}
+                                                                <option value="{{ order_status.order_status_id }}" selected="selected">{{ order_status.name }}</option>
+                                                            {% else %}
+                                                                <option value="{{ order_status.order_status_id }}">{{ order_status.name }}</option>
+                                                            {% endif %}
+                                                        {% endfor %}
+                                                    </select>
+                                                </div>
+                                            </div>
                                             <div class="form-group">
                                                 <label class="col-sm-2 control-label" for="input-order-status-success">{{ entry_order_status_success }}</label>
                                                 <div class="col-sm-10">

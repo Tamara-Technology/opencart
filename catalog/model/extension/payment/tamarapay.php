@@ -1,5 +1,6 @@
 <?php
 
+use TMS\Tamara\Model\Checkout\PaymentType;
 use TMS\Tamara\Client;
 use TMS\Tamara\Configuration;
 use TMS\Tamara\Model\Money;
@@ -20,11 +21,16 @@ use TMS\Tamara\Response\Payment\CancelResponse;
 
 class ModelExtensionPaymentTamarapay extends Model
 {
+    /**
+     * Define version of extension
+     */
+    public const VERSION = '1.7.0';
+
     public const
         MAX_LIMIT = 'max_limit',
         MIN_LIMIT = 'min_limit',
         NAME = 'name',
-        TITLTE = 'title',
+        TITLE = 'title',
         PAY_LATER = 'PAY_BY_LATER',
         PAY_BY_INSTALMENTS = 'PAY_BY_INSTALMENTS',
         ENABLED = 'enabled',
@@ -34,12 +40,21 @@ class ModelExtensionPaymentTamarapay extends Model
         CURRENCY = 'currency',
         PLATFORM = 'OpenCart',
         NO_DISCOUNT = 'nothing',
-        NUMBER_OF_INSTALMENTS = 3,
         EMPTY_STRING = 'N/A',
         MAXIMUM_CACHED = 500,
-        ORDER_PENDING_STATUS_ID = 1,
-        TEXT_PAY_BY_LATER = 'text_pay_by_later',
-        TEXT_PAY_BY_INSTALMENTS = 'text_pay_by_instalments';
+        ORDER_PENDING_STATUS_ID = 1;
+
+    const PAY_LATER_CODE = 'pay_by_later';
+    const PAY_BY_INSTALMENTS_CODE = 'pay_by_instalments';
+    const PAY_BY_INSTALMENTS_4_CODE = 'pay_by_instalments_4';
+    const PAY_BY_INSTALMENTS_5_CODE = 'pay_by_instalments_5';
+    const PAY_BY_INSTALMENTS_6_CODE = 'pay_by_instalments_6';
+    const PAY_BY_INSTALMENTS_7_CODE = 'pay_by_instalments_7';
+    const PAY_BY_INSTALMENTS_8_CODE = 'pay_by_instalments_8';
+    const PAY_BY_INSTALMENTS_9_CODE = 'pay_by_instalments_9';
+    const PAY_BY_INSTALMENTS_10_CODE = 'pay_by_instalments_10';
+    const PAY_BY_INSTALMENTS_11_CODE = 'pay_by_instalments_11';
+    const PAY_BY_INSTALMENTS_12_CODE = 'pay_by_instalments_12';
 
     const WEBHOOK_URL = 'index.php?route=extension/payment/tamarapay/webhook', ALLOWED_WEBHOOKS = ['order_expired', 'order_declined'];
     const PAYMENT_TYPES_CACHED_TIME = 1800;
@@ -190,7 +205,7 @@ class ModelExtensionPaymentTamarapay extends Model
             ];
 
             $this->addTamaraOrder($saveData);
-            $this->addOrderComment($saveData['order_id'], self::ORDER_PENDING_STATUS_ID,
+            $this->addOrderComment($saveData['order_id'], $this->config->get("payment_tamarapay_order_status_create_id"),
                 'Tamara order was created, order id: ' . $tamaraOrderId);
 
             $this->log([
@@ -270,8 +285,17 @@ class ModelExtensionPaymentTamarapay extends Model
         $order->setCurrency($this->getCurrencyCodeFromSession());
         $order->setTotalAmount($this->formatMoney($orderData['total']));
         $order->setCountryCode($this->getIsoCountryFromSession());
+        if ($this->isInstallmentsPayment($paymentType)) {
+            $order->setInstalments($this->getInstallmentsNumberByPaymentCode($paymentType));
+        }
+        if ($paymentType == self::PAY_LATER_CODE) {
+            $paymentType = self::PAY_LATER;
+        } else {
+            $paymentType = self::PAY_BY_INSTALMENTS;
+        }
+
         $order->setPaymentType($paymentType);
-        $order->setPlatform(self::PLATFORM . " " . VERSION);
+        $order->setPlatform(self::PLATFORM . " " . VERSION . ", Plugin version: " . self::VERSION);
         $order->setDescription($this->config->get('config_name'));
         $orderItems = $this->getOrderItems($orderId);
         $order->setItems($this->getOrderItemCollection($orderItems));
@@ -287,7 +311,8 @@ class ModelExtensionPaymentTamarapay extends Model
         $billing->setLine2($orderData['payment_address_2']);
         $billing->setRegion($orderData['payment_zone']);
         $billing->setCity($orderData['payment_city']);
-        $billing->setPhoneNumber($orderData['telephone']);
+        $phoneNumber = preg_replace("/\s+/", "", $orderData['telephone']);
+        $billing->setPhoneNumber($phoneNumber);
         $billing->setCountryCode($orderData['payment_iso_code_2']);
 
         $shipping->setFirstName($orderData['shipping_firstname']);
@@ -296,13 +321,13 @@ class ModelExtensionPaymentTamarapay extends Model
         $shipping->setLine2($orderData['shipping_address_2']);
         $shipping->setRegion($orderData['shipping_zone']);
         $shipping->setCity($orderData['shipping_city']);
-        $shipping->setPhoneNumber($orderData['telephone']);
+        $shipping->setPhoneNumber($phoneNumber);
         $shipping->setCountryCode($orderData['shipping_iso_code_2']);
 
         $consumer->setFirstName($orderData['shipping_firstname']);
         $consumer->setLastName($orderData['shipping_lastname']);
         $consumer->setEmail($orderData['email']);
-        $consumer->setPhoneNumber($orderData['telephone']);
+        $consumer->setPhoneNumber($phoneNumber);
 
         $merchantUrlData = $this->getMerchantUrls();
         $merchantUrl->setSuccessUrl($merchantUrlData['success']);
@@ -672,7 +697,7 @@ class ModelExtensionPaymentTamarapay extends Model
         $methods = $this->getCurrentAvailableMethods();
         $orderTotal = $this->getOrderTotalFromSession();
         foreach ($methods as $method) {
-            if (!$this->filterUnderOverLimitAmount($orderTotal, $method)) {
+            if (!$this->isInLimitAmount($orderTotal, $method)) {
                 continue;
             }
             $result[] = $method;
@@ -681,45 +706,15 @@ class ModelExtensionPaymentTamarapay extends Model
         return $result;
     }
 
-    /**
-     * Get Tamara payment methods from config
-     * @return array
-     */
-    public function getPaymentMethodsConfig()
-    {
-        return [
-            self::PAY_LATER => $this->getPayLaterConfig(),
-            self::PAY_BY_INSTALMENTS => $this->getPayByInstallmentsConfig(),
-        ];
-    }
-
-    public function getPayLaterConfig()
-    {
-        return [
-            self::NAME => self::PAY_LATER,
-            self::ENABLED => $this->config->get('payment_tamarapay_types_pay_by_later_enabled'),
-            self::TITLTE => $this->language->get(self::TEXT_PAY_BY_LATER)
-        ];
-    }
-
-    public function getPayByInstallmentsConfig()
-    {
-        return [
-            self::NAME => self::PAY_BY_INSTALMENTS,
-            self::ENABLED => $this->config->get('payment_tamarapay_types_pay_by_instalments_enabled'),
-            self::TITLTE => $this->language->get(self::TEXT_PAY_BY_INSTALMENTS)
-        ];
-    }
-
     private function getOrderTotalFromSession()
     {
         $order = $this->getOrder($this->getOrderIdFromSession());
         return $order['total_in_currency'];
     }
 
-    private function filterUnderOverLimitAmount($orderTotal, $method)
+    private function isInLimitAmount($price, $method)
     {
-        if ($orderTotal < $method[self::MIN_LIMIT] || $orderTotal > $method[self::MAX_LIMIT]) {
+        if ($price < $method[self::MIN_LIMIT] || $price > $method[self::MAX_LIMIT]) {
             return false;
         }
 
@@ -732,48 +727,83 @@ class ModelExtensionPaymentTamarapay extends Model
      */
     public function getPaymentMethodsForCheckoutPage()
     {
-        return $this->getPaymentsMethodsAvailableForPrice($this->getOrderTotalFromSession());
+        $methods = $this->markInLimit($this->getCurrentAvailableMethods(), $this->getOrderTotalFromSession());
+        if ($this->config->get("payment_tamarapay_enable_under_over_warning")) {
+            return $methods;
+        } else {
+            return $this->filterUnderOver($methods, $this->getOrderTotalFromSession());
+        }
     }
 
     public function getCurrentAvailableMethods() {
+        if (!$this->isTamaraEnabled()) {
+            return [];
+        }
         if (!$this->isTamaraAvailableForThisCustomer()) {
             return [];
         }
+        return $this->getPaymentTypes();
+    }
+
+    public function isTamaraEnabled() {
+        return boolval($this->config->get("payment_tamarapay_status"));
+    }
+
+    public function filterUnderOver($methods, $price) {
         $result = [];
-        $configMethods = $this->getPaymentMethodsConfig();
-        $availableMethods = $this->getPaymentTypes();
-        foreach ($configMethods as $method) {
-            if (!empty($method[self::ENABLED]) && isset($availableMethods[$method[self::NAME]])) {
-                $result[$method[self::NAME]] = array_merge($method, $availableMethods[$method[self::NAME]]);;
+        foreach ($methods as $method) {
+            if (!$this->isInLimitAmount($price, $method)) {
+                continue;
             }
+            $result[$method['name']] = $method;
         }
         return $result;
     }
 
-    public function getPaymentsMethodsAvailableForPrice($price)
-    {
+    public function markInLimit($methods, $price) {
         $result = [];
-        $availableMethods = $this->getCurrentAvailableMethods();
-        $chosenMethod = false;
-        foreach ($availableMethods as $method) {
-            $isAvailable = true;
-            if (!$this->filterUnderOverLimitAmount($price, $method)) {
-                $isAvailable = false;
-            }
-            $method['is_available'] = $isAvailable;
+        $isExistChecked = false;
+        $firstMethodNameInLimit = "";
+        $isExistMethodInLimit = false;
+        foreach ($methods as $method) {
             $method['checked'] = false;
-            if ($isAvailable && $method[self::NAME] == self::PAY_BY_INSTALMENTS) {
-                $method['checked'] = true;
-                $chosenMethod = true;
+            $method['is_in_limit'] = $this->isInLimitAmount($price, $method);
+            if ($method['is_in_limit']) {
+                $isExistMethodInLimit = true;
+                $firstMethodNameInLimit = $method['name'];
+                if ($this->isInstallmentsPayment($method['name'])) {
+                    if (!$isExistChecked) {
+                        $method['checked'] = true;
+                        $isExistChecked = true;
+                    }
+                }
             }
-            $result[] = $method;
+            $result[$method['name']] = $method;
         }
-        if (!$chosenMethod) {
-            if (!empty($result)) {
-                $result[0]['checked'] = true;
-            }
+        if ($isExistMethodInLimit && !$isExistChecked) {
+            $result[$firstMethodNameInLimit]['checked'] = true;
         }
+        return $result;
+    }
 
+    public function getPaymentMethodAvailableForPrice($price) {
+        $methods = $this->filterUnderOver($this->markInLimit($this->getCurrentAvailableMethods(), $price), $price);
+        if (empty($methods)) {
+            return [];
+        }
+        $result = [];
+        $firstMethod = null;
+        foreach ($methods as $method) {
+            if ($firstMethod === null) {
+                $firstMethod = $method;
+            }
+            if ($method['is_in_limit'] && $this->isInstallmentsPayment($method['name'])) {
+                $result = $method;
+            }
+        }
+        if (empty($result)) {
+            $result = $firstMethod;
+        }
         return $result;
     }
 
@@ -1196,11 +1226,33 @@ class ModelExtensionPaymentTamarapay extends Model
                 $cachedPaymentTypes['payment_types'] = $this->parsePaymentTypesFromResponse($response);
                 $this->cachePaymentTypes($cachedPaymentTypes);
             }
-            return $cachedPaymentTypes['payment_types'];
+            $paymentTypes = $this->filterEnablePaymentMethods($cachedPaymentTypes['payment_types']);
+
+            //add payment title
+            foreach ($paymentTypes as &$paymentType) {
+                $paymentType['title'] = $this->getTitleOfPaymentMethod($paymentType['name']);
+            }
+            return $paymentTypes;
         } catch (Exception $exception) {
             $this->log($exception->getMessage());
         }
         return [];
+    }
+
+    public function getTitleOfPaymentMethod($methodName) {
+        return $this->language->get('text_' . $methodName);
+    }
+
+    private function filterEnablePaymentMethods($paymentTypes) {
+
+        foreach ($paymentTypes as $paymentType) {
+            $methodCode = $paymentType['name'];
+            $configKey = "payment_tamarapay_types_" . $methodCode . "_enabled";
+            if (!$this->config->get($configKey)) {
+                unset($paymentTypes[$methodCode]);
+            }
+        }
+        return $paymentTypes;
     }
 
     private function parsePaymentTypesFromResponse($response) {
@@ -1211,12 +1263,39 @@ class ModelExtensionPaymentTamarapay extends Model
          */
         if ($response->isSuccess()) {
             foreach ($response->getPaymentTypes() as $paymentType) {
-                $paymentTypeAsArray = $paymentType->toArray();
-                $paymentTypeData = $paymentTypeAsArray;
-                $paymentTypeData[self::MIN_LIMIT] = $paymentTypeAsArray[self::MIN_LIMIT][self::AMOUNT];
-                $paymentTypeData[self::MAX_LIMIT] = $paymentTypeAsArray[self::MAX_LIMIT][self::AMOUNT];
-                $paymentTypeData[self::CURRENCY] = $paymentTypeAsArray[self::MIN_LIMIT][self::CURRENCY];
-                $result[$paymentTypeAsArray[self::NAME]] = $paymentTypeData;
+
+                /** @var PaymentType $paymentType */
+                $paymentTypeClone = $paymentType;
+                if ($paymentTypeClone->getName() == self::PAY_LATER) {
+                    $result[self::PAY_LATER_CODE] = [
+                        'name' => self::PAY_LATER_CODE,
+                        'min_limit' => $paymentTypeClone->getMinLimit()->getAmount(),
+                        'max_limit' => $paymentTypeClone->getMaxLimit()->getAmount(),
+                        'currency' => $paymentTypeClone->getMinLimit()->getCurrency(),
+                        'description' => $paymentTypeClone->getDescription(),
+                    ];
+                }
+                if ($paymentTypeClone->getName() == self::PAY_BY_INSTALMENTS) {
+                    $description = $paymentTypeClone->getDescription();
+                    if (count($installments = $paymentTypeClone->getSupportedInstalments())) {
+                        foreach ($installments as $installment) {
+
+                            /**
+                             * @var \TMS\Tamara\Model\Checkout\Instalment $installment
+                             */
+                            $installmentMethodCode = $this->getInstallmentPaymentCode($installment->getInstalments());
+                            $installmentData = [
+                                'name' => $installmentMethodCode,
+                                'min_limit' => $installment->getMinLimit()->getAmount(),
+                                'max_limit' => $installment->getMaxLimit()->getAmount(),
+                                'currency' => $installment->getMinLimit()->getCurrency(),
+                                'number_of_instalments' => $installment->getInstalments(),
+                                'description' => $description
+                            ];
+                            $result[$installmentMethodCode] = $installmentData;
+                        }
+                    }
+                }
             }
         }
         return $result;
@@ -1229,15 +1308,24 @@ class ModelExtensionPaymentTamarapay extends Model
         $query = "SELECT * FROM `" . DB_PREFIX . "tamara_config` WHERE `key`='payment_types' LIMIT 1";
         $result = $this->db->query($query);
         if ($result->num_rows > 0) {
-            return json_decode($result->row['value'], true);
+            $value = $result->row['value'];
+            if (empty($value)) {
+                return [];
+            }
+            return json_decode($value, true);
         } else {
             return [];
         }
     }
 
     private function savePaymentTypesToDb($paymentTypesAsJson) {
-        $this->db->query("DELETE FROM `" . DB_PREFIX . "tamara_config` WHERE `key`='payment_types'");
-        $this->db->query("INSERT INTO `" . DB_PREFIX . "tamara_config`(id, `key`, value, created_at, updated_at) VALUES(NULL, 'payment_types', '{$paymentTypesAsJson}', NOW(), NOW())");
+        $query = "SELECT * FROM `" . DB_PREFIX . "tamara_config` WHERE `key`='payment_types' LIMIT 1";
+        $result = $this->db->query($query);
+        if ($result->num_rows > 0) {
+            $this->db->query("UPDATE `" . DB_PREFIX . "tamara_config` SET `value` = '{$paymentTypesAsJson}' WHERE `key` = 'payment_types'");
+        } else {
+            $this->db->query("INSERT INTO `" . DB_PREFIX . "tamara_config`(id, `key`, value, created_at, updated_at) VALUES(NULL, 'payment_types', '{$paymentTypesAsJson}', NOW(), NOW())");
+        }
     }
 
     /**
@@ -1338,5 +1426,37 @@ class ModelExtensionPaymentTamarapay extends Model
             return true;
         }
         return false;
+    }
+
+    /**
+     * @param int $numberOfInstallments
+     * @return string
+     */
+    public function getInstallmentPaymentCode($numberOfInstallments = 3) {
+        $numberOfInstallments = intval($numberOfInstallments);
+        if ($numberOfInstallments == 3) {
+            return self::PAY_BY_INSTALMENTS_CODE;
+        }
+        return self::PAY_BY_INSTALMENTS_CODE . "_" . $numberOfInstallments;
+    }
+
+    /**
+     * @param string $paymentMethodCode
+     * @return int
+     */
+    public function getInstallmentsNumberByPaymentCode($paymentMethodCode = self::PAY_BY_INSTALMENTS_CODE) {
+        if ($paymentMethodCode == self::PAY_BY_INSTALMENTS_CODE) {
+            return 3;
+        }
+        return intval(substr($paymentMethodCode, -1));
+    }
+
+    /**
+     * @param $paymentMethodCode
+     * @return bool
+     */
+    public function isInstallmentsPayment($paymentMethodCode) {
+        $installmentPattern = "/^(pay_by_instalments)([_][0-9]+)?$/";
+        return boolval(preg_match($installmentPattern, $paymentMethodCode));
     }
 }

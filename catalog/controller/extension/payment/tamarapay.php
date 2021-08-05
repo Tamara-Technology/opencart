@@ -26,10 +26,10 @@ class ControllerExtensionPaymentTamarapay extends Controller
         $paymentAvailableForCurrency = "";
         foreach ($methods as $method) {
             $paymentAvailableForCurrency = $method['currency'];
-            if ($method['name'] == "PAY_BY_INSTALMENTS") {
+            if ($this->model_extension_payment_tamarapay->isInstallmentsPayment($method['name'])) {
                 $installmentMinLimit = $method['min_limit'];
             }
-            if ($method['is_available']) {
+            if ($method['is_in_limit']) {
                 $totalTypeAvailable++;
             }
         }
@@ -300,6 +300,9 @@ class ControllerExtensionPaymentTamarapay extends Controller
     }
 
     public function addPromoWidgetForProduct($route, $data, $output) {
+        if (!$this->config->get("payment_tamarapay_status")) {
+            return $output;
+        }
         $productId = $data['product_id'];
         $excludeProductIds = explode(",",$this->config->get('payment_tamarapay_pdp_wg_exclude_product_ids'));
         if (in_array($productId, $excludeProductIds)) {
@@ -324,25 +327,16 @@ class ControllerExtensionPaymentTamarapay extends Controller
                 $finalPrice = $this->model_extension_payment_tamarapay->getValueInCurrency($this->tax->calculate($productInfo['special'], $productInfo['tax_class_id'], $this->config->get('config_tax')), $this->session->data['currency']);
             }
 
-            $availableMethods = $this->model_extension_payment_tamarapay->getPaymentsMethodsAvailableForPrice($finalPrice);
-            if (empty($availableMethods)) {
+            $availableMethod = $this->model_extension_payment_tamarapay->getPaymentMethodAvailableForPrice($finalPrice);
+            if (empty($availableMethod)) {
                 return $output;
             }
 
             $str = "";
-            foreach ($availableMethods as $method) {
-                if ($method['is_available'] && $method['checked']) {
-                    if ($method['name'] == "PAY_BY_INSTALMENTS") {
-                        $str .= ('<div id="tamara-product-widget" data-disable-paylater="false" class="tamara-product-widget" data-lang="" data-price="'.$finalPrice.'" data-currency="' .$method['currency']. '" data-payment-type="installment" data-installment-minimum-amount="' .$method['min_limit']. '" data-installment-max-amount="'.$method['max_limit'].'"></a>');
-
-                    } else {
-                        $str .= ('<div id="tamara-product-widget" data-disable-paylater="false" data-pay-later-minimum-amount="'.$method['min_limit'].'" data-pay-later-max-amount="'.$method['max_limit'].'" class="tamara-product-widget" data-lang="" data-inject-template="true"></div>');
-                    }
-                    break;
-                }
-            }
-            if (empty($str)) {
-                return $output;
+            if ($availableMethod['name'] == "pay_by_later") {
+                $str .= ('<div id="tamara-product-widget" class="tamara-product-widget" data-payment-type="paylater" data-disable-paylater="false" data-currency="' .$availableMethod['currency']. '" data-pay-later-minimum-amount="'.$availableMethod['min_limit'].'" data-pay-later-max-amount="'.$availableMethod['max_limit'].'" data-price="'.$finalPrice.'" data-lang="" data-disable-product-limit="true" data-inject-template="true"></div>');
+            } else {
+                $str .= ('<div id="tamara-product-widget" class="tamara-product-widget" data-disable-paylater="false" data-lang="" data-price="'.$finalPrice.'" data-currency="' .$availableMethod['currency']. '" data-payment-type="installment" data-number-of-installments="'.$availableMethod['number_of_instalments'].'" data-installment-minimum-amount="' .$availableMethod['min_limit']. '" data-installment-max-amount="'.$availableMethod['max_limit'].'"></div>');
             }
             $str .= '<script charset="utf-8" src="https://cdn.tamara.co/widget/product-widget.min.js?t='.time().'"></script> <script type="text/javascript">let langCode="'.$this->language->get('code').'";window.langCode=langCode;window.checkTamaraProductWidgetCount=0;document.getElementById("tamara-product-widget").setAttribute("data-lang",langCode);var existTamaraProductWidget=setInterval(function(){if(window.TamaraProductWidget){window.TamaraProductWidget.init({lang:window.langCode});window.TamaraProductWidget.render();clearInterval(existTamaraProductWidget);} window.checkTamaraProductWidgetCount+=1;if(window.checkTamaraProductWidgetCount>33){clearInterval(existTamaraProductWidget);}},300);</script>';
             $str = ("\n\n" . "<div class='tamara-promo' style='margin-bottom: 10px;'>" . $str . "</div>" . "\n\n");

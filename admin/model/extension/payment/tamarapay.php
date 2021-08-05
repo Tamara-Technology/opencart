@@ -9,7 +9,7 @@ class ModelExtensionPaymentTamarapay extends Model
     /**
      * Define version of extension
      */
-    public const VERSION = '1.6.3';
+    public const VERSION = '1.7.0';
 
     /**
      * Define schema version
@@ -386,5 +386,9 @@ class ModelExtensionPaymentTamarapay extends Model
         } else {
             return $this->getSandboxApiUrl();
         }
+    }
+
+    public function removePaymentTypesCache() {
+        $this->db->query("UPDATE `" . DB_PREFIX . "tamara_config` SET `value` = '' WHERE `key`='payment_types'");
     }
 }

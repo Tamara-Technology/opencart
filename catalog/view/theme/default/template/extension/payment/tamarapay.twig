@@ -110,9 +110,9 @@
                 </div>
                 <div class="payment-type-content">
                     {% for key,method in methods %}
-                        <div class="col-sm-12 col-md-6">
+                        <div class="col-sm-12">
                             <div class="form-check">
-                                {% if method.is_available %}
+                                {% if method.is_in_limit %}
                                     {% if method.checked %}
                                         <input type="radio" name="payment_type" class="form-check-input" id="{{ method.name }}" value="{{ method.name }}" checked>
                                     {% else %}
@@ -129,14 +129,14 @@
                                 <br />
                                 <label for="{{ method.name }}" class="form-check-label"><b>{{ text_max_amount }}</b> {{ method.max_limit }} {{ method.currency }}</label>
                                 <br />
-                                {% if method.is_available %}
-                                    {% if method.name == 'PAY_BY_INSTALMENTS' %}
-                                    <div id="tamara-installment-plan" style="margin-bottom: 10px;" class="tamara-installment-plan-widget" data-lang="{{ language_code }}" data-price="{{ order_data.total_in_currency }}" data-currency="{{ method.currency }}" data-installment-minimum-amount="{{ method.min_limit }}" data-installment-maximum-amount="{{ method.max_limit }}" data-number-of-installments="3"
-                                    ></div>
+                                {% if method.is_in_limit %}
+                                    {% if method.name == 'pay_by_later' %}
+                                        <label for="{{ method.name }}">
+                                            <a href="javascript:void(0)" class="tamara-product-widget" data-payment-type="paylater" data-disable-paylater="false" data-disable-product-limit="true" data-disable-paylater="false" data-lang="{{ language_code }}" data-pay-later-max-amount="{{ method.max_limit }}" data-inject-template="false">{{ text_more_details }}</a>
+                                        </label>
                                     {% else %}
-                                    <label for="{{ method.name }}">
-                                        <a href="javascript:void(0)" class="tamara-product-widget" data-disable-paylater="false" data-lang="{{ language_code }}" data-pay-later-max-amount="{{ method.max_limit }}" data-inject-template="false">{{ text_more_details }}</a>
-                                    </label>
+                                        <div id="tamara-installment-plan" style="margin-bottom: 10px;" class="tamara-installment-plan-widget" data-lang="{{ language_code }}" data-price="{{ order_data.total_in_currency }}" data-currency="{{ method.currency }}" data-installment-minimum-amount="{{ method.min_limit }}" data-installment-maximum-amount="{{ method.max_limit }}" data-number-of-installments="{{ method.number_of_instalments }}"
+                                        ></div>
                                     {% endif %}
                                 {% else %}
                                     <p class="text-warning"><i class="fa fa-exclamation-triangle"></i> {{ text_under_over_limit }}</p>
