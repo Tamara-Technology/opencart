@@ -125,7 +125,7 @@ class ModelExtensionPaymentTamarapayConsoleScan extends Model {
 
     public function authoriseOrder($tamaraOrderId) {
         $tamaraOrder = $this->model_extension_payment_tamarapay->getTamaraOrderByTamaraOrderId($tamaraOrderId);
-        $currentRemoteStatus = $this->model_extension_payment_tamarapay->getTamaraOrderFromRemote($tamaraOrder['order_id'])->getStatus();
+        $currentRemoteStatus = $this->model_extension_payment_tamarapay->getTamaraOrderFromRemote($tamaraOrder['reference_id'])->getStatus();
         if ($currentRemoteStatus == self::ORDER_STATUS_APPROVED) {
             $this->model_extension_payment_tamarapay->log(["Console: authorise order, order id: " . $tamaraOrderId]);
             $this->model_extension_payment_tamarapay->authoriseOrder($tamaraOrderId);

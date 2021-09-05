@@ -583,8 +583,18 @@ class ControllerExtensionPaymentTamarapay extends Controller {
                 $this->moveApiUrlConfig();
                 $this->updateSchemaVersion("1.3.0");
             }
+            if (version_compare($this->contextSchemaVersion, '1.4.0', '<')) {
+                $this->addOrderReferenceIdColume();
+                $this->updateSchemaVersion("1.4.0");
+            }
         }
         return;
+    }
+
+    private function addOrderReferenceIdColume() {
+        $query = "ALTER TABLE `".DB_PREFIX."tamara_orders` 
+                            ADD `reference_id` varchar(255) COMMENT 'order reference id'";
+        $this->db->query($query);
     }
 
     private function moveApiUrlConfig() {

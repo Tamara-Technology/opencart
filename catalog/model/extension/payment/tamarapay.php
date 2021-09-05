@@ -176,7 +176,8 @@ class ModelExtensionPaymentTamarapay extends Model
             $client = $this->getTamaraClient();
             $this->log(["Session data: "]);
             $this->log($this->session->data);
-            $order = $this->prepareOrder($paymentType);
+            $orderReferenceId = $this->generateOrderReferenceId($this->session->data['order_id']);
+            $order = $this->prepareOrder($paymentType, $orderReferenceId);
             $this->log(["Prepare order " . $this->session->data['order_id']]);
             $this->log($order->toArray());
             $request = new CreateCheckoutRequest($order);
@@ -202,17 +203,20 @@ class ModelExtensionPaymentTamarapay extends Model
                 'order_id' => $this->session->data['order_id'],
                 'tamara_order_id' => $tamaraOrderId,
                 'redirect_url' => $redirectUrl,
+                'reference_id' => $orderReferenceId
             ];
 
             $this->addTamaraOrder($saveData);
-            $this->addOrderComment($saveData['order_id'], $this->config->get("payment_tamarapay_order_status_create_id"),
-                'Tamara order was created, order id: ' . $tamaraOrderId);
+            $this->load->model('checkout/order');
+            $comment = ("Tamara order was created, order id: " . $tamaraOrderId . ", order reference id: " . $orderReferenceId);
+            $this->model_checkout_order->addOrderHistory($saveData['order_id'], $this->config->get("payment_tamarapay_order_status_create_id"), $comment, false);
 
             $this->log([
                 'msg' => 'Created tamara checkout',
                 'order_id' => $saveData['order_id'],
                 'tamara_order_id' => $tamaraOrderId,
                 'redirect_url' => $redirectUrl,
+                'reference order id' => $orderReferenceId
             ]);
 
             return ['redirectUrl' => $redirectUrl];
@@ -229,13 +233,6 @@ class ModelExtensionPaymentTamarapay extends Model
     private function deactivateRecentTamaraOrder($opencartOrderId)
     {
         try {
-            $tamaraOrder = $this->getTamaraOrder($opencartOrderId);
-        } catch (Exception $exception) {
-            return;
-        }
-
-        try {
-            $this->cancelOrder($tamaraOrder['tamara_order_id']);
             $sql = "UPDATE " . DB_PREFIX . "tamara_orders SET is_active = 0 WHERE order_id = '{$opencartOrderId}'";
             $this->db->query($sql);
             $this->tamaraOrdersByOrderId = [];
@@ -274,13 +271,13 @@ class ModelExtensionPaymentTamarapay extends Model
         return $currencyCode;
     }
 
-    private function prepareOrder($paymentType)
+    private function prepareOrder($paymentType, $orderReferenceId)
     {
         $orderData = $this->getOrder($this->getOrderIdFromSession());
         $orderId = $orderData['order_id'];
         $order = new Order();
 
-        $order->setOrderReferenceId($orderData['order_id']);
+        $order->setOrderReferenceId($orderReferenceId);
         $order->setLocale($this->session->data['language'] ?? null);
         $order->setCurrency($this->getCurrencyCodeFromSession());
         $order->setTotalAmount($this->formatMoney($orderData['total']));
@@ -309,8 +306,13 @@ class ModelExtensionPaymentTamarapay extends Model
         $billing->setLastName($orderData['payment_lastname']);
         $billing->setLine1($orderData['payment_address_1']);
         $billing->setLine2($orderData['payment_address_2']);
-        $billing->setRegion($orderData['payment_zone']);
-        $billing->setCity($orderData['payment_city']);
+        $billingRegion = $orderData['payment_zone'];
+        $billing->setRegion($billingRegion);
+        $billingCity = $orderData['payment_city'];
+        if (empty($billingCity)) {
+            $billingCity = $billingRegion;
+        }
+        $billing->setCity($billingCity);
         $phoneNumber = preg_replace("/\s+/", "", $orderData['telephone']);
         $billing->setPhoneNumber($phoneNumber);
         $billing->setCountryCode($orderData['payment_iso_code_2']);
@@ -319,8 +321,13 @@ class ModelExtensionPaymentTamarapay extends Model
         $shipping->setLastName($orderData['shipping_lastname']);
         $shipping->setLine1($orderData['shipping_address_1']);
         $shipping->setLine2($orderData['shipping_address_2']);
-        $shipping->setRegion($orderData['shipping_zone']);
-        $shipping->setCity($orderData['shipping_city']);
+        $shippingRegion = $orderData['shipping_zone'];
+        $shipping->setRegion($shippingRegion);
+        $shippingCity = $orderData['shipping_city'];
+        if (empty($shippingCity)) {
+            $shippingCity = $shippingRegion;
+        }
+        $shipping->setCity($shippingCity);
         $shipping->setPhoneNumber($phoneNumber);
         $shipping->setCountryCode($orderData['shipping_iso_code_2']);
 
@@ -346,6 +353,18 @@ class ModelExtensionPaymentTamarapay extends Model
         $order->setDiscount($this->getOrderDiscount($orderTotals));
 
         return $order;
+    }
+
+    /**
+     * @param $orderId
+     * @return string
+     */
+    private function generateOrderReferenceId($orderId) {
+        return $orderId . "-" . (microtime(true)  * 10000);
+    }
+
+    private function getOrderIdFromReferenceId($orderReferenceId) {
+        return explode("-",$orderReferenceId)[0];
     }
 
     public function getOrder($orderId, $forceReload = false)
@@ -614,9 +633,9 @@ class ModelExtensionPaymentTamarapay extends Model
 
     public function addTamaraOrder($data)
     {
-        $query = sprintf("INSERT INTO `%s` SET `order_id` = %d, `tamara_order_id` = '%s', `redirect_url` = '%s', `is_active` = '%s'",
+        $query = sprintf("INSERT INTO `%s` SET `order_id` = %d, `tamara_order_id` = '%s', `redirect_url` = '%s', `is_active` = '%s', `reference_id` = '%s'",
             DB_PREFIX . 'tamara_orders', (int) $data['order_id'], $this->db->escape($data['tamara_order_id']),
-            $data['redirect_url'], 1);
+            $data['redirect_url'], 1, $data['reference_id']);
         $this->db->query($query);
     }
 
@@ -638,10 +657,7 @@ class ModelExtensionPaymentTamarapay extends Model
 
             $this->updateAuthoriseOrder($response->getOrderId());
             $orderTamara = $this->getTamaraOrderByTamaraOrderId($response->getOrderId());
-            $this->addOrderComment($orderTamara['order_id'],
-                $this->config->get('payment_tamarapay_order_status_authorised_id'),
-                'Order was authorised by Tamara, order id: ' . $response->getOrderId()
-            );
+            $this->model_checkout_order->addOrderHistory($orderTamara['order_id'], $this->config->get('payment_tamarapay_order_status_authorised_id'), 'Order was authorised by Tamara, order id: ' . $response->getOrderId(), false);
             $this->log("Order was authorised, order id: " . $tamaraOrderId);
 
             return ['success' => true, 'message' => 'Order was authorised', 'order_id' => $tamaraOrderId];
@@ -659,6 +675,17 @@ class ModelExtensionPaymentTamarapay extends Model
         $query = sprintf("UPDATE `%s` SET `is_authorised` = %d WHERE `tamara_order_id` = '%s'",
             DB_PREFIX . 'tamara_orders', 1, $orderId);
         $this->db->query($query);
+    }
+
+    public function getTamaraOrderByReferenceId($referenceId) {
+        $query = sprintf("SELECT * FROM `%s` WHERE `reference_id` = '%s' AND `is_active` = '1' LIMIT 1",
+            DB_PREFIX . 'tamara_orders',
+            $referenceId);
+        $tamaraOrder = $this->db->query($query)->row;
+        if (empty($tamaraOrder)) {
+            throw new InvalidArgumentException("Order requested does not exist");
+        }
+        return $tamaraOrder;
     }
 
     /**
@@ -1173,8 +1200,8 @@ class ModelExtensionPaymentTamarapay extends Model
         return Client::create(Configuration::create($url, $token));
     }
 
-    public function getTamaraOrderFromRemote($orderId) {
-        return $this->getTamaraClient()->getOrderByReferenceId(new \TMS\Tamara\Request\Order\GetOrderByReferenceIdRequest($orderId));
+    public function getTamaraOrderFromRemote($orderReferenceId) {
+        return $this->getTamaraClient()->getOrderByReferenceId(new \TMS\Tamara\Request\Order\GetOrderByReferenceIdRequest($orderReferenceId));
     }
 
     public function webhook()
@@ -1186,13 +1213,24 @@ class ModelExtensionPaymentTamarapay extends Model
                 'msg' => 'Webhook event type is not allowed',
                 'Event type: ' => $eventType,
                 'Webhook tamara order id: ' => $webhookMessage->getOrderId(),
-                'Webhook reference order id: ' => $webhookMessage->getOrderReferenceId(),
+                'Webhook order reference id: ' => $webhookMessage->getOrderReferenceId(),
             ]);
             throw new \Exception($this->language->get("error_webhook_event_type_not_allowed"));
         }
-        $comment = sprintf('Tamara - order was %s by webhook', $eventType);
-        $this->addOrderComment($webhookMessage->getOrderReferenceId(), $this->config->get("payment_tamarapay_order_status_canceled_id"), $comment, 0);
-        $this->log(["Webhook processed successful for order " . $webhookMessage->getOrderReferenceId()]);
+        $comment = sprintf('Tamara - order was %s by webhook, order reference id: %s', $eventType, $webhookMessage->getOrderReferenceId());
+        try {
+            $tamaraOrder = $this->getTamaraOrderByTamaraOrderId($webhookMessage->getOrderId());
+        } catch (\Exception $exception) {
+            //order requested doest not exist or has been cancelled or dis active
+            return;
+        }
+        $orderId = $tamaraOrder['order_id'];
+        if ($eventType == "order_declined") {
+            $this->addOrderComment($orderId, $this->config->get("payment_tamarapay_order_status_failure_id"), $comment, 0);
+        } else {
+            $this->addOrderComment($orderId, $this->config->get("payment_tamarapay_order_status_canceled_id"), $comment, 0);
+        }
+        $this->log(["Webhook processed successful for order " . $orderId]);
     }
 
     public function createNotificationService($notificationToken) {

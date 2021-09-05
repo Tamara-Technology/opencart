@@ -98,7 +98,7 @@ class ControllerExtensionPaymentTamarapay extends Controller
 
             //set order status
             $successStatusId = $this->config->get('payment_tamarapay_order_status_success_id');
-            $this->model_extension_payment_tamarapay->addOrderComment($this->session->data['order_id'], $successStatusId, "Tamara - Pay success", 0);
+            $this->model_checkout_order->addOrderHistory($this->session->data['order_id'], $successStatusId, "Tamara - Pay success", false);
 
             //call authorise
             $this->model_extension_payment_tamarapay->authoriseOrder($tamaraOrder['tamara_order_id']);
@@ -180,14 +180,18 @@ class ControllerExtensionPaymentTamarapay extends Controller
         $this->load->language('extension/payment/tamarapay');
 
         if (isset($this->session->data['order_id'])) {
+            $failureStatusId = $this->config->get('payment_tamarapay_order_status_failure_id');
+            $order = $this->model_extension_payment_tamarapay->getOrder($this->session->data['order_id']);
+            if ($order['order_status_id'] == $failureStatusId) {
+                return $this->redirectToCartPage($this->language->get('text_order_pay_failure'), 'error');
+            }
             if (!$this->canCancelByRedirect($this->session->data['order_id'])) {
-                return $this->response->redirect($this->url->link('checkout/cart', '', true));
+                return $this->redirectToCartPage();
             }
             $this->model_extension_payment_tamarapay->addOrderComment($this->session->data['order_id'], $this->config->get('payment_tamarapay_order_status_failure_id'), "Tamara - Pay failed", 0);
         }
 
-        $this->session->data['error'] = $this->language->get('text_order_pay_failure');
-        $this->response->redirect($this->url->link('checkout/cart', '', true));
+        $this->redirectToCartPage($this->language->get('text_order_pay_failure'), 'error');
     }
 
     public function cancel()
@@ -196,14 +200,18 @@ class ControllerExtensionPaymentTamarapay extends Controller
         $this->load->model('extension/payment/tamarapay');
         $this->load->language('extension/payment/tamarapay');
         if (isset($this->session->data['order_id'])) {
+            $cancelStatusId = $this->config->get('payment_tamarapay_order_status_canceled_id');
+            $order = $this->model_extension_payment_tamarapay->getOrder($this->session->data['order_id']);
+            if ($order['order_status_id'] == $cancelStatusId) {
+                return $this->redirectToCartPage($this->language->get('text_order_canceled'), 'error');
+            }
             if (!$this->canCancelByRedirect($this->session->data['order_id'])) {
-                return $this->response->redirect($this->url->link('checkout/cart', '', true));
+                return $this->redirectToCartPage();
             }
             $this->model_extension_payment_tamarapay->addOrderComment($this->session->data['order_id'], $this->config->get('payment_tamarapay_order_status_canceled_id'), "Tamara - Pay canceled", 0);
         }
 
-        $this->session->data['error'] = $this->language->get('text_order_canceled');
-        $this->response->redirect($this->url->link('checkout/cart', '', true));
+        $this->redirectToCartPage($this->language->get('text_order_canceled'), 'error');
     }
 
     private function responseJson($response)
@@ -221,18 +229,12 @@ class ControllerExtensionPaymentTamarapay extends Controller
         $tokenNotification = $this->config->get('payment_tamarapay_token_notification');
 
         $notificationService = NotificationService::create($tokenNotification);
-        try {
-            $authorise = $notificationService->processAuthoriseNotification();
-        } catch (Exception $exception) {
-            $this->log("Error when processAuthoriseNotification: " . $exception->getMessage());
-            $response = ['error' => $this->language->get('error_cannot_process_authorise_notification')];
-            return $this->responseJson($response);
-        }
+        $authorise = $notificationService->processAuthoriseNotification();
 
-        $orderId = $authorise->getOrderId();
+        $tamaraOrderId = $authorise->getOrderId();
 
         try {
-            $tamaraOrder = $this->model_extension_payment_tamarapay->getTamaraOrderByTamaraOrderId($orderId);
+            $tamaraOrder = $this->model_extension_payment_tamarapay->getTamaraOrderByTamaraOrderId($tamaraOrderId);
         } catch (Exception $exception) {
             $this->log($exception->getMessage());
             $response = ['error' => $this->language->get('error_not_found_order')];
@@ -240,7 +242,7 @@ class ControllerExtensionPaymentTamarapay extends Controller
         }
 
         if (!$tamaraOrder['is_authorised']) {
-            $response = $this->model_extension_payment_tamarapay->authoriseOrder($orderId);
+            $response = $this->model_extension_payment_tamarapay->authoriseOrder($tamaraOrderId);
             $this->responseJson($response);
         }
     }
@@ -347,13 +349,24 @@ class ControllerExtensionPaymentTamarapay extends Controller
         }
     }
 
+    /**
+     * @param $message
+     * @param $type
+     */
+    public function redirectToCartPage($message = null, $type = null) {
+        if ($message !== null) {
+            $this->session->data[$type] = $message;
+        }
+        return $this->response->redirect($this->url->link('checkout/cart', '', true));
+    }
+
     public function canCancelByRedirect($orderId) {
         try {
             $tamaraOrder = $this->model_extension_payment_tamarapay->getTamaraOrder($orderId);
             if ($tamaraOrder['is_authorised']) {
                 return false;
             } else {
-                if ($this->model_extension_payment_tamarapay->getTamaraOrderFromRemote($tamaraOrder['order_id'])->getStatus() == "approved") {
+                if ($this->model_extension_payment_tamarapay->getTamaraOrderFromRemote($tamaraOrder['reference_id'])->getStatus() == "approved") {
                     return false;
                 }
             }

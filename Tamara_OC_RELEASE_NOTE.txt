@@ -1,3 +1,9 @@
+Version 1.7.1
+- Bugs fixed:
+    - Fixed an issue when customer re-order after cancel
+- News:
+    - Use region for city if the web site does not support
+    - Use Opencart function to add order comment to trigger events
 Version 1.7.0
 - Bugs fixed:
     - Fixed a minor bug when render html product widget
