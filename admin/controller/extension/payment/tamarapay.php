@@ -40,6 +40,20 @@ class ControllerExtensionPaymentTamarapay extends Controller {
         }
 
         $data['extension_version'] = $this->model_extension_payment_tamarapay->getExtensionVersion();
+        $githubVersionLink = "https://raw.githubusercontent.com/tamara-solution/opencart/master/VERSION.txt";
+        $githubVersion = @file_get_contents($githubVersionLink);
+        if ($githubVersion) {
+            $downloadLink = "https://github.com/tamara-solution/opencart/archive/refs/heads/master.zip";
+            $readmeLink = "https://github.com/tamara-solution/opencart/blob/master/README.md";
+            if (version_compare($data['extension_version'], $githubVersion, '<')) {
+                $versionMessage = '<div class="alert alert-danger"><p>You are using outdated version, please update <a title="Download" href="'. $downloadLink .'">here</a>, read more about extension <a title="Read more" href="'. $readmeLink .'">here</a></p></div>';
+            } else {
+                $versionMessage = '<div class="alert alert-success"><p>You are using latest version, read more about extension <a title="Read more" href="'. $readmeLink .'">here</a></p></div>';
+            }
+        } else {
+            $versionMessage = "";
+        }
+        $data['version_message'] = $versionMessage;
         $data['error_warning'] = $this->error['warning'] ?? '';
         $data['error_url'] = $this->error['url'] ?? '';
         $data['error_token'] = $this->error['token'] ?? '';
@@ -584,14 +598,14 @@ class ControllerExtensionPaymentTamarapay extends Controller {
                 $this->updateSchemaVersion("1.3.0");
             }
             if (version_compare($this->contextSchemaVersion, '1.4.0', '<')) {
-                $this->addOrderReferenceIdColume();
+                $this->addOrderReferenceIdColumn();
                 $this->updateSchemaVersion("1.4.0");
             }
         }
         return;
     }
 
-    private function addOrderReferenceIdColume() {
+    private function addOrderReferenceIdColumn() {
         $query = "ALTER TABLE `".DB_PREFIX."tamara_orders` 
                             ADD `reference_id` varchar(255) COMMENT 'order reference id'";
         $this->db->query($query);

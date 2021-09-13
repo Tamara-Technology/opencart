@@ -125,7 +125,7 @@ class ModelExtensionPaymentTamarapayConsoleScan extends Model {
 
     public function authoriseOrder($tamaraOrderId) {
         $tamaraOrder = $this->model_extension_payment_tamarapay->getTamaraOrderByTamaraOrderId($tamaraOrderId);
-        $currentRemoteStatus = $this->model_extension_payment_tamarapay->getTamaraOrderFromRemote($tamaraOrder['reference_id'])->getStatus();
+        $currentRemoteStatus = $this->model_extension_payment_tamarapay->getTamaraOrderFromRemoteByTamaraOrderId($tamaraOrder['tamara_order_id'])->getStatus();
         if ($currentRemoteStatus == self::ORDER_STATUS_APPROVED) {
             $this->model_extension_payment_tamarapay->log(["Console: authorise order, order id: " . $tamaraOrderId]);
             $this->model_extension_payment_tamarapay->authoriseOrder($tamaraOrderId);
@@ -135,13 +135,6 @@ class ModelExtensionPaymentTamarapayConsoleScan extends Model {
     }
 
     private function updateTamaraOrdersAfterScan($orders, $fieldToUpdate) {
-        if (!empty($orders)) {
-            $tamaraIds = [];
-            foreach ($orders as $order) {
-                $tamaraIds[] = $order['tamara_id'];
-            }
-            $sql = "UPDATE `".DB_PREFIX."tamara_orders` SET `{$fieldToUpdate}` = 1 WHERE `tamara_id` IN (".implode(",", $tamaraIds).")";
-            $this->db->query($sql);
-        }
+        $this->model_extension_payment_tamarapay->updateTamaraOrders($orders, $fieldToUpdate, 1);
     }
 }

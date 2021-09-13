@@ -1,3 +1,10 @@
+Version 1.7.3
+- News:
+    - Upgrade tamara vendor to 1.3.3
+    - Improve redirect after checkout
+Version 1.7.2
+- Bugs fixed:
+    - Fixed issue missing sku when prepare item to capture
 Version 1.7.1
 - Bugs fixed:
     - Fixed an issue when customer re-order after cancel

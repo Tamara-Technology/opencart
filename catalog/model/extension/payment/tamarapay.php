@@ -24,39 +24,20 @@ class ModelExtensionPaymentTamarapay extends Model
     /**
      * Define version of extension
      */
-    public const VERSION = '1.7.0';
+    public const VERSION = '1.7.3';
 
     public const
         MAX_LIMIT = 'max_limit',
         MIN_LIMIT = 'min_limit',
-        NAME = 'name',
-        TITLE = 'title',
         PAY_LATER = 'PAY_BY_LATER',
         PAY_BY_INSTALMENTS = 'PAY_BY_INSTALMENTS',
-        ENABLED = 'enabled',
-        AMOUNT = 'amount',
-        SA_CURRENCY = 'SAR',
-        AE_CURRENCY = 'AED',
-        CURRENCY = 'currency',
         PLATFORM = 'OpenCart',
         NO_DISCOUNT = 'nothing',
         EMPTY_STRING = 'N/A',
-        MAXIMUM_CACHED = 500,
-        ORDER_PENDING_STATUS_ID = 1;
-
+        MAXIMUM_CACHED = 500;
     const PAY_LATER_CODE = 'pay_by_later';
     const PAY_BY_INSTALMENTS_CODE = 'pay_by_instalments';
-    const PAY_BY_INSTALMENTS_4_CODE = 'pay_by_instalments_4';
-    const PAY_BY_INSTALMENTS_5_CODE = 'pay_by_instalments_5';
-    const PAY_BY_INSTALMENTS_6_CODE = 'pay_by_instalments_6';
-    const PAY_BY_INSTALMENTS_7_CODE = 'pay_by_instalments_7';
-    const PAY_BY_INSTALMENTS_8_CODE = 'pay_by_instalments_8';
-    const PAY_BY_INSTALMENTS_9_CODE = 'pay_by_instalments_9';
-    const PAY_BY_INSTALMENTS_10_CODE = 'pay_by_instalments_10';
-    const PAY_BY_INSTALMENTS_11_CODE = 'pay_by_instalments_11';
-    const PAY_BY_INSTALMENTS_12_CODE = 'pay_by_instalments_12';
-
-    const WEBHOOK_URL = 'index.php?route=extension/payment/tamarapay/webhook', ALLOWED_WEBHOOKS = ['order_expired', 'order_declined'];
+    const ALLOWED_WEBHOOKS = ['order_expired', 'order_declined'];
     const PAYMENT_TYPES_CACHED_TIME = 1800;
     const SANDBOX_API_URL = "https://api-sandbox.tamara.co";
     const SANDBOX_API_ENVIRONMENT = "1";
@@ -64,12 +45,10 @@ class ModelExtensionPaymentTamarapay extends Model
     const PRODUCTION_API_ENVIRONMENT = "2";
 
     private const SUPPORTED_CURRENCIES = [
-        self::SA_CURRENCY,
-        self::AE_CURRENCY,
+        'SAR', 'AED', 'KWD', 'BHD', 'QAR'
     ];
-
     private const SUPPORTED_COUNTRIES = [
-        'SA', 'AE'
+        'SA', 'AE', 'KW', 'BH', 'QA'
     ];
 
     private $orders = [];
@@ -80,6 +59,9 @@ class ModelExtensionPaymentTamarapay extends Model
 
     public function getMethod($address, $total)
     {
+        if (isset($this->session->data['shipping_address'])) {
+            $address = $this->session->data['shipping_address'];
+        }
         $this->load->language('extension/payment/tamarapay');
         if (!$this->isTamaraAvailableForThisCustomer()) {
             return [];
@@ -170,15 +152,16 @@ class ModelExtensionPaymentTamarapay extends Model
         }
 
         try {
-            //deactivate recent session order
-            $this->deactivateRecentTamaraOrder($this->session->data['order_id']);
+            $orderId = $this->session->data['order_id'];
 
+            //deactivate recent session order
+            $this->deactivateRecentTamaraOrder($orderId);
             $client = $this->getTamaraClient();
             $this->log(["Session data: "]);
             $this->log($this->session->data);
-            $orderReferenceId = $this->generateOrderReferenceId($this->session->data['order_id']);
-            $order = $this->prepareOrder($paymentType, $orderReferenceId);
-            $this->log(["Prepare order " . $this->session->data['order_id']]);
+            $orderReferenceId = $this->generateOrderReferenceId($orderId);
+            $order = $this->prepareOrder($paymentType, $orderId, $orderReferenceId);
+            $this->log(["Prepare order " . $orderId]);
             $this->log($order->toArray());
             $request = new CreateCheckoutRequest($order);
 
@@ -200,7 +183,7 @@ class ModelExtensionPaymentTamarapay extends Model
             $redirectUrl = $checkoutResponse->getCheckoutUrl();
 
             $saveData = [
-                'order_id' => $this->session->data['order_id'],
+                'order_id' => $orderId,
                 'tamara_order_id' => $tamaraOrderId,
                 'redirect_url' => $redirectUrl,
                 'reference_id' => $orderReferenceId
@@ -208,7 +191,7 @@ class ModelExtensionPaymentTamarapay extends Model
 
             $this->addTamaraOrder($saveData);
             $this->load->model('checkout/order');
-            $comment = ("Tamara order was created, order id: " . $tamaraOrderId . ", order reference id: " . $orderReferenceId);
+            $comment = ("Tamara - Checkout session was created, session id: " . $tamaraOrderId . ", order reference id: " . $orderReferenceId);
             $this->model_checkout_order->addOrderHistory($saveData['order_id'], $this->config->get("payment_tamarapay_order_status_create_id"), $comment, false);
 
             $this->log([
@@ -271,13 +254,13 @@ class ModelExtensionPaymentTamarapay extends Model
         return $currencyCode;
     }
 
-    private function prepareOrder($paymentType, $orderReferenceId)
+    private function prepareOrder($paymentType, $orderId, $orderReferenceId)
     {
-        $orderData = $this->getOrder($this->getOrderIdFromSession());
-        $orderId = $orderData['order_id'];
+        $orderData = $this->getOrder($orderId);
         $order = new Order();
 
         $order->setOrderReferenceId($orderReferenceId);
+        $order->setOrderNumber($orderId);
         $order->setLocale($this->session->data['language'] ?? null);
         $order->setCurrency($this->getCurrencyCodeFromSession());
         $order->setTotalAmount($this->formatMoney($orderData['total']));
@@ -349,7 +332,7 @@ class ModelExtensionPaymentTamarapay extends Model
 
         $orderTotals = $this->getOrderTotals($orderId);
         $order->setShippingAmount($this->getShippingAmount($orderTotals));
-        $order->setTaxAmount($this->getOrderTaxAmount($this->getOrderTotals($orderId)));
+        $order->setTaxAmount($this->getOrderTaxAmount($orderTotals));
         $order->setDiscount($this->getOrderDiscount($orderTotals));
 
         return $order;
@@ -400,7 +383,7 @@ class ModelExtensionPaymentTamarapay extends Model
 
     private function getIsoCountryFromSession()
     {
-        return strtoupper($this->session->data['payment_address']['iso_code_2'] ?? $this->session->data['shipping_address']['iso_code_2'] ?? '');
+        return strtoupper($this->session->data['shipping_address']['iso_code_2'] ?? $this->session->data['payment_address']['iso_code_2'] ?? '');
     }
 
     private function getOrderItems($orderId)
@@ -409,7 +392,7 @@ class ModelExtensionPaymentTamarapay extends Model
         $items = [];
         foreach ($orderProducts as $orderProduct) {
             $productData = $this->getProductById($orderProduct['product_id']);
-            $sku = empty($productDetails['sku']) ? $productData['product_id'] : $productData['sku'];
+            $sku = empty($productDetails['sku']) ? $orderProduct['product_id'] : $productData['sku'];
             $itemType = empty($productData['model']) ? "simple product" : $productData['model'];
             $items[$orderProduct['order_product_id']] = [
                 'order_item_id' => $orderProduct['order_product_id'],
@@ -421,9 +404,9 @@ class ModelExtensionPaymentTamarapay extends Model
                 'name' => $orderProduct['name'],
                 'sku' => $sku,
                 'type' => $itemType,
-                'reward' => $productData['reward'],
+                'reward' => $orderProduct['reward'],
                 'quantity' => $orderProduct['quantity'],
-                'image_url' => $this->getProductImageUrl($productData['image']),
+                'image_url' => strval($this->getProductImageUrl($productData['image'])),
                 'currency' => $this->getOrderCurrency($orderId),
             ];
         }
@@ -433,6 +416,7 @@ class ModelExtensionPaymentTamarapay extends Model
 
     private function getOrderProducts($orderId)
     {
+        $this->load->model('checkout/order');
         return $this->model_checkout_order->getOrderProducts($orderId);
     }
 
@@ -513,18 +497,9 @@ class ModelExtensionPaymentTamarapay extends Model
     public function getMerchantUrls()
     {
         $baseUrl = $this->getBaseUrl();
-        $successUrl = $this->config->get('payment_tamarapay_checkout_success_url');
-        if (empty($successUrl)) {
-            $successUrl = $baseUrl . 'index.php?route=extension/payment/tamarapay/success';
-        }
-        $failureUrl = $this->config->get('payment_tamarapay_checkout_failure_url');
-        if (empty($failureUrl)) {
-            $failureUrl = $baseUrl . 'index.php?route=extension/payment/tamarapay/failure';
-        }
-        $cancelUrl = $this->config->get('payment_tamarapay_checkout_cancel_url');
-        if (empty($cancelUrl)) {
-            $cancelUrl = $baseUrl . 'index.php?route=extension/payment/tamarapay/cancel';
-        }
+        $successUrl = $baseUrl . 'index.php?route=extension/payment/tamarapay/success';
+        $failureUrl = $baseUrl . 'index.php?route=extension/payment/tamarapay/failure';
+        $cancelUrl = $baseUrl . 'index.php?route=extension/payment/tamarapay/cancel';
         $notificationUrl = $baseUrl . 'index.php?route=extension/payment/tamarapay/notification';
         $result = [
             'success' => $successUrl,
@@ -891,17 +866,23 @@ class ModelExtensionPaymentTamarapay extends Model
 
             $client = $this->getTamaraClient();
             $orderData = $this->getTamaraOrderData($tamaraOrderId);
-            $captureRequest = $this->createCaptureRequest($orderData);
             $this->log("Capture order data: ");
             $this->log($orderData);
+            $this->log("Creating capture request for order  " . $tamaraOrderId);
+            $captureRequest = $this->createCaptureRequest($orderData);
+            $this->log("Created capture request for order  " . $tamaraOrderId);
+            $this->log("Call capture API for order  " . $tamaraOrderId);
             $response = $client->capture($captureRequest);
             if (!$response->isSuccess()) {
+                $this->log("Capture not success for the order " . $tamaraOrderId . ", error: " . $response->getMessage());
                 throw new Exception($response->getMessage());
             }
             $captureId = $response->getCaptureId();
             $orderData['capture_id'] = $captureId;
             $this->saveCapture($orderData);
             $this->saveCaptureItems($orderData);
+            $this->updateTamaraOrders([$orderData],"captured_from_console", 1);
+            $this->log("Capture items saved for the order " . $tamaraOrderId . ", capture id: " . $captureId);
             $comment = 'Order was captured by Tamara, capture id: ' . $captureId;
             $this->addOrderComment($orderData['order_id'], $orderData['order_status_id'], $comment, 0);
             $this->log([
@@ -930,6 +911,7 @@ class ModelExtensionPaymentTamarapay extends Model
         if (count($tamaraOrderData)) {
             $orderId = $tamaraOrderData['order_id'];
             $orderData = $this->getOrder($orderId);
+            $result['tamara_id'] = $tamaraOrderData['tamara_id'];
             $result['order_id'] = $orderId;
             $result['tamara_order_id'] = $tamaraOrderData['tamara_order_id'];
             $result['total_amount'] = $orderData['total'];
@@ -1064,6 +1046,7 @@ class ModelExtensionPaymentTamarapay extends Model
                     "NOW()",
                     "NOW()"
                 );
+                $first = false;
             } else {
                 $query .= sprintf(", (
                     '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', %s, %s)",
@@ -1202,6 +1185,10 @@ class ModelExtensionPaymentTamarapay extends Model
 
     public function getTamaraOrderFromRemote($orderReferenceId) {
         return $this->getTamaraClient()->getOrderByReferenceId(new \TMS\Tamara\Request\Order\GetOrderByReferenceIdRequest($orderReferenceId));
+    }
+
+    public function getTamaraOrderFromRemoteByTamaraOrderId($tamaraOrderId) {
+        return $this->getTamaraClient()->getOrder(new \TMS\Tamara\Request\Order\GetOrderRequest($tamaraOrderId));
     }
 
     public function webhook()
@@ -1496,5 +1483,16 @@ class ModelExtensionPaymentTamarapay extends Model
     public function isInstallmentsPayment($paymentMethodCode) {
         $installmentPattern = "/^(pay_by_instalments)([_][0-9]+)?$/";
         return boolval(preg_match($installmentPattern, $paymentMethodCode));
+    }
+
+    public function updateTamaraOrders($orders, $fieldToUpdate, $value) {
+        if (!empty($orders)) {
+            $tamaraIds = [];
+            foreach ($orders as $order) {
+                $tamaraIds[] = $order['tamara_id'];
+            }
+            $sql = "UPDATE `".DB_PREFIX."tamara_orders` SET `{$fieldToUpdate}` = '{$value}' WHERE `tamara_id` IN (".implode(",", $tamaraIds).")";
+            $this->db->query($sql);
+        }
     }
 }

@@ -14,7 +14,7 @@ use TMS\Tamara\Response\ClientResponse;
 use DateTimeImmutable;
 class GetOrderByReferenceIdResponse extends \TMS\Tamara\Response\ClientResponse
 {
-    private const ORDER_ID = 'order_id', ORDER_REFERENCE_ID = 'order_reference_id', CONSUMER = 'consumer', STATUS = 'status', BILLING_ADDRESS = 'billing_address', SHIPPING_ADDRESS = 'shipping_address', PAYMENT_TYPE = 'payment_type', TOTAL_AMOUNT = 'total_amount', REFUNDED_AMOUNT = 'refunded_amount', CAPTURED_AMOUNT = 'captured_amount', TAX_AMOUNT = 'tax_amount', SHIPPING_AMOUNT = 'shipping_amount', DISCOUNT_AMOUNT = 'discount_amount', CANCELED_AMOUNT = 'canceled_amount', ITEMS = 'items', SETTLEMENT_STATUS = 'settlement_status', SETTLEMENT_DATE = 'settlement_date', CREATED_AT = 'created_at', TRANSACTIONS = 'transactions';
+    private const ORDER_ID = 'order_id', ORDER_REFERENCE_ID = 'order_reference_id', ORDER_NUMBER = 'order_number', CONSUMER = 'consumer', STATUS = 'status', BILLING_ADDRESS = 'billing_address', SHIPPING_ADDRESS = 'shipping_address', PAYMENT_TYPE = 'payment_type', TOTAL_AMOUNT = 'total_amount', REFUNDED_AMOUNT = 'refunded_amount', CAPTURED_AMOUNT = 'captured_amount', TAX_AMOUNT = 'tax_amount', SHIPPING_AMOUNT = 'shipping_amount', DISCOUNT_AMOUNT = 'discount_amount', CANCELED_AMOUNT = 'canceled_amount', ITEMS = 'items', SETTLEMENT_STATUS = 'settlement_status', SETTLEMENT_DATE = 'settlement_date', CREATED_AT = 'created_at', TRANSACTIONS = 'transactions';
     /**
      * @var string
      */
@@ -23,6 +23,10 @@ class GetOrderByReferenceIdResponse extends \TMS\Tamara\Response\ClientResponse
      * @var string
      */
     private $orderReferenceId;
+    /**
+     * @var string
+     */
+    private $orderNumber;
     /**
      * @var Consumer
      */
@@ -103,6 +107,10 @@ class GetOrderByReferenceIdResponse extends \TMS\Tamara\Response\ClientResponse
     {
         return $this->orderReferenceId;
     }
+    public function getOrderNumber() : string
+    {
+        return $this->orderNumber;
+    }
     public function getConsumer() : \TMS\Tamara\Model\Order\Consumer
     {
         return $this->consumer;
@@ -180,6 +188,7 @@ class GetOrderByReferenceIdResponse extends \TMS\Tamara\Response\ClientResponse
         $settlementDate = !empty($responseData[self::SETTLEMENT_DATE]) ? new \DateTimeImmutable($responseData[self::SETTLEMENT_DATE]) : null;
         $this->orderId = $responseData[self::ORDER_ID];
         $this->orderReferenceId = $responseData[self::ORDER_REFERENCE_ID];
+        $this->orderNumber = $responseData[self::ORDER_NUMBER] ?? $this->orderReferenceId;
         $this->consumer = \TMS\Tamara\Model\Order\Consumer::fromArray($responseData[self::CONSUMER]);
         $this->status = $responseData[self::STATUS];
         $this->billingAddress = \TMS\Tamara\Model\Order\Address::fromArray($responseData[self::BILLING_ADDRESS]);

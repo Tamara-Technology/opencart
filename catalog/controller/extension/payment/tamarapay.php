@@ -98,7 +98,7 @@ class ControllerExtensionPaymentTamarapay extends Controller
 
             //set order status
             $successStatusId = $this->config->get('payment_tamarapay_order_status_success_id');
-            $this->model_checkout_order->addOrderHistory($this->session->data['order_id'], $successStatusId, "Tamara - Pay success", false);
+            $this->model_checkout_order->addOrderHistory($data['order_id'], $successStatusId, "Tamara - Pay success", false);
 
             //call authorise
             $this->model_extension_payment_tamarapay->authoriseOrder($tamaraOrder['tamara_order_id']);
@@ -178,17 +178,20 @@ class ControllerExtensionPaymentTamarapay extends Controller
         $this->load->model('checkout/order');
         $this->load->model('extension/payment/tamarapay');
         $this->load->language('extension/payment/tamarapay');
+        $orderMessage = "Tamara - Pay failed";
+        $orderShowOnFront = $this->language->get('text_order_pay_failure');
 
         if (isset($this->session->data['order_id'])) {
+            $orderId = $this->session->data['order_id'];
             $failureStatusId = $this->config->get('payment_tamarapay_order_status_failure_id');
-            $order = $this->model_extension_payment_tamarapay->getOrder($this->session->data['order_id']);
+            $order = $this->model_extension_payment_tamarapay->getOrder($orderId);
             if ($order['order_status_id'] == $failureStatusId) {
-                return $this->redirectToCartPage($this->language->get('text_order_pay_failure'), 'error');
+                return $this->processRedirect('failure', $orderId, $failureStatusId, $orderMessage, $orderShowOnFront);
             }
-            if (!$this->canCancelByRedirect($this->session->data['order_id'])) {
+            if (!$this->canCancelByRedirect($orderId)) {
                 return $this->redirectToCartPage();
             }
-            $this->model_extension_payment_tamarapay->addOrderComment($this->session->data['order_id'], $this->config->get('payment_tamarapay_order_status_failure_id'), "Tamara - Pay failed", 0);
+            return $this->processRedirect('failure', $orderId, $failureStatusId, $orderMessage, $orderShowOnFront);
         }
 
         $this->redirectToCartPage($this->language->get('text_order_pay_failure'), 'error');
@@ -199,19 +202,32 @@ class ControllerExtensionPaymentTamarapay extends Controller
         $this->load->model('checkout/order');
         $this->load->model('extension/payment/tamarapay');
         $this->load->language('extension/payment/tamarapay');
+        $orderMessage = "Tamara - Pay canceled";
+        $orderShowOnFront = $this->language->get('text_order_canceled');
         if (isset($this->session->data['order_id'])) {
+            $orderId = $this->session->data['order_id'];
             $cancelStatusId = $this->config->get('payment_tamarapay_order_status_canceled_id');
-            $order = $this->model_extension_payment_tamarapay->getOrder($this->session->data['order_id']);
+            $order = $this->model_extension_payment_tamarapay->getOrder($orderId);
             if ($order['order_status_id'] == $cancelStatusId) {
-                return $this->redirectToCartPage($this->language->get('text_order_canceled'), 'error');
+                return $this->processRedirect('cancel', $orderId, $cancelStatusId, $orderMessage, $orderShowOnFront);
             }
-            if (!$this->canCancelByRedirect($this->session->data['order_id'])) {
+            if (!$this->canCancelByRedirect($orderId)) {
                 return $this->redirectToCartPage();
             }
-            $this->model_extension_payment_tamarapay->addOrderComment($this->session->data['order_id'], $this->config->get('payment_tamarapay_order_status_canceled_id'), "Tamara - Pay canceled", 0);
+            return $this->processRedirect('cancel', $orderId, $cancelStatusId, $orderMessage, $orderShowOnFront);
         }
 
-        $this->redirectToCartPage($this->language->get('text_order_canceled'), 'error');
+        $this->redirectToCartPage($orderShowOnFront, 'error');
+    }
+
+    private function processRedirect($type, $orderId, $orderStatusId, $orderMessage, $messageShowOnFrontend) {
+        $this->load->model('extension/payment/tamarapay');
+        $this->model_extension_payment_tamarapay->addOrderComment($orderId, $orderStatusId, $orderMessage, 0);
+        $redirectUrl = $this->config->get('payment_tamarapay_checkout_' . $type . '_url');
+        if (!empty($redirectUrl)) {
+            return $this->response->redirect($redirectUrl);
+        }
+        return $this->redirectToCartPage($messageShowOnFrontend, 'error');
     }
 
     private function responseJson($response)
@@ -366,7 +382,7 @@ class ControllerExtensionPaymentTamarapay extends Controller
             if ($tamaraOrder['is_authorised']) {
                 return false;
             } else {
-                if ($this->model_extension_payment_tamarapay->getTamaraOrderFromRemote($tamaraOrder['reference_id'])->getStatus() == "approved") {
+                if ($this->model_extension_payment_tamarapay->getTamaraOrderFromRemoteByTamaraOrderId($tamaraOrder['tamara_order_id'])->getStatus() == "approved") {
                     return false;
                 }
             }
