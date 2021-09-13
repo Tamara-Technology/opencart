@@ -15,12 +15,22 @@ $_['text_payment_failed']				= 'فشل الدفع ، التفاصيل أدناه
 $_['text_choose_payment']               = 'الرجاء تحديد نوع الدفع';
 $_['text_min_amount']                   = 'الحد الأدنى للمبلغ:';
 $_['text_max_amount']                   = 'الحد الأقصى للمبلغ:';
+$_['text_under_over_limit']             = "المبلغ الإجمال أعلى من الحد المسموح أو أقل من الحد الأدنى";
 $_['text_more_details']                 = 'المزيد من التفاصيل...';
 $_['text_know_more']                    = 'تعرف أكثر؟';
 $_['text_order_canceled']               = 'تم إلغاء طلبك';
 $_['text_order_pay_failure']            = 'فشل الدفع مع تمارا';
-$_['text_pay_by_later']                 = 'Pay later in 30 days';
-$_['text_pay_by_instalments']           = 'Pay in 3 instalments';
+$_['text_pay_by_later']                 = 'اطلب الآن وادفع خلال 30 یوم بدون رسوم مع تمارا';
+$_['text_pay_by_instalments']           = 'قسِّمها على 3 دفعات بدون رسوم مع تمارا';
+$_['text_pay_by_instalments_4']           = 'قسِّمها على 4 دفعات بدون رسوم مع تمارا';
+$_['text_pay_by_instalments_5']           = 'قسِّمها على 5 دفعات بدون رسوم مع تمارا';
+$_['text_pay_by_instalments_6']           = 'قسِّمها على 6 دفعات بدون رسوم مع تمارا';
+$_['text_pay_by_instalments_7']           = 'قسِّمها على 7 دفعات بدون رسوم مع تمارا';
+$_['text_pay_by_instalments_8']           = 'قسِّمها على 8 دفعات بدون رسوم مع تمارا';
+$_['text_pay_by_instalments_9']           = 'قسِّمها على 9 دفعات بدون رسوم مع تمارا';
+$_['text_pay_by_instalments_10']           = 'قسِّمها على 10 دفعات بدون رسوم مع تمارا';
+$_['text_pay_by_instalments_11']           = 'قسِّمها على 11 دفعات بدون رسوم مع تمارا';
+$_['text_pay_by_instalments_12']           = 'قسِّمها على 12 دفعات بدون رسوم مع تمارا';
 
 // Error
 $_['error_process_order']				= 'كان هناك خطأ في معالجة طلبك';

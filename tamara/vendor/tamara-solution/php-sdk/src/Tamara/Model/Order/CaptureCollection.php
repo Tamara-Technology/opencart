@@ -7,7 +7,7 @@ use ArrayIterator;
 class CaptureCollection
 {
     /**
-     * @var CancelItem[]
+     * @var CaptureItem[]
      */
     private $data = [];
     public static function create(array $data) : \TMS\Tamara\Model\Order\CaptureCollection
@@ -21,7 +21,6 @@ class CaptureCollection
     public function toArray() : array
     {
         $ret = [];
-        /** @var CaptureItem $item */
         foreach ($this->data as $item) {
             $ret[] = $item->toArray();
         }

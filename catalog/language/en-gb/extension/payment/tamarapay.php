@@ -15,12 +15,22 @@ $_['text_payment_failed']				= 'Payment failed, details below';
 $_['text_choose_payment']               = 'Please select a Tamara payment type';
 $_['text_min_amount']                   = 'Min amount:';
 $_['text_max_amount']                   = 'Max amount:';
+$_['text_under_over_limit']             = 'The grand total of order is over/under limit of Tamara.';
 $_['text_more_details']                 = 'More details...';
 $_['text_know_more']                    = 'Know more?';
-$_['text_pay_by_later']                 = 'Pay later in 30 days';
-$_['text_pay_by_instalments']           = 'Pay in 3 instalments';
 $_['text_order_canceled']               = 'Your order has been canceled';
 $_['text_order_pay_failure']            = 'Pay with Tamara failed';
+$_['text_pay_by_later']                 = 'Buy now and pay in 30 days with Tamara';
+$_['text_pay_by_instalments']           = 'Split into 3 payments, without fees with Tamara';
+$_['text_pay_by_instalments_4']           = 'Split into 4 payments, without fees with Tamara';
+$_['text_pay_by_instalments_5']           = 'Split into 5 payments, without fees with Tamara';
+$_['text_pay_by_instalments_6']           = 'Split into 6 payments, without fees with Tamara';
+$_['text_pay_by_instalments_7']           = 'Split into 7 payments, without fees with Tamara';
+$_['text_pay_by_instalments_8']           = 'Split into 8 payments, without fees with Tamara';
+$_['text_pay_by_instalments_9']           = 'Split into 9 payments, without fees with Tamara';
+$_['text_pay_by_instalments_10']           = 'Split into 10 payments, without fees with Tamara';
+$_['text_pay_by_instalments_11']           = 'Split into 11 payments, without fees with Tamara';
+$_['text_pay_by_instalments_12']           = 'Split into 12 payments, without fees with Tamara';
 
 // Error
 $_['error_process_order']				= 'There was an error processing your order. Please contact the shop administrator for help.';

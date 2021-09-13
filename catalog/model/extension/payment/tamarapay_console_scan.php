@@ -11,6 +11,17 @@ class ModelExtensionPaymentTamarapayConsoleScan extends Model {
      */
     public function scan($startTime = '-10 days', $endTime = 'now')
     {
+        $dateTimePattern = '/[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[1-2][0-9]|3[0-1]) (2[0-3]|[01][0-9]):[0-5][0-9]:[0-5][0-9]/';
+        if (!preg_match($dateTimePattern, $startTime)) {
+            $timeDiff = $this->db->query("SELECT TIMEDIFF(NOW(), UTC_TIMESTAMP) as time_diff")->rows[0]['time_diff'];
+            $parts = explode(":", $timeDiff);
+            if (intval($parts[0]) < 0) {
+                $additionTime = " {$parts[0]} hours -{$parts[1]} minutes -{$parts[2]} seconds";
+            } else {
+                $additionTime = " +{$parts[0]} hours +{$parts[1]} minutes +{$parts[2]} seconds";
+            }
+            $startTime = $startTime . $additionTime;
+        }
         $this->load->model('extension/payment/tamarapay');
         $this->model_extension_payment_tamarapay->log(["Start scan orders"]);
 
@@ -32,6 +43,12 @@ class ModelExtensionPaymentTamarapayConsoleScan extends Model {
 
         $tamaraOrders = $this->db->query($sql)->rows;
         if (!empty($tamaraOrders)) {
+
+            //scan authorise
+            $authoriseStatusId = $this->config->get('tamarapay_order_status_success_id');
+            $authoriseOrders = $this->getOrdersFiltered($tamaraOrders, $authoriseStatusId, 'is_authorised');
+            $this->doAction(array_keys($authoriseOrders), 'authorise');
+            $this->updateTamaraOrdersAfterScan($authoriseOrders, 'is_authorised');
 
             //scan capture
             $captureStatusId = $this->config->get('tamarapay_capture_order_status_id');
@@ -64,6 +81,7 @@ class ModelExtensionPaymentTamarapayConsoleScan extends Model {
      */
     private function execute($action, $tamaraOrderId)
     {
+        $this->load->model('extension/payment/tamarapay');
         $method = $action . "Order";
         if (method_exists($this, $method)) {
             try {
@@ -94,21 +112,17 @@ class ModelExtensionPaymentTamarapayConsoleScan extends Model {
     }
 
     public function captureOrder($tamaraOrderId) {
+        $this->load->model('extension/payment/tamarapay');
         $this->model_extension_payment_tamarapay->captureOrder($tamaraOrderId);
     }
 
     public function cancelOrder($tamaraOrderId) {
+        $this->load->model('extension/payment/tamarapay');
         $this->model_extension_payment_tamarapay->cancelOrder($tamaraOrderId);
     }
 
     private function updateTamaraOrdersAfterScan($orders, $fieldToUpdate) {
-        if (!empty($orders)) {
-            $tamaraIds = [];
-            foreach ($orders as $order) {
-                $tamaraIds[] = $order['tamara_id'];
-            }
-            $sql = "UPDATE `".DB_PREFIX."tamara_orders` SET `{$fieldToUpdate}` = 1 WHERE `tamara_id` IN (".implode(",", $tamaraIds).")";
-            $this->db->query($sql);
-        }
+        $this->load->model('extension/payment/tamarapay');
+        $this->model_extension_payment_tamarapay->updateTamaraOrders($orders, $fieldToUpdate, 1);
     }
 }

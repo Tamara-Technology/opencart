@@ -6,7 +6,7 @@ namespace TMS\Tamara\Model\Order;
 use TMS\Tamara\Model\Money;
 class Order
 {
-    public const ORDER_ID = 'order_id', TOTAL_AMOUNT = 'total_amount', ITEMS = 'items', CONSUMER = 'consumer', BILLING_ADDRESS = 'billing_address', SHIPPING_ADDRESS = 'shipping_address', DISCOUNT = 'discount', TAX_AMOUNT = 'tax_amount', SHIPPING_AMOUNT = 'shipping_amount', MERCHANT_URL = 'merchant_url', PAYMENT_TYPE = 'payment_type', ORDER_REFERENCE_ID = 'order_reference_id', DESCRIPTION = 'description', COUNTRY_CODE = 'country_code', LOCALE = 'locale', PLATFORM = 'platform', DISCOUNT_AMOUNT = 'discount_amount', RISK_ASSESSMENT = 'risk_assessment';
+    public const ORDER_ID = 'order_id', TOTAL_AMOUNT = 'total_amount', ITEMS = 'items', CONSUMER = 'consumer', BILLING_ADDRESS = 'billing_address', SHIPPING_ADDRESS = 'shipping_address', DISCOUNT = 'discount', TAX_AMOUNT = 'tax_amount', SHIPPING_AMOUNT = 'shipping_amount', MERCHANT_URL = 'merchant_url', PAYMENT_TYPE = 'payment_type', ORDER_REFERENCE_ID = 'order_reference_id', ORDER_NUMBER = 'order_number', DESCRIPTION = 'description', COUNTRY_CODE = 'country_code', LOCALE = 'locale', PLATFORM = 'platform', DISCOUNT_AMOUNT = 'discount_amount', RISK_ASSESSMENT = 'risk_assessment', INSTALMENTS = 'instalments', PAY_BY_INSTALMENTS = 'PAY_BY_INSTALMENTS', PAY_BY_LATER = 'PAY_BY_LATER';
     /**
      * @var string
      */
@@ -15,6 +15,10 @@ class Order
      * @var string
      */
     private $orderReferenceId;
+    /**
+     * @var string
+     */
+    private $orderNumber;
     /**
      * @var Money
      */
@@ -35,6 +39,10 @@ class Order
      * @var string
      */
     private $paymentType;
+    /**
+     * @var null|int
+     */
+    private $instalments = null;
     /**
      * @var string
      */
@@ -97,6 +105,15 @@ class Order
         $this->orderReferenceId = $orderReferenceId;
         return $this;
     }
+    public function getOrderNumber() : string
+    {
+        return $this->orderNumber ?? $this->getOrderReferenceId();
+    }
+    public function setOrderNumber(string $orderNumber) : \TMS\Tamara\Model\Order\Order
+    {
+        $this->orderNumber = $orderNumber;
+        return $this;
+    }
     public function getTotalAmount() : \TMS\Tamara\Model\Money
     {
         return $this->totalAmount;
@@ -140,6 +157,15 @@ class Order
     public function setPaymentType(string $paymentType) : \TMS\Tamara\Model\Order\Order
     {
         $this->paymentType = $paymentType;
+        return $this;
+    }
+    public function getInstalments() : ?int
+    {
+        return $this->isInstalments() ? $this->instalments : null;
+    }
+    public function setInstalments(?int $instalments) : \TMS\Tamara\Model\Order\Order
+    {
+        $this->instalments = $instalments;
         return $this;
     }
     public function getLocale() : string
@@ -241,8 +267,16 @@ class Order
         $this->riskAssessment = $riskAssessment;
         return $this;
     }
+    public function isInstalments() : bool
+    {
+        return self::PAY_BY_INSTALMENTS === $this->getPaymentType();
+    }
     public function toArray() : array
     {
-        return [self::ORDER_REFERENCE_ID => $this->getOrderReferenceId(), self::TOTAL_AMOUNT => $this->getTotalAmount()->toArray(), self::DESCRIPTION => $this->getDescription(), self::COUNTRY_CODE => $this->getCountryCode(), self::PAYMENT_TYPE => $this->getPaymentType(), self::LOCALE => $this->getLocale(), self::ITEMS => $this->getItems()->toArray(), self::CONSUMER => $this->getConsumer()->toArray(), self::BILLING_ADDRESS => $this->getBillingAddress()->toArray(), self::SHIPPING_ADDRESS => $this->getShippingAddress()->toArray(), self::DISCOUNT => $this->getDiscount()->toArray(), self::TAX_AMOUNT => $this->getTaxAmount()->toArray(), self::SHIPPING_AMOUNT => $this->getShippingAmount()->toArray(), self::MERCHANT_URL => $this->getMerchantUrl()->toArray(), self::PLATFORM => $this->getPlatform(), self::RISK_ASSESSMENT => $this->getRiskAssessment()->getData()];
+        $result = [self::ORDER_REFERENCE_ID => $this->getOrderReferenceId(), self::ORDER_NUMBER => $this->getOrderNumber(), self::TOTAL_AMOUNT => $this->getTotalAmount()->toArray(), self::DESCRIPTION => $this->getDescription(), self::COUNTRY_CODE => $this->getCountryCode(), self::PAYMENT_TYPE => $this->getPaymentType(), self::LOCALE => $this->getLocale(), self::ITEMS => $this->getItems()->toArray(), self::CONSUMER => $this->getConsumer()->toArray(), self::BILLING_ADDRESS => $this->getBillingAddress()->toArray(), self::SHIPPING_ADDRESS => $this->getShippingAddress()->toArray(), self::DISCOUNT => $this->getDiscount()->toArray(), self::TAX_AMOUNT => $this->getTaxAmount()->toArray(), self::SHIPPING_AMOUNT => $this->getShippingAmount()->toArray(), self::MERCHANT_URL => $this->getMerchantUrl()->toArray(), self::PLATFORM => $this->getPlatform(), self::RISK_ASSESSMENT => $this->getRiskAssessment()->getData()];
+        if ($this->getInstalments() > 0 && $this->isInstalments()) {
+            $result[self::INSTALMENTS] = $this->getInstalments();
+        }
+        return $result;
     }
 }

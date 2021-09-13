@@ -1,0 +1,6 @@
+Version 1.7.0
+- News:
+    - Upgrade to fully features
+    - Upgrade tamara vendor to 1.3.3
+- Bugs fixed:
+    - Fixed all issues before September 11, 2021

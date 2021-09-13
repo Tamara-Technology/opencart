@@ -114,9 +114,9 @@
                 </div>
                 <div class="payment-type-content">
                     <?php foreach ($methods as $key => $method): ?>
-                        <div class="col-sm-12 col-md-6">
+                        <div class="col-sm-12">
                             <div class="form-check">
-                                <?php if ($method['is_available']): ?>
+                                <?php if ($method['is_in_limit']): ?>
                                     <?php if ($method['checked']): ?>
                                         <input type="radio" name="payment_type" class="form-check-input" id="<?php echo $method['name'] ?>" value="<?php echo $method['name'] ?>" checked>
                                     <?php else: ?>
@@ -133,15 +133,18 @@
                                 <br />
                                 <label for="<?php echo $method['name'] ?>" class="form-check-label"><b><?php echo $text_max_amount ?></b> <?php echo $method['max_limit'] ?> <?php echo $method['currency'] ?></label>
                                 <br />
-                                <?php if ($method['is_available']): ?>
-                                <label>
-                                    <?php if ($method['name'] == 'PAY_BY_INSTALMENTS'): ?>
-                                        <div class="tamara-product-widget" data-lang="<?php echo $language_code ?>" data-price="<?php echo $order_data['total'] ?>" data-currency="<?php echo $method['currency'] ?>" data-payment-type="installment" data-installment-minimum-amount="<?php echo $method['min_limit'] ?>" data-inject-template="false"><?php echo $text_more_details ?></div>
+                                <?php if ($method['is_in_limit']): ?>
+                                    <?php if ($method['name'] == 'pay_by_later'): ?>
+                                        <label for="<?php echo $method['name'] ?>">
+                                            <a href="javascript:void(0)" class="tamara-product-widget" data-payment-type="paylater" data-disable-paylater="false" data-disable-product-limit="true" data-disable-paylater="false" data-lang="<?php echo $language_code ?>" data-pay-later-max-amount="<?php echo $method['max_limit'] ?>" data-inject-template="false"><?php echo $text_more_details ?></a>
+                                        </label>
                                     <?php else: ?>
-                                        <div class="tamara-product-widget" data-lang="<?php echo $language_code ?>" data-inject-template="false"><?php echo $text_more_details ?></div>
-                                    <?php endif; ?>
-                                </label>
-                                <?php endif; ?>
+                                        <div id="tamara-installment-plan" style="margin-bottom: 10px;" class="tamara-installment-plan-widget" data-lang="<?php echo $language_code ?>" data-price="<?php echo $order_data.total_in_currency ?>" data-currency="<?php echo $method['currency'] ?>" data-installment-minimum-amount="<?php echo $method['min_limit'] ?>" data-installment-maximum-amount="<?php echo $method['max_limit'] ?>" data-number-of-installments="<?php echo $method['number_of_instalments'] ?>"
+                                        ></div>
+                                    <?php endif ?>
+                                <?php else: ?>
+                                    <p class="text-warning"><i class="fa fa-exclamation-triangle"></i> <?php echo $text_under_over_limit ?></p>
+                                <?php endif ?>
                             </div>
                         </div>
                     <?php endforeach; ?>
@@ -159,40 +162,12 @@
         </form>
     </div>
 
-    <?php if ($use_iframe_checkout): ?>
-        <script src="https://cdn.tamara.co/checkout/checkoutFrame.min.js?v=1.1"></script>
-        <script type="text/javascript">
-            function success() {
-                window.location = '<?php echo $merchant_urls["success"] ?>';
-            }
-
-            function failed() {
-                window.location = '<?php echo $merchant_urls["failure"] ?>';
-            }
-
-            function cancel() {
-                window.location = '<?php echo $merchant_urls["cancel"] ?>';
-            }
-
-            function init() {
-                TamaraFrame.addEventHandlers(TamaraFrame.Events.SUCCESS, success);
-                TamaraFrame.addEventHandlers(TamaraFrame.Events.FAILED, failed);
-                TamaraFrame.addEventHandlers(TamaraFrame.Events.CANCELED, cancel);
-            }
-
-            var tamaraCKOConfig = {
-                namespace: 'TamaraFrame',
-                init: init,
-            }
-        </script>
-    <?php endif; ?>
-
-    <script charset="utf-8" src="https://cdn.tamara.co/widget/tamara-widget.min.js"></script>
+    <script charset="utf-8" src="https://cdn.tamara.co/widget/tamara-widget.min.js?t={{ current_time }}"></script>
     <script type="text/javascript">
         window.checkTamaraWidgetCount = 0;
         var existTamaraWidget = setInterval(function() {
             if (window.TamaraWidget) {
-                window.TamaraWidget.init({ lang: '<?php echo $language_code ?>' });
+                window.TamaraWidget.init({ lang: '{{ language_code }}' });
                 window.TamaraWidget.render();
                 clearInterval(existTamaraWidget);
             }
@@ -203,18 +178,32 @@
         }, 300);
     </script>
 
-    <script charset="utf-8" src="https://cdn.tamara.co/widget/product-widget.min.js"></script>
+    <script charset="utf-8" src="https://cdn.tamara.co/widget/product-widget.min.js?t={{ current_time }}"></script>
+    <script charset="utf-8" src="https://cdn.tamara.co/widget/installment-plan.min.js?t={{ current_time }}"></script>
     <script type="text/javascript">
-        window.checkTamaraProductWidgetCount = 0;
+        var checkTamaraProductWidgetCount = 0;
         var existTamaraProductWidget = setInterval(function() {
             if (window.TamaraProductWidget) {
-                window.TamaraProductWidget.init({ lang: '<?php echo $language_code ?>' });
+                window.TamaraProductWidget.init({ lang: '{{ language_code }}' });
                 window.TamaraProductWidget.render();
                 clearInterval(existTamaraProductWidget);
             }
-            window.checkTamaraProductWidgetCount += 1;
-            if (window.checkTamaraProductWidgetCount > 15) {
+            checkTamaraProductWidgetCount += 1;
+            if (checkTamaraProductWidgetCount > 33) {
                 clearInterval(existTamaraProductWidget);
+            }
+        }, 300);
+
+        var countExistTamaraInstallmentsPlan = 0;
+        var existTamaraInstallmentsPlan = setInterval(function() {
+            if ($('.tamara-installment-plan-widget').length) {
+                if (window.TamaraInstallmentPlan) {
+                    window.TamaraInstallmentPlan.render();
+                    clearInterval(existTamaraInstallmentsPlan);
+                }
+            }
+            if (++countExistTamaraInstallmentsPlan > 33) {
+                clearInterval(existTamaraInstallmentsPlan);
             }
         }, 300);
     </script>
@@ -240,11 +229,7 @@
                 },
                 success: function(json) {
                     if (json['redirectUrl']) {
-                        <?php if ($use_iframe_checkout): ?>
-                            TamaraFrame.checkout(json.redirectUrl);
-                        <?php else: ?>
-                            window.location = json['redirectUrl'];
-                        <?php endif; ?>
+                        window.location = json['redirectUrl'];
                     }
                     if (json['error']) {
                         $('#error-area').css('display', 'block');
