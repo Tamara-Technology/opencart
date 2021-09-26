@@ -563,7 +563,7 @@
 
                                     <div class="form-group">
                                         <div class="col-sm-12">
-                                            <button type="button" id="update-payment-config">Pull payment types</button>
+                                            <button type="button" id="update-payment-config">Pull / flush payment types</button>
                                             <span id="update-payment-config-message" style="display: none;"></span>
                                         </div>
                                     </div>

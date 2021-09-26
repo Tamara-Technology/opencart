@@ -1,3 +1,6 @@
+Version 1.7.1
+- Bugs fixed:
+    - Fix an issue of check shipping country code for store hasn't shipping fields
 Version 1.7.0
 - News:
     - Upgrade to fully features

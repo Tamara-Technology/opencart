@@ -261,7 +261,23 @@ class ControllerExtensionPaymentTamarapay extends Controller
         $tamaraOrderId = $authorise->getOrderId();
 
         try {
-           $tamaraOrder = $this->model_extension_payment_tamarapay->getTamaraOrderByTamaraOrderId($tamaraOrderId);
+            $tamaraOrder = $this->model_extension_payment_tamarapay->getTamaraOrderByTamaraOrderId($tamaraOrderId, false, false);
+            if (!$tamaraOrder['is_active']) {
+
+                //deactivate others sessions
+                $this->db->query(sprintf("UPDATE `%s` SET `is_active` = '0' WHERE `order_id` = '%s'",
+                    DB_PREFIX . 'tamara_orders',
+                    $tamaraOrder['order_id']
+                ));
+
+                //active this session
+                $this->db->query(
+                    sprintf("UPDATE `%s` SET `is_active` = '1' WHERE `tamara_order_id` = '%s'",
+                        DB_PREFIX . 'tamara_orders',
+                        $tamaraOrderId
+                    )
+                );
+            }
         } catch (Exception $exception) {
             $this->log($exception->getMessage());
             $response = ['error' => $this->language->get('error_not_found_order')];
@@ -360,16 +376,16 @@ class ControllerExtensionPaymentTamarapay extends Controller
                 $finalPrice = $this->model_extension_payment_tamarapay->getValueInCurrency($this->tax->calculate($productInfo['special'], $productInfo['tax_class_id'], $this->config->get('config_tax')), $this->session->data['currency']);
             }
 
-            $availableMethod = $this->model_extension_payment_tamarapay->getPaymentMethodAvailableForPrice($finalPrice);
-            if (empty($availableMethod)) {
+            $bestMethodForCustomer = $this->model_extension_payment_tamarapay->getPaymentMethodAvailableForPrice($finalPrice);
+            if (empty($bestMethodForCustomer)) {
                 return $output;
             }
 
             $str = "";
-            if ($availableMethod['name'] == "pay_by_later") {
-                $str .= ('<div id="tamara-product-widget" class="tamara-product-widget" data-payment-type="paylater" data-disable-paylater="false" data-currency="' .$availableMethod['currency']. '" data-pay-later-minimum-amount="'.$availableMethod['min_limit'].'" data-pay-later-max-amount="'.$availableMethod['max_limit'].'" data-price="'.$finalPrice.'" data-lang="" data-disable-product-limit="true" data-inject-template="true"></div>');
+            if ($bestMethodForCustomer['name'] == "pay_by_later") {
+                $str .= ('<div id="tamara-product-widget" class="tamara-product-widget" data-payment-type="paylater" data-disable-paylater="false" data-currency="' .$bestMethodForCustomer['currency']. '" data-pay-later-minimum-amount="'.$bestMethodForCustomer['min_limit'].'" data-pay-later-max-amount="'.$bestMethodForCustomer['max_limit'].'" data-price="'.$finalPrice.'" data-lang="" data-disable-product-limit="true" data-inject-template="true"></div>');
             } else {
-                $str .= ('<div id="tamara-product-widget" class="tamara-product-widget" data-disable-paylater="false" data-lang="" data-price="'.$finalPrice.'" data-currency="' .$availableMethod['currency']. '" data-payment-type="installment" data-number-of-installments="'.$availableMethod['number_of_instalments'].'" data-installment-minimum-amount="' .$availableMethod['min_limit']. '" data-installment-max-amount="'.$availableMethod['max_limit'].'"></div>');
+                $str .= ('<div id="tamara-product-widget" class="tamara-product-widget" data-disable-paylater="false" data-lang="" data-price="'.$finalPrice.'" data-currency="' .$bestMethodForCustomer['currency']. '" data-payment-type="installment" data-number-of-installments="'.$bestMethodForCustomer['number_of_instalments'].'" data-installment-minimum-amount="' .$bestMethodForCustomer['min_limit']. '" data-installment-max-amount="'.$bestMethodForCustomer['max_limit'].'"></div>');
             }
             $str .= '<script charset="utf-8" src="https://cdn.tamara.co/widget/product-widget.min.js?t='.time().'"></script> <script type="text/javascript">let langCode="'.$this->language->get('code').'";window.langCode=langCode;window.checkTamaraProductWidgetCount=0;document.getElementById("tamara-product-widget").setAttribute("data-lang",langCode);var existTamaraProductWidget=setInterval(function(){if(window.TamaraProductWidget){window.TamaraProductWidget.init({lang:window.langCode});window.TamaraProductWidget.render();clearInterval(existTamaraProductWidget);} window.checkTamaraProductWidgetCount+=1;if(window.checkTamaraProductWidgetCount>33){clearInterval(existTamaraProductWidget);}},300);</script>';
             $str = ("\n\n" . "<div class='tamara-promo' style='margin-bottom: 10px;'>" . $str . "</div>" . "\n\n");
