@@ -24,7 +24,7 @@ class ModelExtensionPaymentTamarapay extends Model
     /**
      * Define version of extension
      */
-    public const VERSION = '1.7.3';
+    public const VERSION = '1.7.4';
 
     public const
         MAX_LIMIT = 'max_limit',
@@ -59,8 +59,8 @@ class ModelExtensionPaymentTamarapay extends Model
 
     public function getMethod($address, $total)
     {
-        if (isset($this->session->data['shipping_address'])) {
-            $address = $this->session->data['shipping_address'];
+        if (!empty($this->session->data['shipping_address']['iso_code_2'])) {
+            $address['iso_code_2'] = $this->session->data['shipping_address']['iso_code_2'];
         }
         $this->load->language('extension/payment/tamarapay');
         if (!$this->isTamaraAvailableForThisCustomer()) {
@@ -667,16 +667,20 @@ class ModelExtensionPaymentTamarapay extends Model
      * Get tamara order by tamara order id
      *
      * @param $tamaraOrderId
-     * @param $forceReload
-     *
+     * @param bool $forceReload
+     * @param bool $active
      * @return mixed
      */
-    public function getTamaraOrderByTamaraOrderId($tamaraOrderId, $forceReload = false)
+    public function getTamaraOrderByTamaraOrderId($tamaraOrderId, $forceReload = false, $active = true)
     {
         if ($forceReload || empty($this->tamaraOrders[$tamaraOrderId])) {
-            $query = sprintf("SELECT * FROM `%s` WHERE `tamara_order_id` = '%s' AND `is_active` = '1' LIMIT 1",
+            $query = sprintf("SELECT * FROM `%s` WHERE `tamara_order_id` = '%s'",
                 DB_PREFIX . 'tamara_orders',
                 $tamaraOrderId);
+            if ($active) {
+                $query .= " AND `is_active` = '1'";
+            }
+            $query .= " LIMIT 1";
             $tamaraOrder = $this->db->query($query)->row;
             if (empty($tamaraOrder)) {
                 throw new InvalidArgumentException("Order requested does not exist");
@@ -687,25 +691,6 @@ class ModelExtensionPaymentTamarapay extends Model
         }
 
         return $this->tamaraOrders[$tamaraOrderId];
-    }
-
-    /**
-     * Get available methods for current session order
-     * @return array
-     */
-    public function getAvailableMethodForCurrentOrder()
-    {
-        $result = [];
-        $methods = $this->getCurrentAvailableMethods();
-        $orderTotal = $this->getOrderTotalFromSession();
-        foreach ($methods as $method) {
-            if (!$this->isInLimitAmount($orderTotal, $method)) {
-                continue;
-            }
-            $result[] = $method;
-        }
-
-        return $result;
     }
 
     private function getOrderTotalFromSession()
@@ -762,6 +747,12 @@ class ModelExtensionPaymentTamarapay extends Model
         return $result;
     }
 
+    /**
+     * Add in limit and checked flag to methods, checked method is the method that we want customer uses
+     * @param $methods
+     * @param $price
+     * @return array
+     */
     public function markInLimit($methods, $price) {
         $result = [];
         $isExistChecked = false;
@@ -771,8 +762,12 @@ class ModelExtensionPaymentTamarapay extends Model
             $method['checked'] = false;
             $method['is_in_limit'] = $this->isInLimitAmount($price, $method);
             if ($method['is_in_limit']) {
-                $isExistMethodInLimit = true;
-                $firstMethodNameInLimit = $method['name'];
+                if (!$isExistMethodInLimit) {
+                    $isExistMethodInLimit = true;
+                    $firstMethodNameInLimit = $method['name'];
+                }
+
+                //default is first installment method
                 if ($this->isInstallmentsPayment($method['name'])) {
                     if (!$isExistChecked) {
                         $method['checked'] = true;
@@ -788,7 +783,7 @@ class ModelExtensionPaymentTamarapay extends Model
         return $result;
     }
 
-    public function getPaymentMethodAvailableForPrice($price) {
+    public function getBestMethodForCustomer($price) {
         $methods = $this->filterUnderOver($this->markInLimit($this->getCurrentAvailableMethods(), $price), $price);
         if (empty($methods)) {
             return [];
