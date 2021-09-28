@@ -376,7 +376,7 @@ class ControllerExtensionPaymentTamarapay extends Controller
                 $finalPrice = $this->model_extension_payment_tamarapay->getValueInCurrency($this->tax->calculate($productInfo['special'], $productInfo['tax_class_id'], $this->config->get('config_tax')), $this->session->data['currency']);
             }
 
-            $bestMethodForCustomer = $this->model_extension_payment_tamarapay->getPaymentMethodAvailableForPrice($finalPrice);
+            $bestMethodForCustomer = $this->model_extension_payment_tamarapay->getBestMethodForCustomer($finalPrice);
             if (empty($bestMethodForCustomer)) {
                 return $output;
             }
