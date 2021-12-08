@@ -1,3 +1,7 @@
+Version 1.7.5
+- News:
+    - Improve code to display product widget
+    - Doesn't assign status when create order
 Version 1.7.4
 - Bugs fixed:
     - Fix an issue of check shipping country code for store hasn't shipping fields

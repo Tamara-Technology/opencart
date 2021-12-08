@@ -222,7 +222,6 @@ class ControllerExtensionPaymentTamarapay extends Controller
 
     private function processRedirect($type, $orderId, $orderStatusId, $orderMessage, $messageShowOnFrontend) {
         $this->load->model('extension/payment/tamarapay');
-        $this->model_extension_payment_tamarapay->addOrderComment($orderId, $orderStatusId, $orderMessage, 0);
         $redirectUrl = $this->config->get('payment_tamarapay_checkout_' . $type . '_url');
         if (!empty($redirectUrl)) {
             return $this->response->redirect($redirectUrl);
@@ -334,6 +333,10 @@ class ControllerExtensionPaymentTamarapay extends Controller
     }
 
     public function addPromoWidgetForProduct($route, $data, $output) {
+        preg_match('/<div .*id="product"/', $output, $matches, PREG_OFFSET_CAPTURE);
+        if (empty($matches[0][1])) {
+            return $output;
+        }
         if (!$this->config->get("payment_tamarapay_status")) {
             return $output;
         }
@@ -374,9 +377,7 @@ class ControllerExtensionPaymentTamarapay extends Controller
             }
             $str .= '<script charset="utf-8" src="https://cdn.tamara.co/widget/product-widget.min.js?t='.time().'"></script> <script type="text/javascript">let langCode="'.$this->language->get('code').'";window.langCode=langCode;window.checkTamaraProductWidgetCount=0;document.getElementById("tamara-product-widget").setAttribute("data-lang",langCode);var existTamaraProductWidget=setInterval(function(){if(window.TamaraProductWidget){window.TamaraProductWidget.init({lang:window.langCode});window.TamaraProductWidget.render();clearInterval(existTamaraProductWidget);} window.checkTamaraProductWidgetCount+=1;if(window.checkTamaraProductWidgetCount>33){clearInterval(existTamaraProductWidget);}},300);</script>';
             $str = ("\n\n" . "<div class='tamara-promo' style='margin-bottom: 10px;'>" . $str . "</div>" . "\n\n");
-            $positionToInsert = strpos($output, '<div id="product"');
-
-            $output = substr_replace($output, $str, $positionToInsert, 0);
+            $output = substr_replace($output, $str, $matches[0][1], 0);
             return $output;
         }
     }

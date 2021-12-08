@@ -24,7 +24,7 @@ class ModelExtensionPaymentTamarapay extends Model
     /**
      * Define version of extension
      */
-    public const VERSION = '1.7.4';
+    public const VERSION = '1.7.5';
 
     public const
         MAX_LIMIT = 'max_limit',
@@ -191,8 +191,6 @@ class ModelExtensionPaymentTamarapay extends Model
 
             $this->addTamaraOrder($saveData);
             $this->load->model('checkout/order');
-            $comment = ("Tamara - Checkout session was created, session id: " . $tamaraOrderId . ", order reference id: " . $orderReferenceId);
-            $this->model_checkout_order->addOrderHistory($saveData['order_id'], $this->config->get("payment_tamarapay_order_status_create_id"), $comment, false);
 
             $this->log([
                 'msg' => 'Created tamara checkout',
@@ -1207,6 +1205,12 @@ class ModelExtensionPaymentTamarapay extends Model
             return;
         }
         $orderId = $tamaraOrder['order_id'];
+
+        //change status if the order has a status (the order was approved)
+        $tamaraOrderData = $this->getTamaraOrderData($webhookMessage->getOrderId());
+        if (empty($tamaraOrderData['order_status_id'])) {
+            return;
+        }
         if ($eventType == "order_declined") {
             $this->addOrderComment($orderId, $this->config->get("payment_tamarapay_order_status_failure_id"), $comment, 0);
         } else {
