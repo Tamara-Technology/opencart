@@ -1,3 +1,6 @@
+Version 1.7.6
+- Bug fixed:
+    - Fixed an issue while capture order if currency rates were changed
 Version 1.7.5
 - News:
     - Improve code to display product widget
