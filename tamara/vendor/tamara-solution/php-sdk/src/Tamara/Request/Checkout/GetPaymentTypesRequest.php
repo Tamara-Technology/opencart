@@ -1,6 +1,7 @@
 <?php
 
-declare (strict_types=1);
+declare(strict_types=1);
+
 namespace TMS\Tamara\Request\Checkout;
 
 class GetPaymentTypesRequest
@@ -9,12 +10,25 @@ class GetPaymentTypesRequest
      * @var string
      */
     private $countryCode;
-    public function __construct(string $countryCode)
+
+    /**
+     * @var string
+     */
+    private $currency;
+
+    public function __construct(string $countryCode, string $currency = '')
     {
-        $this->countryCode = $countryCode;
+        $this->countryCode = trim($countryCode);
+        $this->currency = trim($currency);
     }
-    public function getCountryCode() : string
+
+    public function getCountryCode(): string
     {
         return $this->countryCode;
+    }
+
+    public function getCurrency(): string
+    {
+        return $this->currency;
     }
 }

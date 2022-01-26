@@ -24,7 +24,7 @@ class ModelExtensionPaymentTamarapay extends Model
     /**
      * Define version of extension
      */
-    public const VERSION = '1.7.6';
+    public const VERSION = '1.7.8';
 
     public const
         MAX_LIMIT = 'max_limit',
@@ -49,6 +49,16 @@ class ModelExtensionPaymentTamarapay extends Model
     ];
     private const SUPPORTED_COUNTRIES = [
         'SA', 'AE', 'KW', 'BH', 'QA'
+    ];
+
+    const TAMARA_PAYMENT_CODE = 'tamarapay';
+
+    const CURRENCIES_COUNTRIES_ALLOWED = [
+        'SAR' => 'SA',
+        'AED' => 'AE',
+        'KWD' => 'KW',
+        'BHD' => 'BH',
+        'QAR' => 'QA'
     ];
 
     private $orders = [];
@@ -83,8 +93,21 @@ class ModelExtensionPaymentTamarapay extends Model
     {
         //validate country
         $addressCountryCode = strtoupper($address['iso_code_2'] ?? "");
-        if (!in_array($addressCountryCode, self::SUPPORTED_COUNTRIES) || $addressCountryCode != $this->getStoreCountryCode()) {
+        if (empty($addressCountryCode)) {
+            $addressCountryCode = $this->getStoreCountryCode();
+        }
+        if (!in_array($addressCountryCode, self::SUPPORTED_COUNTRIES)) {
             return false;
+        }
+        $supportedCountries = $this->getSupportedCountriesByCurrency($this->getCurrencyCodeFromSession());
+        if (!empty($supportedCountries)) {
+            $countryPairWithCurrency = array_values($supportedCountries)[0];
+            if ($addressCountryCode != $countryPairWithCurrency) {
+                return false;
+            }
+            if (empty($this->getPaymentTypes($countryPairWithCurrency, $this->getCurrencyCodeFromSession()))) {
+                return false;
+            }
         }
 
         //validate geo zone
@@ -237,7 +260,7 @@ class ModelExtensionPaymentTamarapay extends Model
         return in_array($this->getCurrencyCodeFromSession(), self::SUPPORTED_CURRENCIES, true);
     }
 
-    private function getCurrencyCodeFromSession()
+    public function getCurrencyCodeFromSession()
     {
         $currencyCode = '';
         if (!empty($this->session->data['currency'])) {
@@ -740,7 +763,7 @@ class ModelExtensionPaymentTamarapay extends Model
      */
     public function getPaymentMethodsForCheckoutPage()
     {
-        $methods = $this->markInLimit($this->getCurrentAvailableMethods(), $this->getOrderTotalFromSession());
+        $methods = $this->markInLimit($this->getCurrentAvailableMethods($this->getCurrencyCodeFromSession()), $this->getOrderTotalFromSession());
         if ($this->config->get("payment_tamarapay_enable_under_over_warning")) {
             return $methods;
         } else {
@@ -748,14 +771,18 @@ class ModelExtensionPaymentTamarapay extends Model
         }
     }
 
-    public function getCurrentAvailableMethods() {
+    public function getCurrentAvailableMethods($currencyCode) {
         if (!$this->isTamaraEnabled()) {
             return [];
         }
         if (!$this->isTamaraAvailableForThisCustomer()) {
             return [];
         }
-        return $this->getPaymentTypes();
+        $supportedCountries = $this->getSupportedCountriesByCurrency($currencyCode);
+        if (empty($supportedCountries)) {
+            return [];
+        }
+        return $this->getPaymentTypes(array_values($supportedCountries)[0], $currencyCode);
     }
 
     public function isTamaraEnabled() {
@@ -809,8 +836,13 @@ class ModelExtensionPaymentTamarapay extends Model
         return $result;
     }
 
-    public function getBestMethodForCustomer($price) {
-        $methods = $this->filterUnderOver($this->markInLimit($this->getCurrentAvailableMethods(), $price), $price);
+    /**
+     * @param $price
+     * @param $currencyCode
+     * @return array|mixed|null
+     */
+    public function getBestMethodForCustomer($price, $currencyCode) {
+        $methods = $this->filterUnderOver($this->markInLimit($this->getCurrentAvailableMethods($currencyCode), $price), $price);
         if (empty($methods)) {
             return [];
         }
@@ -1238,6 +1270,9 @@ class ModelExtensionPaymentTamarapay extends Model
             return;
         }
         $orderId = $tamaraOrder['order_id'];
+        if (!$this->isPayWithTamara($orderId)) {
+            return;
+        }
 
         //change status if the order has a status (the order was approved)
         $tamaraOrderData = $this->getTamaraOrderData($webhookMessage->getOrderId());
@@ -1262,28 +1297,29 @@ class ModelExtensionPaymentTamarapay extends Model
 
     /**
      * Get Tamara payment types
+     * @param $countryCode
+     * @param string $currencyCode
      * @return array
-     * @throws Exception
      */
-    public function getPaymentTypes()
+    public function getPaymentTypes($countryCode, $currencyCode = '')
     {
         try {
-            $cachedPaymentTypes = $this->getCachedPaymentTypes();
-            if (empty($cachedPaymentTypes)) {
+            $cachedPaymentTypes = $this->getCachedPaymentTypes($countryCode, $currencyCode);
+            if ($cachedPaymentTypes === false) {
 
                 /**
                  * @var $response \TMS\Tamara\Response\Checkout\GetPaymentTypesResponse
                  */
-                $response = $this->getPaymentTypesOfClient($this->getTamaraClient());
+                $response = $this->getPaymentTypesOfClient($this->getTamaraClient(), $countryCode, $currencyCode);
 
                 if (!$response->isSuccess()) {
                     throw new Exception($response->getMessage());
                 }
 
-                $cachedPaymentTypes['payment_types'] = $this->parsePaymentTypesFromResponse($response);
-                $this->cachePaymentTypes($cachedPaymentTypes);
+                $cachedPaymentTypes = $this->parsePaymentTypesFromResponse($response);
+                $this->cachePaymentTypes($cachedPaymentTypes, $countryCode, $currencyCode);
             }
-            $paymentTypes = $this->filterEnablePaymentMethods($cachedPaymentTypes['payment_types']);
+            $paymentTypes = $this->filterEnablePaymentMethods($cachedPaymentTypes);
 
             //add payment title
             foreach ($paymentTypes as &$paymentType) {
@@ -1387,34 +1423,44 @@ class ModelExtensionPaymentTamarapay extends Model
 
     /**
      * @param $paymentTypes array
+     * @param $countryCode
+     * @param $currencyCode
      */
-    private function cachePaymentTypes($paymentTypes) {
-        $paymentTypes['cached_time'] = time();
-        $this->savePaymentTypesToDb(json_encode($paymentTypes));
+    private function cachePaymentTypes($paymentTypes, $countryCode, $currencyCode) {
+        $data = $this->getPaymentTypesFromDb();
+        $data[$this->getCacheKey($countryCode, $currencyCode)] = ['cached_time' => time(), 'payment_types' => $paymentTypes,
+            'country' => $countryCode, 'currency' => $currencyCode];
+        $this->savePaymentTypesToDb(json_encode($data));
     }
 
     /**
-     * @return array
+     * @param $countryCode
+     * @param string $currencyCode
+     * @return array|bool
      */
-    private function getCachedPaymentTypes() {
+    private function getCachedPaymentTypes($countryCode, $currencyCode = '') {
         $dbPaymentTypes = $this->getPaymentTypesFromDb();
-        if (isset($dbPaymentTypes['cached_time'])) {
-            if ((time() - intval($dbPaymentTypes['cached_time'])) > self::PAYMENT_TYPES_CACHED_TIME) {
-                return [];
-            } else {
-                return $dbPaymentTypes;
-            }
+        $cacheKey = $this->getCacheKey($countryCode, $currencyCode);
+        if (!isset($dbPaymentTypes[$cacheKey])) {
+            return false;
         }
-        return [];
+        if (empty($dbPaymentTypes[$cacheKey]['cached_time'])) {
+            return false;
+        }
+        if ((time() - intval($dbPaymentTypes[$cacheKey]['cached_time'])) > self::PAYMENT_TYPES_CACHED_TIME) {
+            return false;
+        }
+        return $dbPaymentTypes[$cacheKey]['payment_types'];
     }
 
     /**
-     * @param \TMS\Tamara\Client $client
+     * @param $client
+     * @param $countryCode
+     * @param string $currencyCode
      * @return mixed
-     * @throws \TMS\Tamara\Exception\RequestDispatcherException
      */
-    public function getPaymentTypesOfClient($client) {
-        return $client->getPaymentTypes($this->getStoreCountryCode());
+    public function getPaymentTypesOfClient($client, $countryCode, $currencyCode = '') {
+        return $client->getPaymentTypes($countryCode, $currencyCode);
     }
 
 
@@ -1526,5 +1572,41 @@ class ModelExtensionPaymentTamarapay extends Model
             $sql = "UPDATE `".DB_PREFIX."tamara_orders` SET `{$fieldToUpdate}` = '{$value}' WHERE `tamara_id` IN (".implode(",", $tamaraIds).")";
             $this->db->query($sql);
         }
+    }
+
+    /**
+     * @param $orderId
+     * @return bool
+     */
+    public function isPayWithTamara($orderId) {
+        $order = $this->getOrder($orderId);
+        if (empty($order)) {
+            return false;
+        }
+        if ($order['payment_code'] == self::TAMARA_PAYMENT_CODE) {
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * @param $currencyCode
+     * @return array
+     */
+    public function getSupportedCountriesByCurrency($currencyCode) {
+        if (!isset(self::CURRENCIES_COUNTRIES_ALLOWED[$currencyCode])) {
+            return [];
+        } else {
+            return explode(",", self::CURRENCIES_COUNTRIES_ALLOWED[$currencyCode]);
+        }
+    }
+
+    /**
+     * @param $countryCode
+     * @param $currencyCode
+     * @return string
+     */
+    private function getCacheKey($countryCode, $currencyCode) {
+        return $countryCode . '-' . $currencyCode;
     }
 }

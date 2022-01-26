@@ -49,7 +49,7 @@ $_['error_cannot_authorise']            = 'The order cannot be authorised right 
 $_['error_cannot_process_authorise_notification'] = 'Cannot process authorise notification';
 $_['error_cannot_process_webhook'] = 'Cannot process webhook';
 $_['error_webhook_event_type_not_allowed'] = 'Webhook event type is not allowed';
-$_['error_no_method_available']         = 'All methods unavailable right now, make sure order total is not over / under limit amount';
+$_['error_no_method_available']         = 'All methods unavailable right now';
 
 $_['consumer_invalid_phone_number']     = 'Your phone number is invalid, please check again.';
 $_['total_amount_invalid_limit']        = 'The total amount is reached the min/max limit.';

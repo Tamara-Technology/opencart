@@ -778,9 +778,9 @@
             },
             success: function(rs) {
                 if (rs.success == true) {
-                    $('#update-payment-config-message').text("Retrieve payment types successfully").removeClass("text-danger").addClass("text-success").show();
+                    $('#update-payment-config-message').text("Payment types flushed").removeClass("text-danger").addClass("text-success").show();
                 } else {
-                    let msg = "Retrieve payment types failed";
+                    let msg = "Cannot flush payment types";
                     if (rs.error) {
                         msg += (", error: " + rs.error);
                     } else {

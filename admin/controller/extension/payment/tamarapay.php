@@ -454,7 +454,15 @@ class ControllerExtensionPaymentTamarapay extends Controller {
             $token = $this->request->post['payment_tamarapay_token'];
             if ($this->isChangedConfig('payment_tamarapay_api_environment') || $this->isChangedConfig('payment_tamarapay_token')) {
                 try {
-                    $this->model_extension_payment_tamarapay->getPaymentTypes($url, $token, true);
+                    $client = $this->model_extension_payment_tamarapay->createClient(['url' => $url, 'token' => $token]);
+
+                    /**
+                     * @var $response \TMS\Tamara\Response\Checkout\GetPaymentTypesResponse
+                     */
+                    $response = $this->model_extension_payment_tamarapay->getPaymentTypesOfClient($client);
+                    if ($response->getStatusCode() == 401) {
+                        throw new \Exception("Merchant token is invalid");
+                    }
                 } catch (\Exception $exception) {
                     $this->error['token'] = $this->language->get('error_token_invalid');
                 }
@@ -658,12 +666,22 @@ class ControllerExtensionPaymentTamarapay extends Controller {
             $this->load->model('extension/payment/tamarapay');
             $this->model_extension_payment_tamarapay->removePaymentTypesCache();
             try {
-                $paymentTypes = $this->model_extension_payment_tamarapay->getPaymentTypes($url, $token, true);
+                $client = $this->model_extension_payment_tamarapay->createClient(['url' => $url, 'token' => $token]);
+
+                /**
+                 * @var $response \TMS\Tamara\Response\Checkout\GetPaymentTypesResponse
+                 */
+                $response = $this->model_extension_payment_tamarapay->getPaymentTypesOfClient($client);
+                if ($response->getStatusCode() == 401) {
+                    throw new \Exception("Merchant token is invalid");
+                }
+                if (!$response->isSuccess()) {
+                    throw new \Exception($response->getMessage());
+                }
             } catch (\Exception $exception) {
                 $result['error'] = $exception->getMessage();
             }
-            if (!empty($paymentTypes)) {
-                $result['payment_types'] = $paymentTypes;
+            if (!isset($result['error'])) {
                 $result['success'] = true;
             }
         }

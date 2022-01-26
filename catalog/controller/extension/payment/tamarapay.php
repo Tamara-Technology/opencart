@@ -93,6 +93,9 @@ class ControllerExtensionPaymentTamarapay extends Controller
         }
 
         $data['order_id'] = $this->session->data['order_id'];
+        if (!$this->model_extension_payment_tamarapay->isPayWithTamara($data['order_id'])) {
+            return $this->redirectToCartPage();
+        }
         $tamaraOrder = $this->model_extension_payment_tamarapay->getTamaraOrder($data['order_id']);
         if (!$tamaraOrder['is_authorised']) {
 
@@ -183,6 +186,9 @@ class ControllerExtensionPaymentTamarapay extends Controller
 
         if (isset($this->session->data['order_id'])) {
             $orderId = $this->session->data['order_id'];
+            if (!$this->model_extension_payment_tamarapay->isPayWithTamara($orderId)) {
+                return $this->redirectToCartPage();
+            }
             $failureStatusId = $this->config->get('payment_tamarapay_order_status_failure_id');
             $order = $this->model_extension_payment_tamarapay->getOrder($orderId);
             if ($order['order_status_id'] == $failureStatusId) {
@@ -206,6 +212,9 @@ class ControllerExtensionPaymentTamarapay extends Controller
         $orderShowOnFront = $this->language->get('text_order_canceled');
         if (isset($this->session->data['order_id'])) {
             $orderId = $this->session->data['order_id'];
+            if (!$this->model_extension_payment_tamarapay->isPayWithTamara($orderId)) {
+                return $this->redirectToCartPage();
+            }
             $cancelStatusId = $this->config->get('payment_tamarapay_order_status_canceled_id');
             $order = $this->model_extension_payment_tamarapay->getOrder($orderId);
             if ($order['order_status_id'] == $cancelStatusId) {
@@ -305,6 +314,9 @@ class ControllerExtensionPaymentTamarapay extends Controller
             try {
                 $this->load->model('extension/payment/tamarapay');
                 $orderId = $args[0];
+                if (!$this->model_extension_payment_tamarapay->isPayWithTamara($orderId)) {
+                    return;
+                }
                 $statusId = $args[1];
                 $this->log([
                     "event" => "handleOrderStatusChange",
@@ -364,7 +376,7 @@ class ControllerExtensionPaymentTamarapay extends Controller
                 $finalPrice = $this->model_extension_payment_tamarapay->getValueInCurrency($this->tax->calculate($productInfo['special'], $productInfo['tax_class_id'], $this->config->get('config_tax')), $this->session->data['currency']);
             }
 
-            $bestMethodForCustomer = $this->model_extension_payment_tamarapay->getBestMethodForCustomer($finalPrice);
+            $bestMethodForCustomer = $this->model_extension_payment_tamarapay->getBestMethodForCustomer($finalPrice, $this->model_extension_payment_tamarapay->getCurrencyCodeFromSession());
             if (empty($bestMethodForCustomer)) {
                 return $output;
             }

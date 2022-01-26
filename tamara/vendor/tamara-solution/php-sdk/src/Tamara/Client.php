@@ -63,14 +63,15 @@ class Client
     }
     /**
      * @param string $countryCode
+     * @param string $currency
      *
      * @return GetPaymentTypesResponse
      *
      * @throws Exception\RequestDispatcherException
      */
-    public function getPaymentTypes(string $countryCode) : \TMS\Tamara\Response\Checkout\GetPaymentTypesResponse
+    public function getPaymentTypes(string $countryCode, string $currency = '') : \TMS\Tamara\Response\Checkout\GetPaymentTypesResponse
     {
-        return $this->requestDispatcher->dispatch(new \TMS\Tamara\Request\Checkout\GetPaymentTypesRequest($countryCode));
+        return $this->requestDispatcher->dispatch(new \TMS\Tamara\Request\Checkout\GetPaymentTypesRequest($countryCode, $currency));
     }
     /**
      * @param CreateCheckoutRequest $createCheckoutRequest

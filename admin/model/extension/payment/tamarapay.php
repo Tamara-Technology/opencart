@@ -9,7 +9,7 @@ class ModelExtensionPaymentTamarapay extends Model
     /**
      * Define version of extension
      */
-    public const VERSION = '1.7.6';
+    public const VERSION = '1.7.8';
 
     /**
      * Define schema version
@@ -232,43 +232,10 @@ class ModelExtensionPaymentTamarapay extends Model
     }
 
     /**
-     * Get Tamara payment types
-     * @param $url
-     * @param $token
-     * @param bool $forceReload force reload without cache
-     * @return array
-     * @throws Exception
+     * @param $client \TMS\Tamara\Client
+     * @return mixed
+     * @throws \TMS\Tamara\Exception\RequestDispatcherException
      */
-    public function getPaymentTypes($url, $token, $forceReload = false)
-    {
-        try {
-
-            if ($forceReload || !$this->paymentTypes) {
-
-                $client = $this->createClient(['url' => $url, 'token' => $token]);
-                $paymentTypes = [];
-
-                $response = $this->getPaymentTypesOfClient($client);
-
-                if (!$response->isSuccess()) {
-                    throw new Exception($response->getMessage());
-                }
-
-                foreach ($response->getPaymentTypes() as $paymentType) {
-                    $paymentTypes[] = $paymentType->toArray();
-                }
-
-                $this->paymentTypes = $paymentTypes;
-            }
-
-            return $this->paymentTypes;
-        } catch (Exception $exception) {
-            $this->log("Error when get payment types: " . $exception->getMessage());
-            throw $exception;
-        }
-        return [];
-    }
-
     public function getPaymentTypesOfClient($client) {
         return $client->getPaymentTypes($this->getStoreCountryCode());
     }

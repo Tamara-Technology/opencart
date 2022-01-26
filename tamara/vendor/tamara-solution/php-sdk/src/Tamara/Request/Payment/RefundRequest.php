@@ -26,7 +26,7 @@ class RefundRequest
     }
     public function addRefund(\TMS\Tamara\Model\Payment\Refund $refund) : void
     {
-        $this->refunds[$refund->getCaptureId()] = $refund;
+        $this->refunds[] = $refund;
     }
     /**
      * @return Refund[]
