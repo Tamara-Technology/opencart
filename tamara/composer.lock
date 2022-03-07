@@ -1667,16 +1667,16 @@
         },
         {
             "name": "tamara-solution/php-sdk",
-            "version": "1.3.3",
+            "version": "1.3.6",
             "source": {
                 "type": "git",
                 "url": "https://github.com/tamara-solution/php-sdk.git",
-                "reference": "45b80cb55ad305c9c347c1bdd0589b4a4603f4c2"
+                "reference": "d587b0d6fbd320f3df0bd009808a5e61bbb4635a"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/tamara-solution/php-sdk/zipball/45b80cb55ad305c9c347c1bdd0589b4a4603f4c2",
-                "reference": "45b80cb55ad305c9c347c1bdd0589b4a4603f4c2",
+                "url": "https://api.github.com/repos/tamara-solution/php-sdk/zipball/d587b0d6fbd320f3df0bd009808a5e61bbb4635a",
+                "reference": "d587b0d6fbd320f3df0bd009808a5e61bbb4635a",
                 "shasum": ""
             },
             "require": {
@@ -1719,7 +1719,7 @@
                 "tamara",
                 "tamara php sdk"
             ],
-            "time": "2021-09-09T17:07:19+00:00"
+            "time": "2021-11-25T07:58:25+00:00"
         }
     ],
     "packages-dev": [],

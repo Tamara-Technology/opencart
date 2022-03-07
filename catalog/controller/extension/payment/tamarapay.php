@@ -99,6 +99,9 @@ class ControllerExtensionPaymentTamarapay extends Controller
         }
 
         $data['order_id'] = $this->session->data['order_id'];
+        if (!$this->model_extension_payment_tamarapay->isPayWithTamara($data['order_id'])) {
+            return $this->redirectToCartPage();
+        }
         $tamaraOrder = $this->model_extension_payment_tamarapay->getTamaraOrder($data['order_id']);
         if (!$tamaraOrder['is_authorised']) {
 
@@ -111,7 +114,6 @@ class ControllerExtensionPaymentTamarapay extends Controller
         }
 
         if (!empty($successUrl = $this->config->get('tamarapay_checkout_success_url'))) {
-            $this->clearCheckoutSession();
             return $this->response->redirect($successUrl);
         }
 
@@ -195,6 +197,9 @@ class ControllerExtensionPaymentTamarapay extends Controller
 
         if (isset($this->session->data['order_id'])) {
             $orderId = $this->session->data['order_id'];
+            if (!$this->model_extension_payment_tamarapay->isPayWithTamara($orderId)) {
+                return $this->redirectToCartPage();
+            }
             $failureStatusId = $this->config->get('tamarapay_order_status_failure_id');
             $order = $this->model_extension_payment_tamarapay->getOrder($orderId);
             if ($order['order_status_id'] == $failureStatusId) {
@@ -218,6 +223,9 @@ class ControllerExtensionPaymentTamarapay extends Controller
         $orderShowOnFront = $this->language->get('text_order_canceled');
         if (isset($this->session->data['order_id'])) {
             $orderId = $this->session->data['order_id'];
+            if (!$this->model_extension_payment_tamarapay->isPayWithTamara($orderId)) {
+                return $this->redirectToCartPage();
+            }
             $cancelStatusId = $this->config->get('tamarapay_order_status_canceled_id');
             $order = $this->model_extension_payment_tamarapay->getOrder($orderId);
             if ($order['order_status_id'] == $cancelStatusId) {
@@ -228,12 +236,12 @@ class ControllerExtensionPaymentTamarapay extends Controller
             }
             return $this->processRedirect('cancel', $orderId, $cancelStatusId, $orderMessage, $orderShowOnFront);
         }
+
         $this->redirectToCartPage($orderShowOnFront, 'error');
     }
 
     private function processRedirect($type, $orderId, $orderStatusId, $orderMessage, $messageShowOnFrontend) {
         $this->load->model('extension/payment/tamarapay');
-        $this->model_extension_payment_tamarapay->addOrderComment($orderId, $orderStatusId, $orderMessage, 0);
         $redirectUrl = $this->config->get('tamarapay_checkout_' . $type . '_url');
         if (!empty($redirectUrl)) {
             return $this->response->redirect($redirectUrl);
@@ -306,12 +314,8 @@ class ControllerExtensionPaymentTamarapay extends Controller
 
     public function log($data, $class_step = 6, $function_step = 6)
     {
-        if ($this->config->get('tamarapay_debug')) {
-            $backtrace = debug_backtrace();
-            $log = new Log('tamarapay.log');
-            $log->write('(' . $backtrace[$class_step]['class'] . '::' . $backtrace[$function_step]['function'] . ') - ' . print_r($data,
-                    true));
-        }
+        $this->load->model('extension/payment/tamarapay');
+        $this->model_extension_payment_tamarapay->log($data, $class_step, $function_step);
     }
 
     public function handleOrderStatusChange($route, $args, $output)
@@ -321,6 +325,9 @@ class ControllerExtensionPaymentTamarapay extends Controller
             try {
                 $this->load->model('extension/payment/tamarapay');
                 $orderId = $args[0];
+                if (!$this->model_extension_payment_tamarapay->isPayWithTamara($orderId)) {
+                    return;
+                }
                 $statusId = $args[1];
                 $this->log([
                     "event" => "handleOrderStatusChange",
@@ -349,6 +356,10 @@ class ControllerExtensionPaymentTamarapay extends Controller
     }
 
     public function addPromoWidgetForProduct($route, $data, $output) {
+        preg_match('/<div .*id="product"/', $output, $matches, PREG_OFFSET_CAPTURE);
+        if (empty($matches[0][1])) {
+            return $output;
+        }
         if (!$this->config->get("tamarapay_status")) {
             return $output;
         }
@@ -376,7 +387,7 @@ class ControllerExtensionPaymentTamarapay extends Controller
                 $finalPrice = $this->model_extension_payment_tamarapay->getValueInCurrency($this->tax->calculate($productInfo['special'], $productInfo['tax_class_id'], $this->config->get('config_tax')), $this->session->data['currency']);
             }
 
-            $bestMethodForCustomer = $this->model_extension_payment_tamarapay->getBestMethodForCustomer($finalPrice);
+            $bestMethodForCustomer = $this->model_extension_payment_tamarapay->getBestMethodForCustomer($finalPrice, $this->model_extension_payment_tamarapay->getCurrencyCodeFromSession());
             if (empty($bestMethodForCustomer)) {
                 return $output;
             }
@@ -389,9 +400,7 @@ class ControllerExtensionPaymentTamarapay extends Controller
             }
             $str .= '<script charset="utf-8" src="https://cdn.tamara.co/widget/product-widget.min.js?t='.time().'"></script> <script type="text/javascript">let langCode="'.$this->language->get('code').'";window.langCode=langCode;window.checkTamaraProductWidgetCount=0;document.getElementById("tamara-product-widget").setAttribute("data-lang",langCode);var existTamaraProductWidget=setInterval(function(){if(window.TamaraProductWidget){window.TamaraProductWidget.init({lang:window.langCode});window.TamaraProductWidget.render();clearInterval(existTamaraProductWidget);} window.checkTamaraProductWidgetCount+=1;if(window.checkTamaraProductWidgetCount>33){clearInterval(existTamaraProductWidget);}},300);</script>';
             $str = ("\n\n" . "<div class='tamara-promo' style='margin-bottom: 10px;'>" . $str . "</div>" . "\n\n");
-            $positionToInsert = strpos($output, '<div id="product"');
-
-            $output = substr_replace($output, $str, $positionToInsert, 0);
+            $output = substr_replace($output, $str, $matches[0][1], 0);
             return $output;
         }
     }

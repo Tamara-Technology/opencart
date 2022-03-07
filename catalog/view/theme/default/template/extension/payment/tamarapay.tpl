@@ -139,7 +139,7 @@
                                             <a href="javascript:void(0)" class="tamara-product-widget" data-payment-type="paylater" data-disable-paylater="false" data-disable-product-limit="true" data-disable-paylater="false" data-lang="<?php echo $language_code ?>" data-pay-later-max-amount="<?php echo $method['max_limit'] ?>" data-inject-template="false"><?php echo $text_more_details ?></a>
                                         </label>
                                     <?php else: ?>
-                                        <div id="tamara-installment-plan" style="margin-bottom: 10px;" class="tamara-installment-plan-widget" data-lang="<?php echo $language_code ?>" data-price="<?php echo $order_data.total_in_currency ?>" data-currency="<?php echo $method['currency'] ?>" data-installment-minimum-amount="<?php echo $method['min_limit'] ?>" data-installment-maximum-amount="<?php echo $method['max_limit'] ?>" data-number-of-installments="<?php echo $method['number_of_instalments'] ?>"
+                                        <div id="tamara-installment-plan" style="margin-bottom: 10px;" class="tamara-installment-plan-widget" data-lang="<?php echo $language_code ?>" data-price="<?php echo $order_data['total_in_currency']; ?>" data-currency="<?php echo $method['currency'] ?>" data-installment-minimum-amount="<?php echo $method['min_limit'] ?>" data-installment-maximum-amount="<?php echo $method['max_limit'] ?>" data-number-of-installments="<?php echo $method['number_of_instalments'] ?>"
                                         ></div>
                                     <?php endif ?>
                                 <?php else: ?>
@@ -162,12 +162,12 @@
         </form>
     </div>
 
-    <script charset="utf-8" src="https://cdn.tamara.co/widget/tamara-widget.min.js?t={{ current_time }}"></script>
+    <script charset="utf-8" src="https://cdn.tamara.co/widget/tamara-widget.min.js?t=<?php echo $current_time; ?>"></script>
     <script type="text/javascript">
         window.checkTamaraWidgetCount = 0;
         var existTamaraWidget = setInterval(function() {
             if (window.TamaraWidget) {
-                window.TamaraWidget.init({ lang: '{{ language_code }}' });
+                window.TamaraWidget.init({ lang: '<?php echo $language_code; ?>' });
                 window.TamaraWidget.render();
                 clearInterval(existTamaraWidget);
             }
@@ -178,13 +178,13 @@
         }, 300);
     </script>
 
-    <script charset="utf-8" src="https://cdn.tamara.co/widget/product-widget.min.js?t={{ current_time }}"></script>
-    <script charset="utf-8" src="https://cdn.tamara.co/widget/installment-plan.min.js?t={{ current_time }}"></script>
+    <script charset="utf-8" src="https://cdn.tamara.co/widget/product-widget.min.js?t=<?php echo $current_time; ?>"></script>
+    <script charset="utf-8" src="https://cdn.tamara.co/widget/installment-plan.min.js?t=<?php echo $current_time; ?>"></script>
     <script type="text/javascript">
         var checkTamaraProductWidgetCount = 0;
         var existTamaraProductWidget = setInterval(function() {
             if (window.TamaraProductWidget) {
-                window.TamaraProductWidget.init({ lang: '{{ language_code }}' });
+                window.TamaraProductWidget.init({ lang: '<?php echo $language_code; ?>' });
                 window.TamaraProductWidget.render();
                 clearInterval(existTamaraProductWidget);
             }

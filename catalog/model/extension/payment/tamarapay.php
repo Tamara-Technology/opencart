@@ -24,7 +24,7 @@ class ModelExtensionPaymentTamarapay extends Model
     /**
      * Define version of extension
      */
-    public const VERSION = '1.7.2';
+    public const VERSION = '1.7.3';
 
     public const
         MAX_LIMIT = 'max_limit',
@@ -49,6 +49,16 @@ class ModelExtensionPaymentTamarapay extends Model
     ];
     private const SUPPORTED_COUNTRIES = [
         'SA', 'AE', 'KW', 'BH', 'QA'
+    ];
+
+    const TAMARA_PAYMENT_CODE = 'tamarapay';
+
+    const CURRENCIES_COUNTRIES_ALLOWED = [
+        'SAR' => 'SA',
+        'AED' => 'AE',
+        'KWD' => 'KW',
+        'BHD' => 'BH',
+        'QAR' => 'QA'
     ];
 
     private $orders = [];
@@ -83,8 +93,21 @@ class ModelExtensionPaymentTamarapay extends Model
     {
         //validate country
         $addressCountryCode = strtoupper($address['iso_code_2'] ?? "");
-        if (!in_array($addressCountryCode, self::SUPPORTED_COUNTRIES) || $addressCountryCode != $this->getStoreCountryCode()) {
+        if (empty($addressCountryCode)) {
+            $addressCountryCode = $this->getStoreCountryCode();
+        }
+        if (!in_array($addressCountryCode, self::SUPPORTED_COUNTRIES)) {
             return false;
+        }
+        $supportedCountries = $this->getSupportedCountriesByCurrency($this->getCurrencyCodeFromSession());
+        if (!empty($supportedCountries)) {
+            $countryPairWithCurrency = array_values($supportedCountries)[0];
+            if ($addressCountryCode != $countryPairWithCurrency) {
+                return false;
+            }
+            if (empty($this->getPaymentTypes($countryPairWithCurrency, $this->getCurrencyCodeFromSession()))) {
+                return false;
+            }
         }
 
         //validate geo zone
@@ -191,8 +214,6 @@ class ModelExtensionPaymentTamarapay extends Model
 
             $this->addTamaraOrder($saveData);
             $this->load->model('checkout/order');
-            $comment = ("Tamara - Checkout session was created, session id: " . $tamaraOrderId . ", order reference id: " . $orderReferenceId);
-            $this->model_checkout_order->addOrderHistory($saveData['order_id'], $this->config->get("tamarapay_order_status_create_id"), $comment, false);
 
             $this->log([
                 'msg' => 'Created tamara checkout',
@@ -239,7 +260,7 @@ class ModelExtensionPaymentTamarapay extends Model
         return in_array($this->getCurrencyCodeFromSession(), self::SUPPORTED_CURRENCIES, true);
     }
 
-    private function getCurrencyCodeFromSession()
+    public function getCurrencyCodeFromSession()
     {
         $currencyCode = '';
         if (!empty($this->session->data['currency'])) {
@@ -263,7 +284,7 @@ class ModelExtensionPaymentTamarapay extends Model
         $order->setOrderNumber($orderId);
         $order->setLocale($this->session->data['language'] ?? null);
         $order->setCurrency($this->getCurrencyCodeFromSession());
-        $order->setTotalAmount($this->formatMoney($orderData['total']));
+        $order->setTotalAmount($this->formatMoney($orderData['total'], $orderData['currency_code'], $orderData['currency_value']));
         $order->setCountryCode($this->getIsoCountryFromSession());
         if ($this->isInstallmentsPayment($paymentType)) {
             $order->setInstalments($this->getInstallmentsNumberByPaymentCode($paymentType));
@@ -331,8 +352,8 @@ class ModelExtensionPaymentTamarapay extends Model
         $order->setMerchantUrl($merchantUrl);
 
         $orderTotals = $this->getOrderTotals($orderId);
-        $order->setShippingAmount($this->getShippingAmount($orderTotals));
-        $order->setTaxAmount($this->getOrderTaxAmount($orderTotals));
+        $order->setShippingAmount($this->formatMoney($this->getShippingAmount($orderTotals), $orderData['currency_code'], $orderData['currency_value']));
+        $order->setTaxAmount($this->formatMoney($this->getOrderTaxAmount($orderTotals), $orderData['currency_code'], $orderData['currency_value']));
         $order->setDiscount($this->getOrderDiscount($orderTotals));
 
         return $order;
@@ -355,7 +376,7 @@ class ModelExtensionPaymentTamarapay extends Model
         if ($forceReload || empty($this->orders[$orderId])) {
             $this->load->model('checkout/order');
             $order = $this->model_checkout_order->getOrder($orderId);
-            $order['total_in_currency'] = $this->getValueInCurrency($order['total'], $order['currency_code']);
+            $order['total_in_currency'] = $this->getValueInCurrency($order['total'], $order['currency_code'], $order['currency_value']);
             $this->cacheData($this->orders, $orderId, self::MAXIMUM_CACHED, $order);
         }
 
@@ -367,7 +388,7 @@ class ModelExtensionPaymentTamarapay extends Model
         return $this->session->data['order_id'];
     }
 
-    private function formatMoney($price, $currencyCode = null)
+    private function formatMoney($price, $currencyCode = null, $currencyValue = null)
     {
         if (is_null($currencyCode)) {
             $currencyCode = $this->getCurrencyCodeFromSession();
@@ -375,7 +396,7 @@ class ModelExtensionPaymentTamarapay extends Model
                 throw new Exception("Currency does not exist");
             }
         }
-        $price = $this->getValueInCurrency($price, $currencyCode);
+        $price = $this->getValueInCurrency($price, $currencyCode, $currencyValue);
         $price = round($price, 2);
         $price = (float) number_format($price, 2, '.', '');
         return new Money($price, $currencyCode);
@@ -383,13 +404,15 @@ class ModelExtensionPaymentTamarapay extends Model
 
     private function getIsoCountryFromSession()
     {
-        return strtoupper( $this->session->data['shipping_address']['iso_code_2'] ?? $this->session->data['payment_address']['iso_code_2'] ?? '');
+        return strtoupper($this->session->data['shipping_address']['iso_code_2'] ?? $this->session->data['payment_address']['iso_code_2'] ?? '');
     }
 
     private function getOrderItems($orderId)
     {
         $orderProducts = $this->getOrderProducts($orderId);
         $items = [];
+        $currency = $this->getOrderCurrency($orderId);
+        $currencyValue = $this->getOrderCurrencyValue($orderId);
         foreach ($orderProducts as $orderProduct) {
             $productData = $this->getProductById($orderProduct['product_id']);
             $sku = empty($productDetails['sku']) ? $orderProduct['product_id'] : $productData['sku'];
@@ -398,16 +421,21 @@ class ModelExtensionPaymentTamarapay extends Model
                 'order_item_id' => $orderProduct['order_product_id'],
                 'product_id' => $orderProduct['product_id'],
                 'total_amount' => $orderProduct['total'],
+                'total_amount_in_currency' => $this->getValueInCurrency($orderProduct['total'], $currency, $currencyValue),
                 'tax_amount' => $orderProduct['tax'],
+                'tax_amount_in_currency' => $this->getValueInCurrency($orderProduct['tax'], $currency, $currencyValue),
                 'discount_amount' => 0.00,
+                'discount_amount_in_currency' => 0.00,
                 'unit_price' => $orderProduct['price'],
+                'unit_price_in_currency' => $this->getValueInCurrency($orderProduct['price'], $currency, $currencyValue),
                 'name' => $orderProduct['name'],
                 'sku' => $sku,
                 'type' => $itemType,
                 'reward' => $orderProduct['reward'],
                 'quantity' => $orderProduct['quantity'],
                 'image_url' => strval($this->getProductImageUrl($productData['image'])),
-                'currency' => $this->getOrderCurrency($orderId),
+                'currency' => $currency,
+                'currency_value' => $currencyValue
             ];
         }
 
@@ -451,6 +479,10 @@ class ModelExtensionPaymentTamarapay extends Model
         return $this->getOrder($orderId)['currency_code'];
     }
 
+    private function getOrderCurrencyValue($orderId) {
+        return $this->getOrder($orderId)['currency_value'];
+    }
+
     /**
      * convert array items data to Tamara OrderItemCollection
      *
@@ -484,10 +516,10 @@ class ModelExtensionPaymentTamarapay extends Model
         $orderItem->setName($item['name']);
         $orderItem->setSku($item['sku']);
         $orderItem->setType($item['type']);
-        $orderItem->setUnitPrice($this->formatMoney($item['unit_price'], $item['currency']));
-        $orderItem->setTotalAmount($this->formatMoney($item['total_amount'], $item['currency']));
-        $orderItem->setTaxAmount($this->formatMoney($item['tax_amount'] ?? 0, $item['currency']));
-        $orderItem->setDiscountAmount($this->formatMoney($item['discount_amount'] ?? 0, $item['currency']));
+        $orderItem->setUnitPrice($this->formatMoney($item['unit_price'], $item['currency'], $item['currency_value']));
+        $orderItem->setTotalAmount($this->formatMoney($item['total_amount'], $item['currency'], $item['currency_value']));
+        $orderItem->setTaxAmount($this->formatMoney($item['tax_amount'] ?? 0, $item['currency'], $item['currency_value']));
+        $orderItem->setDiscountAmount($this->formatMoney($item['discount_amount'] ?? 0, $item['currency'], $item['currency_value']));
         $orderItem->setQuantity($item['quantity']);
         $orderItem->setImageUrl($item['image_url'] ?? '');
 
@@ -516,11 +548,24 @@ class ModelExtensionPaymentTamarapay extends Model
         return HTTPS_SERVER;
     }
 
+    /**
+     * Get order totals in order currency
+     * @param $orderId
+     * @param bool $forceReload
+     * @return mixed
+     */
     private function getOrderTotals($orderId, $forceReload = false)
     {
         if ($forceReload || empty($this->orderTotalsArr[$orderId])) {
             $this->load->model('account/order');
             $orderTotals = $this->model_account_order->getOrderTotals($orderId);
+            $currencyCode = $this->getOrderCurrency($orderId);
+            $currencyValue = $this->getOrderCurrencyValue($orderId);
+            foreach ($orderTotals as &$orderTotal) {
+                $orderTotal['value_in_currency'] = $this->getValueInCurrency($orderTotal['value'], $currencyCode, $currencyValue);
+                $orderTotal['currency_code'] = $currencyCode;
+                $orderTotal['currency_value'] = $currencyValue;
+            }
             $this->cacheOrderTotals($orderId, $orderTotals);
         }
 
@@ -547,7 +592,7 @@ class ModelExtensionPaymentTamarapay extends Model
             }
         }
 
-        return $this->formatMoney($result);
+        return $result;
     }
 
     private function getOrderTaxAmount(array $orderTotals)
@@ -559,14 +604,18 @@ class ModelExtensionPaymentTamarapay extends Model
             }
         }
 
-        return $this->formatMoney($result);
+        return $result;
     }
 
     private function getOrderDiscount($orderTotals): Discount
     {
         $name = "";
         $amount = 0.00;
+        $currencyCode = null;
         foreach ($orderTotals as $orderTotal) {
+            if ($currencyCode === null) {
+                $currencyCode = $orderTotal['currency_code'];
+            }
             if ($orderTotal['code'] == "coupon" || $orderTotal['code'] == "voucher") {
                 if (empty($name)) {
                     $name .= $orderTotal['title'];
@@ -580,7 +629,7 @@ class ModelExtensionPaymentTamarapay extends Model
             $name = self::NO_DISCOUNT;
         }
 
-        return new Discount($name, $this->formatMoney($amount));
+        return new Discount($name, new Money($amount, $currencyCode));
     }
 
     public function log($data, $class_step = 6, $function_step = 6)
@@ -714,7 +763,7 @@ class ModelExtensionPaymentTamarapay extends Model
      */
     public function getPaymentMethodsForCheckoutPage()
     {
-        $methods = $this->markInLimit($this->getCurrentAvailableMethods(), $this->getOrderTotalFromSession());
+        $methods = $this->markInLimit($this->getCurrentAvailableMethods($this->getCurrencyCodeFromSession()), $this->getOrderTotalFromSession());
         if ($this->config->get("tamarapay_enable_under_over_warning")) {
             return $methods;
         } else {
@@ -722,14 +771,18 @@ class ModelExtensionPaymentTamarapay extends Model
         }
     }
 
-    public function getCurrentAvailableMethods() {
+    public function getCurrentAvailableMethods($currencyCode) {
         if (!$this->isTamaraEnabled()) {
             return [];
         }
         if (!$this->isTamaraAvailableForThisCustomer()) {
             return [];
         }
-        return $this->getPaymentTypes();
+        $supportedCountries = $this->getSupportedCountriesByCurrency($currencyCode);
+        if (empty($supportedCountries)) {
+            return [];
+        }
+        return $this->getPaymentTypes(array_values($supportedCountries)[0], $currencyCode);
     }
 
     public function isTamaraEnabled() {
@@ -783,8 +836,13 @@ class ModelExtensionPaymentTamarapay extends Model
         return $result;
     }
 
-    public function getBestMethodForCustomer($price) {
-        $methods = $this->filterUnderOver($this->markInLimit($this->getCurrentAvailableMethods(), $price), $price);
+    /**
+     * @param $price
+     * @param $currencyCode
+     * @return array|mixed|null
+     */
+    public function getBestMethodForCustomer($price, $currencyCode) {
+        $methods = $this->filterUnderOver($this->markInLimit($this->getCurrentAvailableMethods($currencyCode), $price), $price);
         if (empty($methods)) {
             return [];
         }
@@ -820,7 +878,7 @@ class ModelExtensionPaymentTamarapay extends Model
         foreach ($captures as $capture) {
             $totalAmountCaptured += $capture['total_amount'];
         }
-        if ($totalAmountCaptured >= floatval($tamaraOrderData['total_amount'])) {
+        if ($totalAmountCaptured >= floatval($tamaraOrderData['total_amount_in_currency'])) {
             return false;
         }
 
@@ -853,6 +911,7 @@ class ModelExtensionPaymentTamarapay extends Model
         $this->log("Start to capture order " . $tamaraOrderId);
         $this->load->language('extension/payment/tamarapay');
         $this->load->model('account/order');
+
         try {
             if (!$this->canCapture($tamaraOrderId)) {
                 throw new Exception("Order {$tamaraOrderId} cannot be captured");
@@ -908,13 +967,18 @@ class ModelExtensionPaymentTamarapay extends Model
             $result['tamara_id'] = $tamaraOrderData['tamara_id'];
             $result['order_id'] = $orderId;
             $result['tamara_order_id'] = $tamaraOrderData['tamara_order_id'];
+            $result['currency'] = $orderData['currency_code'];
+            $result['currency_value'] = $orderData['currency_value'];
             $result['total_amount'] = $orderData['total'];
+            $result['total_amount_in_currency'] = $orderData['total_in_currency'];
             $result['items'] = $this->getOrderItems($orderId);
             $orderTotals = $this->getOrderTotals($orderId);
-            $result['tax_amount'] = $this->getOrderTaxAmount($orderTotals)->getAmount();
-            $result['shipping_amount'] = $this->getShippingAmount($orderTotals)->getAmount();
-            $result['discount_amount'] = $this->getDiscountAmount($orderTotals)->getAmount();
-            $result['currency'] = $orderData['currency_code'];
+            $result['tax_amount'] = $this->getOrderTaxAmount($orderTotals);
+            $result['tax_amount_in_currency'] = $this->getValueInCurrency($result['tax_amount'], $result['currency'], $result['currency_value']);
+            $result['shipping_amount'] = $this->getShippingAmount($orderTotals);
+            $result['shipping_amount_in_currency'] = $this->getValueInCurrency($result['shipping_amount'], $result['currency'], $result['currency_value']);
+            $result['discount_amount'] = $this->getDiscountAmount($orderTotals);
+            $result['discount_amount_in_currency'] = $this->getValueInCurrency($result['discount_amount'], $result['currency'], $result['currency_value']);
             $shippingData = $this->getShippingData($orderId);
             $companies = [];
             $trackingNumbers = [];
@@ -941,14 +1005,14 @@ class ModelExtensionPaymentTamarapay extends Model
 
     private function getDiscountAmount($orderTotals)
     {
-        $result = 0;
+        $result = 0.00;
         foreach ($orderTotals as $total) {
             if ($total['code'] == 'coupon' || $total['code'] == 'voucher') {
                 $result += $total['value'];
             }
         }
 
-        return $this->formatMoney($result);
+        return $result;
     }
 
     /**
@@ -979,10 +1043,10 @@ class ModelExtensionPaymentTamarapay extends Model
         );
         $capture = new Capture(
             $orderData['tamara_order_id'],
-            $this->formatMoney($orderData['total_amount'], $orderData['currency']),
-            $this->formatMoney($orderData['shipping_amount'], $orderData['currency']),
-            $this->formatMoney($orderData['tax_amount'], $orderData['currency']),
-            $this->formatMoney($orderData['discount_amount'], $orderData['currency']),
+            $this->formatMoney($orderData['total_amount'], $orderData['currency'], $orderData['currency_value']),
+            $this->formatMoney($orderData['shipping_amount'], $orderData['currency'], $orderData['currency_value']),
+            $this->formatMoney($orderData['tax_amount'], $orderData['currency'], $orderData['currency_value']),
+            $this->formatMoney($orderData['discount_amount'], $orderData['currency'], $orderData['currency_value']),
             $this->getOrderItemCollection($orderData['items']),
             $shippingInfo
         );
@@ -998,10 +1062,10 @@ class ModelExtensionPaymentTamarapay extends Model
             $orderData['capture_id'],
             $orderData['order_id'],
             $orderData['tamara_order_id'],
-            $orderData['total_amount'],
-            $orderData['tax_amount'],
-            $orderData['shipping_amount'],
-            $orderData['discount_amount'],
+            $orderData['total_amount_in_currency'],
+            $orderData['tax_amount_in_currency'],
+            $orderData['shipping_amount_in_currency'],
+            $orderData['discount_amount_in_currency'],
             json_encode($orderData['shipping_info']),
             $orderData['currency'],
             "NOW()",
@@ -1028,10 +1092,10 @@ class ModelExtensionPaymentTamarapay extends Model
                     $this->db->escape($item['sku']),
                     $item['type'],
                     $item['quantity'],
-                    $item['unit_price'],
-                    $item['total_amount'],
-                    $item['tax_amount'],
-                    $item['discount_amount'],
+                    $item['unit_price_in_currency'],
+                    $item['total_amount_in_currency'],
+                    $item['tax_amount_in_currency'],
+                    $item['discount_amount_in_currency'],
                     "NOW()",
                     "NOW()"
                 );
@@ -1048,10 +1112,10 @@ class ModelExtensionPaymentTamarapay extends Model
                     $this->db->escape($item['sku']),
                     $item['type'],
                     $item['quantity'],
-                    $item['unit_price'],
-                    $item['total_amount'],
-                    $item['tax_amount'],
-                    $item['discount_amount'],
+                    $item['unit_price_in_currency'],
+                    $item['total_amount_in_currency'],
+                    $item['tax_amount_in_currency'],
+                    $item['discount_amount_in_currency'],
                     "NOW()",
                     "NOW()"
                 );
@@ -1134,11 +1198,11 @@ class ModelExtensionPaymentTamarapay extends Model
     {
         return new CancelOrderRequest(
             $orderData['tamara_order_id'],
-            $this->formatMoney($orderData['total_amount'], $orderData['currency']),
+            $this->formatMoney($orderData['total_amount'], $orderData['currency'], $orderData['currency_value']),
             $this->getOrderItemCollection($orderData['items']),
-            $this->formatMoney($orderData['shipping_amount'], $orderData['currency']),
-            $this->formatMoney($orderData['tax_amount'], $orderData['currency']),
-            $this->formatMoney($orderData['discount_amount'], $orderData['currency'])
+            $this->formatMoney($orderData['shipping_amount'], $orderData['currency'], $orderData['currency_value']),
+            $this->formatMoney($orderData['tax_amount'], $orderData['currency'], $orderData['currency_value']),
+            $this->formatMoney($orderData['discount_amount'], $orderData['currency'], $orderData['currency_value'])
         );
     }
 
@@ -1201,6 +1265,15 @@ class ModelExtensionPaymentTamarapay extends Model
             return;
         }
         $orderId = $tamaraOrder['order_id'];
+        if (!$this->isPayWithTamara($orderId)) {
+            return;
+        }
+
+        //change status if the order has a status (the order was approved)
+        $tamaraOrderData = $this->getTamaraOrderData($webhookMessage->getOrderId());
+        if (empty($tamaraOrderData['order_status_id'])) {
+            return;
+        }
         if ($eventType == "order_declined") {
             $this->addOrderComment($orderId, $this->config->get("tamarapay_order_status_failure_id"), $comment, 0);
         } else {
@@ -1219,28 +1292,29 @@ class ModelExtensionPaymentTamarapay extends Model
 
     /**
      * Get Tamara payment types
+     * @param $countryCode
+     * @param string $currencyCode
      * @return array
-     * @throws Exception
      */
-    public function getPaymentTypes()
+    public function getPaymentTypes($countryCode, $currencyCode = '')
     {
         try {
-            $cachedPaymentTypes = $this->getCachedPaymentTypes();
-            if (empty($cachedPaymentTypes)) {
+            $cachedPaymentTypes = $this->getCachedPaymentTypes($countryCode, $currencyCode);
+            if ($cachedPaymentTypes === false) {
 
                 /**
                  * @var $response \TMS\Tamara\Response\Checkout\GetPaymentTypesResponse
                  */
-                $response = $this->getPaymentTypesOfClient($this->getTamaraClient());
+                $response = $this->getPaymentTypesOfClient($this->getTamaraClient(), $countryCode, $currencyCode);
 
                 if (!$response->isSuccess()) {
                     throw new Exception($response->getMessage());
                 }
 
-                $cachedPaymentTypes['payment_types'] = $this->parsePaymentTypesFromResponse($response);
-                $this->cachePaymentTypes($cachedPaymentTypes);
+                $cachedPaymentTypes = $this->parsePaymentTypesFromResponse($response);
+                $this->cachePaymentTypes($cachedPaymentTypes, $countryCode, $currencyCode);
             }
-            $paymentTypes = $this->filterEnablePaymentMethods($cachedPaymentTypes['payment_types']);
+            $paymentTypes = $this->filterEnablePaymentMethods($cachedPaymentTypes);
 
             //add payment title
             foreach ($paymentTypes as &$paymentType) {
@@ -1344,34 +1418,44 @@ class ModelExtensionPaymentTamarapay extends Model
 
     /**
      * @param $paymentTypes array
+     * @param $countryCode
+     * @param $currencyCode
      */
-    private function cachePaymentTypes($paymentTypes) {
-        $paymentTypes['cached_time'] = time();
-        $this->savePaymentTypesToDb(json_encode($paymentTypes));
+    private function cachePaymentTypes($paymentTypes, $countryCode, $currencyCode) {
+        $data = $this->getPaymentTypesFromDb();
+        $data[$this->getCacheKey($countryCode, $currencyCode)] = ['cached_time' => time(), 'payment_types' => $paymentTypes,
+            'country' => $countryCode, 'currency' => $currencyCode];
+        $this->savePaymentTypesToDb(json_encode($data));
     }
 
     /**
-     * @return array
+     * @param $countryCode
+     * @param string $currencyCode
+     * @return array|bool
      */
-    private function getCachedPaymentTypes() {
+    private function getCachedPaymentTypes($countryCode, $currencyCode = '') {
         $dbPaymentTypes = $this->getPaymentTypesFromDb();
-        if (isset($dbPaymentTypes['cached_time'])) {
-            if ((time() - intval($dbPaymentTypes['cached_time'])) > self::PAYMENT_TYPES_CACHED_TIME) {
-                return [];
-            } else {
-                return $dbPaymentTypes;
-            }
+        $cacheKey = $this->getCacheKey($countryCode, $currencyCode);
+        if (!isset($dbPaymentTypes[$cacheKey])) {
+            return false;
         }
-        return [];
+        if (empty($dbPaymentTypes[$cacheKey]['cached_time'])) {
+            return false;
+        }
+        if ((time() - intval($dbPaymentTypes[$cacheKey]['cached_time'])) > self::PAYMENT_TYPES_CACHED_TIME) {
+            return false;
+        }
+        return $dbPaymentTypes[$cacheKey]['payment_types'];
     }
 
     /**
-     * @param \TMS\Tamara\Client $client
+     * @param $client
+     * @param $countryCode
+     * @param string $currencyCode
      * @return mixed
-     * @throws \TMS\Tamara\Exception\RequestDispatcherException
      */
-    public function getPaymentTypesOfClient($client) {
-        return $client->getPaymentTypes($this->getStoreCountryCode());
+    public function getPaymentTypesOfClient($client, $countryCode, $currencyCode = '') {
+        return $client->getPaymentTypes($countryCode, $currencyCode);
     }
 
 
@@ -1483,5 +1567,41 @@ class ModelExtensionPaymentTamarapay extends Model
             $sql = "UPDATE `".DB_PREFIX."tamara_orders` SET `{$fieldToUpdate}` = '{$value}' WHERE `tamara_id` IN (".implode(",", $tamaraIds).")";
             $this->db->query($sql);
         }
+    }
+
+    /**
+     * @param $orderId
+     * @return bool
+     */
+    public function isPayWithTamara($orderId) {
+        $order = $this->getOrder($orderId);
+        if (empty($order)) {
+            return false;
+        }
+        if ($order['payment_code'] == self::TAMARA_PAYMENT_CODE) {
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * @param $currencyCode
+     * @return array
+     */
+    public function getSupportedCountriesByCurrency($currencyCode) {
+        if (!isset(self::CURRENCIES_COUNTRIES_ALLOWED[$currencyCode])) {
+            return [];
+        } else {
+            return explode(",", self::CURRENCIES_COUNTRIES_ALLOWED[$currencyCode]);
+        }
+    }
+
+    /**
+     * @param $countryCode
+     * @param $currencyCode
+     * @return string
+     */
+    private function getCacheKey($countryCode, $currencyCode) {
+        return $countryCode . '-' . $currencyCode;
     }
 }

@@ -1,3 +1,13 @@
+Version 1.7.3
+- New:
+    - Improve code to display product widget
+    - Don't assign a status to an order until it has been successfully paid.
+    - Support authorize order from the console
+    - Support multiple currencies
+    - Refactor code
+    - Upgrade tamara vendor to 1.3.6
+- Bug fixed:
+    - Fixed an issue while capture order if currency rates were changed
 Version 1.7.2
 - Bugs fixed:
     - Fix an issue of naming in version 1.7.1
@@ -5,7 +15,7 @@ Version 1.7.1
 - Bugs fixed:
     - Fix an issue of check shipping country code for store hasn't shipping fields
 Version 1.7.0
-- News:
+- New:
     - Upgrade to fully features
     - Upgrade tamara vendor to 1.3.3
 - Bugs fixed:
