@@ -1,3 +1,7 @@
+Version 1.7.9
+- New:
+    - Redirect to custom success url when it is configured
+    - Update new logo
 Version 1.7.8
 - New:
     - Support multiple currencies per store

@@ -6,7 +6,7 @@ $_['heading_title']			= 'Tamarapay';
 $_['text_extension']		= 'Extensions';
 $_['text_success']			= 'Success: You have modified Tamarapay payment module!';
 $_['text_edit']             = 'Edit Tamarapay';
-$_['text_tamarapay']		= '<a href="http://tamarapay.com/" target="_blank"><img src="view/image/payment/tamarapay.png" alt="Tamarapay" title="Tamarapay" style="border: 1px solid #EEEEEE;" /></a>';
+$_['text_tamarapay']		= '<a href="http://tamarapay.com/" target="_blank"><img src="https://cdn.tamara.co/assets/svg/tamara-logo-badge-en.svg" alt="Tamarapay" title="Tamarapay" style="border: 1px solid #EEEEEE;" /></a>';
 $_['text_production']		= 'Production';
 $_['text_sandbox']			= 'Sandbox';
 $_['text_payment_info']		= 'Refund information';

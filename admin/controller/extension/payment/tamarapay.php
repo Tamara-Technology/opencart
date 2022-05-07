@@ -39,29 +39,21 @@ class ControllerExtensionPaymentTamarapay extends Controller {
             $this->response->redirect($this->url->link('marketplace/extension', 'user_token=' . $this->session->data['user_token'] . '&type=payment', true));
         }
 
-        $data['extension_version'] = $this->model_extension_payment_tamarapay->getExtensionVersion();
-        $githubVersionLink = "https://raw.githubusercontent.com/tamara-solution/opencart/master/VERSION.txt";
-        $githubVersion = @file_get_contents($githubVersionLink);
-        if ($githubVersion) {
-            $downloadLink = "https://github.com/tamara-solution/opencart/archive/refs/heads/master.zip";
-            $readmeLink = "https://github.com/tamara-solution/opencart/blob/master/README.md";
-            if (version_compare($data['extension_version'], $githubVersion, '<')) {
-                $versionMessage = '<div class="alert alert-danger"><p>You are using outdated version, please update <a title="Download" href="'. $downloadLink .'">here</a>, read more about extension <a title="Read more" href="'. $readmeLink .'">here</a></p></div>';
-            } else {
-                $versionMessage = '<div class="alert alert-success"><p>You are using latest version, read more about extension <a title="Read more" href="'. $readmeLink .'">here</a></p></div>';
-            }
-        } else {
-            $versionMessage = "";
-        }
-        $data['version_message'] = $versionMessage;
-        $data['error_warning'] = $this->error['warning'] ?? '';
-        $data['error_url'] = $this->error['url'] ?? '';
-        $data['error_token'] = $this->error['token'] ?? '';
-        $data['error_token_notification'] = $this->error['token_notification'] ?? '';
-        $data['error_merchant_success_url'] = $this->error['merchant_success_url'] ?? '';
-        $data['error_merchant_failure_url'] = $this->error['merchant_failure_url'] ?? '';
-        $data['error_merchant_cancel_url'] = $this->error['merchant_cancel_url'] ?? '';
-        $data['error_merchant_notification_url'] = $this->error['merchant_notification_url'] ?? '';
+        $this->response->setOutput($this->load->view('extension/payment/tamarapay', $this->getDataForIndexPage()));
+    }
+
+    protected function getDataForIndexPage() {
+        $data = [];
+        $this->prepareLayoutDataForIndexPage($data);
+        $this->prepareTextDataForIndexPage($data);
+        $this->prepareExtensionConfigDataForIndexPage($data);
+        $this->preparePaymentTypesDataForIndexPage($data);
+        $this->prepareWebhookDataForIndexPage($data);
+        $this->prepareGeneralConfigDataForIndexPage($data);
+        return $data;
+    }
+
+    protected function prepareLayoutDataForIndexPage(&$data) {
 
         $data['breadcrumbs'] = [];
 
@@ -84,6 +76,43 @@ class ControllerExtensionPaymentTamarapay extends Controller {
 
         $data['cancel'] = $this->url->link('marketplace/extension', 'user_token=' . $this->session->data['user_token'] . '&type=payment', true);
 
+        $data['header'] = $this->load->controller('common/header');
+        $data['column_left'] = $this->load->controller('common/column_left');
+        $data['footer'] = $this->load->controller('common/footer');
+    }
+
+    protected function prepareTextDataForIndexPage(&$data) {
+        $data['extension_version'] = $this->model_extension_payment_tamarapay->getExtensionVersion();
+        $this->prepareVersionMessageForIndexPage($data);
+        $data['error_warning'] = $this->error['warning'] ?? '';
+        $data['error_url'] = $this->error['url'] ?? '';
+        $data['error_token'] = $this->error['token'] ?? '';
+        $data['error_token_notification'] = $this->error['token_notification'] ?? '';
+        $data['error_merchant_success_url'] = $this->error['merchant_success_url'] ?? '';
+        $data['error_merchant_failure_url'] = $this->error['merchant_failure_url'] ?? '';
+        $data['error_merchant_cancel_url'] = $this->error['merchant_cancel_url'] ?? '';
+        $data['error_merchant_notification_url'] = $this->error['merchant_notification_url'] ?? '';
+    }
+
+    protected function prepareVersionMessageForIndexPage(&$data) {
+        $githubVersionLink = "https://raw.githubusercontent.com/tamara-solution/opencart/master/VERSION.txt";
+        $githubVersion = @file_get_contents($githubVersionLink);
+        if ($githubVersion) {
+            $downloadLink = "https://github.com/tamara-solution/opencart/archive/refs/heads/master.zip";
+            $readmeLink = "https://github.com/tamara-solution/opencart/blob/master/README.md";
+            if (version_compare($data['extension_version'], $githubVersion, '<')) {
+                $versionMessage = '<div class="alert alert-danger"><p>You are using outdated version, please update <a title="Download" href="'. $downloadLink .'">here</a>, read more about extension <a title="Read more" href="'. $readmeLink .'">here</a></p></div>';
+            } else {
+                $versionMessage = '<div class="alert alert-success"><p>You are using latest version, read more about extension <a title="Read more" href="'. $readmeLink .'">here</a></p></div>';
+            }
+        } else {
+            $versionMessage = "";
+        }
+
+        $data['version_message'] = $versionMessage;
+    }
+
+    protected function prepareExtensionConfigDataForIndexPage(&$data) {
         if (isset($this->request->post['payment_tamarapay_api_environment'])) {
             $data['payment_tamarapay_api_environment'] = $this->request->post['payment_tamarapay_api_environment'];
         } else {
@@ -168,138 +197,6 @@ class ControllerExtensionPaymentTamarapay extends Controller {
             $data['payment_tamarapay_order_status_authorised_id'] = $this->config->get('payment_tamarapay_order_status_authorised_id');
         }
 
-        if (isset($this->request->post['payment_tamarapay_types_pay_by_later_enabled'])) {
-            $data['payment_tamarapay_types_pay_by_later_enabled'] = $this->request->post['payment_tamarapay_types_pay_by_later_enabled'];
-        } else {
-            $data['payment_tamarapay_types_pay_by_later_enabled'] = $this->config->get('payment_tamarapay_types_pay_by_later_enabled');
-        }
-
-        if (isset($this->request->post['payment_tamarapay_types_pay_by_later_title'])) {
-            $data['payment_tamarapay_types_pay_by_later_title'] = $this->request->post['payment_tamarapay_types_pay_by_later_title'];
-        } else {
-            $data['payment_tamarapay_types_pay_by_later_title'] = $this->config->get('payment_tamarapay_types_pay_by_later_title');
-        }
-
-        if (isset($this->request->post['payment_tamarapay_types_pay_by_instalments_enabled'])) {
-            $data['payment_tamarapay_types_pay_by_instalments_enabled'] = $this->request->post['payment_tamarapay_types_pay_by_instalments_enabled'];
-        } else {
-            $data['payment_tamarapay_types_pay_by_instalments_enabled'] = $this->config->get('payment_tamarapay_types_pay_by_instalments_enabled');
-        }
-
-        if (isset($this->request->post['payment_tamarapay_types_pay_by_instalments_title'])) {
-            $data['payment_tamarapay_types_pay_by_instalments_title'] = $this->request->post['payment_tamarapay_types_pay_by_instalments_title'];
-        } else {
-            $data['payment_tamarapay_types_pay_by_instalments_title'] = $this->config->get('payment_tamarapay_types_pay_by_instalments_title');
-        }
-
-        if (isset($this->request->post['payment_tamarapay_types_pay_by_instalments_4_enabled'])) {
-            $data['payment_tamarapay_types_pay_by_instalments_4_enabled'] = $this->request->post['payment_tamarapay_types_pay_by_instalments_4_enabled'];
-        } else {
-            $data['payment_tamarapay_types_pay_by_instalments_4_enabled'] = $this->config->get('payment_tamarapay_types_pay_by_instalments_4_enabled');
-        }
-
-        if (isset($this->request->post['payment_tamarapay_types_pay_by_instalments_4_title'])) {
-            $data['payment_tamarapay_types_pay_by_instalments_4_title'] = $this->request->post['payment_tamarapay_types_pay_by_instalments_4_title'];
-        } else {
-            $data['payment_tamarapay_types_pay_by_instalments_4_title'] = $this->config->get('payment_tamarapay_types_pay_by_instalments_4_title');
-        }
-
-        if (isset($this->request->post['payment_tamarapay_types_pay_by_instalments_5_enabled'])) {
-            $data['payment_tamarapay_types_pay_by_instalments_5_enabled'] = $this->request->post['payment_tamarapay_types_pay_by_instalments_5_enabled'];
-        } else {
-            $data['payment_tamarapay_types_pay_by_instalments_5_enabled'] = $this->config->get('payment_tamarapay_types_pay_by_instalments_5_enabled');
-        }
-
-        if (isset($this->request->post['payment_tamarapay_types_pay_by_instalments_5_title'])) {
-            $data['payment_tamarapay_types_pay_by_instalments_5_title'] = $this->request->post['payment_tamarapay_types_pay_by_instalments_5_title'];
-        } else {
-            $data['payment_tamarapay_types_pay_by_instalments_5_title'] = $this->config->get('payment_tamarapay_types_pay_by_instalments_5_title');
-        }
-
-        if (isset($this->request->post['payment_tamarapay_types_pay_by_instalments_6_enabled'])) {
-            $data['payment_tamarapay_types_pay_by_instalments_6_enabled'] = $this->request->post['payment_tamarapay_types_pay_by_instalments_6_enabled'];
-        } else {
-            $data['payment_tamarapay_types_pay_by_instalments_6_enabled'] = $this->config->get('payment_tamarapay_types_pay_by_instalments_6_enabled');
-        }
-
-        if (isset($this->request->post['payment_tamarapay_types_pay_by_instalments_6_title'])) {
-            $data['payment_tamarapay_types_pay_by_instalments_6_title'] = $this->request->post['payment_tamarapay_types_pay_by_instalments_6_title'];
-        } else {
-            $data['payment_tamarapay_types_pay_by_instalments_6_title'] = $this->config->get('payment_tamarapay_types_pay_by_instalments_6_title');
-        }
-
-        if (isset($this->request->post['payment_tamarapay_types_pay_by_instalments_7_enabled'])) {
-            $data['payment_tamarapay_types_pay_by_instalments_7_enabled'] = $this->request->post['payment_tamarapay_types_pay_by_instalments_7_enabled'];
-        } else {
-            $data['payment_tamarapay_types_pay_by_instalments_7_enabled'] = $this->config->get('payment_tamarapay_types_pay_by_instalments_7_enabled');
-        }
-
-        if (isset($this->request->post['payment_tamarapay_types_pay_by_instalments_7_title'])) {
-            $data['payment_tamarapay_types_pay_by_instalments_7_title'] = $this->request->post['payment_tamarapay_types_pay_by_instalments_7_title'];
-        } else {
-            $data['payment_tamarapay_types_pay_by_instalments_7_title'] = $this->config->get('payment_tamarapay_types_pay_by_instalments_7_title');
-        }
-
-        if (isset($this->request->post['payment_tamarapay_types_pay_by_instalments_8_enabled'])) {
-            $data['payment_tamarapay_types_pay_by_instalments_8_enabled'] = $this->request->post['payment_tamarapay_types_pay_by_instalments_8_enabled'];
-        } else {
-            $data['payment_tamarapay_types_pay_by_instalments_8_enabled'] = $this->config->get('payment_tamarapay_types_pay_by_instalments_8_enabled');
-        }
-
-        if (isset($this->request->post['payment_tamarapay_types_pay_by_instalments_8_title'])) {
-            $data['payment_tamarapay_types_pay_by_instalments_8_title'] = $this->request->post['payment_tamarapay_types_pay_by_instalments_8_title'];
-        } else {
-            $data['payment_tamarapay_types_pay_by_instalments_8_title'] = $this->config->get('payment_tamarapay_types_pay_by_instalments_8_title');
-        }
-
-        if (isset($this->request->post['payment_tamarapay_types_pay_by_instalments_9_enabled'])) {
-            $data['payment_tamarapay_types_pay_by_instalments_9_enabled'] = $this->request->post['payment_tamarapay_types_pay_by_instalments_9_enabled'];
-        } else {
-            $data['payment_tamarapay_types_pay_by_instalments_9_enabled'] = $this->config->get('payment_tamarapay_types_pay_by_instalments_9_enabled');
-        }
-
-        if (isset($this->request->post['payment_tamarapay_types_pay_by_instalments_9_title'])) {
-            $data['payment_tamarapay_types_pay_by_instalments_9_title'] = $this->request->post['payment_tamarapay_types_pay_by_instalments_9_title'];
-        } else {
-            $data['payment_tamarapay_types_pay_by_instalments_9_title'] = $this->config->get('payment_tamarapay_types_pay_by_instalments_9_title');
-        }
-
-        if (isset($this->request->post['payment_tamarapay_types_pay_by_instalments_10_enabled'])) {
-            $data['payment_tamarapay_types_pay_by_instalments_10_enabled'] = $this->request->post['payment_tamarapay_types_pay_by_instalments_10_enabled'];
-        } else {
-            $data['payment_tamarapay_types_pay_by_instalments_10_enabled'] = $this->config->get('payment_tamarapay_types_pay_by_instalments_10_enabled');
-        }
-
-        if (isset($this->request->post['payment_tamarapay_types_pay_by_instalments_10_title'])) {
-            $data['payment_tamarapay_types_pay_by_instalments_10_title'] = $this->request->post['payment_tamarapay_types_pay_by_instalments_10_title'];
-        } else {
-            $data['payment_tamarapay_types_pay_by_instalments_10_title'] = $this->config->get('payment_tamarapay_types_pay_by_instalments_10_title');
-        }
-
-        if (isset($this->request->post['payment_tamarapay_types_pay_by_instalments_11_enabled'])) {
-            $data['payment_tamarapay_types_pay_by_instalments_11_enabled'] = $this->request->post['payment_tamarapay_types_pay_by_instalments_11_enabled'];
-        } else {
-            $data['payment_tamarapay_types_pay_by_instalments_11_enabled'] = $this->config->get('payment_tamarapay_types_pay_by_instalments_11_enabled');
-        }
-
-        if (isset($this->request->post['payment_tamarapay_types_pay_by_instalments_11_title'])) {
-            $data['payment_tamarapay_types_pay_by_instalments_11_title'] = $this->request->post['payment_tamarapay_types_pay_by_instalments_11_title'];
-        } else {
-            $data['payment_tamarapay_types_pay_by_instalments_11_title'] = $this->config->get('payment_tamarapay_types_pay_by_instalments_11_title');
-        }
-
-        if (isset($this->request->post['payment_tamarapay_types_pay_by_instalments_12_enabled'])) {
-            $data['payment_tamarapay_types_pay_by_instalments_12_enabled'] = $this->request->post['payment_tamarapay_types_pay_by_instalments_12_enabled'];
-        } else {
-            $data['payment_tamarapay_types_pay_by_instalments_12_enabled'] = $this->config->get('payment_tamarapay_types_pay_by_instalments_12_enabled');
-        }
-
-        if (isset($this->request->post['payment_tamarapay_types_pay_by_instalments_12_title'])) {
-            $data['payment_tamarapay_types_pay_by_instalments_12_title'] = $this->request->post['payment_tamarapay_types_pay_by_instalments_12_title'];
-        } else {
-            $data['payment_tamarapay_types_pay_by_instalments_12_title'] = $this->config->get('payment_tamarapay_types_pay_by_instalments_12_title');
-        }
-
         if (isset($this->request->post['payment_tamarapay_enable_under_over_warning'])) {
             $data['payment_tamarapay_enable_under_over_warning'] = $this->request->post['payment_tamarapay_enable_under_over_warning'];
         } else {
@@ -363,7 +260,77 @@ class ControllerExtensionPaymentTamarapay extends Controller {
         } else {
             $data['payment_tamarapay_checkout_failure_url'] = $this->config->get('payment_tamarapay_checkout_failure_url');
         }
+    }
 
+    protected function preparePaymentTypesDataForIndexPage(&$data) {
+        if (isset($this->request->post['payment_tamarapay_types_pay_by_later_enabled'])) {
+            $data['payment_tamarapay_types_pay_by_later_enabled'] = $this->request->post['payment_tamarapay_types_pay_by_later_enabled'];
+        } else {
+            $data['payment_tamarapay_types_pay_by_later_enabled'] = $this->config->get('payment_tamarapay_types_pay_by_later_enabled');
+        }
+
+        if (isset($this->request->post['payment_tamarapay_types_pay_by_instalments_enabled'])) {
+            $data['payment_tamarapay_types_pay_by_instalments_enabled'] = $this->request->post['payment_tamarapay_types_pay_by_instalments_enabled'];
+        } else {
+            $data['payment_tamarapay_types_pay_by_instalments_enabled'] = $this->config->get('payment_tamarapay_types_pay_by_instalments_enabled');
+        }
+
+        if (isset($this->request->post['payment_tamarapay_types_pay_by_instalments_4_enabled'])) {
+            $data['payment_tamarapay_types_pay_by_instalments_4_enabled'] = $this->request->post['payment_tamarapay_types_pay_by_instalments_4_enabled'];
+        } else {
+            $data['payment_tamarapay_types_pay_by_instalments_4_enabled'] = $this->config->get('payment_tamarapay_types_pay_by_instalments_4_enabled');
+        }
+
+        if (isset($this->request->post['payment_tamarapay_types_pay_by_instalments_5_enabled'])) {
+            $data['payment_tamarapay_types_pay_by_instalments_5_enabled'] = $this->request->post['payment_tamarapay_types_pay_by_instalments_5_enabled'];
+        } else {
+            $data['payment_tamarapay_types_pay_by_instalments_5_enabled'] = $this->config->get('payment_tamarapay_types_pay_by_instalments_5_enabled');
+        }
+
+        if (isset($this->request->post['payment_tamarapay_types_pay_by_instalments_6_enabled'])) {
+            $data['payment_tamarapay_types_pay_by_instalments_6_enabled'] = $this->request->post['payment_tamarapay_types_pay_by_instalments_6_enabled'];
+        } else {
+            $data['payment_tamarapay_types_pay_by_instalments_6_enabled'] = $this->config->get('payment_tamarapay_types_pay_by_instalments_6_enabled');
+        }
+
+        if (isset($this->request->post['payment_tamarapay_types_pay_by_instalments_7_enabled'])) {
+            $data['payment_tamarapay_types_pay_by_instalments_7_enabled'] = $this->request->post['payment_tamarapay_types_pay_by_instalments_7_enabled'];
+        } else {
+            $data['payment_tamarapay_types_pay_by_instalments_7_enabled'] = $this->config->get('payment_tamarapay_types_pay_by_instalments_7_enabled');
+        }
+
+        if (isset($this->request->post['payment_tamarapay_types_pay_by_instalments_8_enabled'])) {
+            $data['payment_tamarapay_types_pay_by_instalments_8_enabled'] = $this->request->post['payment_tamarapay_types_pay_by_instalments_8_enabled'];
+        } else {
+            $data['payment_tamarapay_types_pay_by_instalments_8_enabled'] = $this->config->get('payment_tamarapay_types_pay_by_instalments_8_enabled');
+        }
+
+        if (isset($this->request->post['payment_tamarapay_types_pay_by_instalments_9_enabled'])) {
+            $data['payment_tamarapay_types_pay_by_instalments_9_enabled'] = $this->request->post['payment_tamarapay_types_pay_by_instalments_9_enabled'];
+        } else {
+            $data['payment_tamarapay_types_pay_by_instalments_9_enabled'] = $this->config->get('payment_tamarapay_types_pay_by_instalments_9_enabled');
+        }
+
+        if (isset($this->request->post['payment_tamarapay_types_pay_by_instalments_10_enabled'])) {
+            $data['payment_tamarapay_types_pay_by_instalments_10_enabled'] = $this->request->post['payment_tamarapay_types_pay_by_instalments_10_enabled'];
+        } else {
+            $data['payment_tamarapay_types_pay_by_instalments_10_enabled'] = $this->config->get('payment_tamarapay_types_pay_by_instalments_10_enabled');
+        }
+
+        if (isset($this->request->post['payment_tamarapay_types_pay_by_instalments_11_enabled'])) {
+            $data['payment_tamarapay_types_pay_by_instalments_11_enabled'] = $this->request->post['payment_tamarapay_types_pay_by_instalments_11_enabled'];
+        } else {
+            $data['payment_tamarapay_types_pay_by_instalments_11_enabled'] = $this->config->get('payment_tamarapay_types_pay_by_instalments_11_enabled');
+        }
+
+        if (isset($this->request->post['payment_tamarapay_types_pay_by_instalments_12_enabled'])) {
+            $data['payment_tamarapay_types_pay_by_instalments_12_enabled'] = $this->request->post['payment_tamarapay_types_pay_by_instalments_12_enabled'];
+        } else {
+            $data['payment_tamarapay_types_pay_by_instalments_12_enabled'] = $this->config->get('payment_tamarapay_types_pay_by_instalments_12_enabled');
+        }
+    }
+
+    protected function prepareWebhookDataForIndexPage(&$data) {
         if (isset($this->request->post['payment_tamarapay_webhook_enabled'])) {
             $webHookEnabled = $this->request->post['payment_tamarapay_webhook_enabled'];
         } else {
@@ -384,7 +351,9 @@ class ControllerExtensionPaymentTamarapay extends Controller {
         } else {
             $data['payment_tamarapay_webhook_id'] = $this->language->get("text_none_webhook_id");
         }
+    }
 
+    protected function prepareGeneralConfigDataForIndexPage(&$data) {
         $data['order_statuses'] = $this->model_localisation_order_status->getOrderStatuses();
 
         if (isset($this->request->post['payment_tamarapay_geo_zone_id'])) {
@@ -410,14 +379,7 @@ class ControllerExtensionPaymentTamarapay extends Controller {
         }
 
         $data['user_token'] = $this->session->data['user_token'];
-
-        $data['header'] = $this->load->controller('common/header');
-        $data['column_left'] = $this->load->controller('common/column_left');
-        $data['footer'] = $this->load->controller('common/footer');
-
-        $this->response->setOutput($this->load->view('extension/payment/tamarapay', $data));
     }
-
 
     protected function validate() {
         $this->load->model('extension/payment/tamarapay');

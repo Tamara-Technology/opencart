@@ -107,8 +107,12 @@ class ControllerExtensionPaymentTamarapay extends Controller
             $this->model_extension_payment_tamarapay->authoriseOrder($tamaraOrder['tamara_order_id']);
         }
 
+        if (!empty($successUrl = $this->config->get('payment_tamarapay_checkout_success_url'))) {
+            return $this->response->redirect($successUrl);
+        }
+
         if (!$this->config->get('payment_tamarapay_enable_tamara_checkout_success_page')) {
-            $this->response->redirect($this->url->link('checkout/success', '', true));
+            return $this->response->redirect($this->url->link('checkout/success', '', true));
         }
 
         //render success pay
@@ -350,6 +354,9 @@ class ControllerExtensionPaymentTamarapay extends Controller
             return $output;
         }
         if (!$this->config->get("payment_tamarapay_status")) {
+            return $output;
+        }
+        if (empty($data['product_id'])) {
             return $output;
         }
         $productId = $data['product_id'];

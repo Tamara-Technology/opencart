@@ -24,7 +24,7 @@ class ModelExtensionPaymentTamarapay extends Model
     /**
      * Define version of extension
      */
-    public const VERSION = '1.7.8';
+    public const VERSION = '1.7.9';
 
     public const
         MAX_LIMIT = 'max_limit',
@@ -282,7 +282,13 @@ class ModelExtensionPaymentTamarapay extends Model
 
         $order->setOrderReferenceId($orderReferenceId);
         $order->setOrderNumber($orderId);
-        $order->setLocale($this->session->data['language'] ?? null);
+        $locale = $this->session->data['language'] ?? null;
+        if (is_string($locale) && strtolower(substr($locale, 0, 2)) == "en") {
+            $locale = "en_GB";
+        } else {
+            $locale = "ar_SA";
+        }
+        $order->setLocale($locale);
         $order->setCurrency($this->getCurrencyCodeFromSession());
         $order->setTotalAmount($this->formatMoney($orderData['total'], $orderData['currency_code'], $orderData['currency_value']));
         $order->setCountryCode($this->getIsoCountryFromSession());
