@@ -1,12 +1,12 @@
 <?php
 
-class ControllerApiTamarapay extends Controller {
+class ControllerExtensionPaymentApiTamarapay extends Controller {
 
     /**
      * Get checkout information by order id
      */
     public function checkout_information() {
-        $this->load->language('api/tamarapay');
+        $this->load->language('extension/payment/api/tamarapay');
         $json = array();
 
         if (!$this->isValidCredential()) {

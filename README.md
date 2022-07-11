@@ -3,7 +3,7 @@
 * [Tamara payment for OpenCart 2.3.x](https://github.com/tamara-solution/opencart/tree/v2)
 * [Tamara payment for OpenCart 2.0.x](https://github.com/tamara-solution/opencart/tree/v20x)
 
-# Tamara payment 1.7.9 for OpenCart 3.x
+# Tamara payment 1.8.1 for OpenCart 3.x
 * Tamara payment for OpenCart allows your users to pay with Tamara on Opencart
 
 # Technical Requirements
@@ -55,6 +55,6 @@ to update orders that created from 2021-01-01 00:00:00 to 2021-01-01 23:59:59
 ## Get checkout information by order id via API
 End point:
 ```text
-index.php?route=api/tamarapay/checkout_information&key={your_api_key}&order_id={opencart_order_id}
+index.php?route=extension/payment/api/tamarapay/checkout_information&key={your_api_key}&order_id={opencart_order_id}
 ```
 Method: GET

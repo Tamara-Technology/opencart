@@ -63,6 +63,7 @@ $_['entry_min_limit_amount']            = 'Min Limit Amount of Order';
 $_['entry_max_limit_amount']            = 'Max Limit Amount of Order';
 $_['entry_auto_fetching']               = 'Auto fetching in the first time after you save the credential';
 $_['entry_enable_under_over_warning']               = 'Display under/over warning message at checkout page';
+$_['entry_merchant_public_key']               = 'Public key';
 
 // Help
 $_['help_debug']			= 'Enabling debug will write sensitive data to a log file. You should always disable unless instructed otherwise.';

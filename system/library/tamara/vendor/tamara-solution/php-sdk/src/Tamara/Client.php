@@ -2,6 +2,10 @@
 
 namespace TMS\Tamara;
 
+use TMS\Tamara\Request\Checkout\CheckPaymentOptionsAvailabilityRequest;
+use TMS\Tamara\Request\Merchant\GetDetailsInfoRequest;
+use TMS\Tamara\Response\Checkout\CheckPaymentOptionsAvailabilityResponse;
+use TMS\Tamara\Response\Merchant\GetDetailsInfoResponse;
 use TMS\Tamara\HttpClient\HttpClient;
 use TMS\Tamara\Request\Checkout\CreateCheckoutRequest;
 use TMS\Tamara\Request\Checkout\GetPaymentTypesRequest;
@@ -61,17 +65,20 @@ class Client
         $this->httpClient = $httpClient;
         $this->requestDispatcher = new \TMS\Tamara\Request\RequestDispatcher($httpClient);
     }
+
     /**
      * @param string $countryCode
      * @param string $currency
      *
+     * @param float $orderValue
+     * @param string $phoneNumber
      * @return GetPaymentTypesResponse
      *
      * @throws Exception\RequestDispatcherException
      */
-    public function getPaymentTypes(string $countryCode, string $currency = '') : \TMS\Tamara\Response\Checkout\GetPaymentTypesResponse
+    public function getPaymentTypes(string $countryCode, string $currency = '', float $orderValue = 0.00, string $phoneNumber = '') : \TMS\Tamara\Response\Checkout\GetPaymentTypesResponse
     {
-        return $this->requestDispatcher->dispatch(new \TMS\Tamara\Request\Checkout\GetPaymentTypesRequest($countryCode, $currency));
+        return $this->requestDispatcher->dispatch(new \TMS\Tamara\Request\Checkout\GetPaymentTypesRequest($countryCode, $currency, $orderValue, $phoneNumber));
     }
     /**
      * @param CreateCheckoutRequest $createCheckoutRequest
@@ -202,6 +209,28 @@ class Client
      * @throws Exception\RequestDispatcherException
      */
     public function getOrder(\TMS\Tamara\Request\Order\GetOrderRequest $request) : \TMS\Tamara\Response\Order\GetOrderResponse
+    {
+        return $this->requestDispatcher->dispatch($request);
+    }
+
+    /**
+     * Get merchant details information by merchant id
+     * @param GetDetailsInfoRequest $request
+     * @return GetDetailsInfoResponse
+     * @throws Exception\RequestDispatcherException
+     */
+    public function getMerchantDetailsInfo(GetDetailsInfoRequest $request): GetDetailsInfoResponse
+    {
+        return $this->requestDispatcher->dispatch($request);
+    }
+
+    /**
+     * Check if there are any available payment options for customer with the given order value
+     * @param CheckPaymentOptionsAvailabilityRequest $request
+     * @return CheckPaymentOptionsAvailabilityResponse
+     * @throws Exception\RequestDispatcherException
+     */
+    public function checkPaymentOptionsAvailability(CheckPaymentOptionsAvailabilityRequest $request): CheckPaymentOptionsAvailabilityResponse
     {
         return $this->requestDispatcher->dispatch($request);
     }

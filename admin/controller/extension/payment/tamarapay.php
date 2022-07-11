@@ -19,13 +19,14 @@ class ControllerExtensionPaymentTamarapay extends Controller {
     }
 
     public function index() {
-        if (!$this->isVendorAutoloadExist()) {
-            $this->addVendorAutoload();
-        }
         $this->load->language('extension/payment/tamarapay');
         $this->load->model('localisation/order_status');
         $this->load->model('extension/payment/tamarapay');
+
         $this->processUpgrade();
+        if (!$this->isVendorAutoloadExist()) {
+            $this->addVendorAutoload();
+        }
 
         $this->document->setTitle($this->language->get('heading_title'));
 
@@ -100,16 +101,13 @@ class ControllerExtensionPaymentTamarapay extends Controller {
         if ($githubVersion) {
             $downloadLink = "https://github.com/tamara-solution/opencart/archive/refs/heads/master.zip";
             $readmeLink = "https://github.com/tamara-solution/opencart/blob/master/README.md";
+            $data['github'] = ['download_link' => $downloadLink, 'readme_link' => $readmeLink];
             if (version_compare($data['extension_version'], $githubVersion, '<')) {
-                $versionMessage = '<div class="alert alert-danger"><p>You are using outdated version, please update <a title="Download" href="'. $downloadLink .'">here</a>, read more about extension <a title="Read more" href="'. $readmeLink .'">here</a></p></div>';
+                $data['is_using_latest_version'] = false;
             } else {
-                $versionMessage = '<div class="alert alert-success"><p>You are using latest version, read more about extension <a title="Read more" href="'. $readmeLink .'">here</a></p></div>';
+                $data['is_using_latest_version'] = true;
             }
-        } else {
-            $versionMessage = "";
         }
-
-        $data['version_message'] = $versionMessage;
     }
 
     protected function prepareExtensionConfigDataForIndexPage(&$data) {
@@ -129,6 +127,12 @@ class ControllerExtensionPaymentTamarapay extends Controller {
             $data['payment_tamarapay_token'] = $this->request->post['payment_tamarapay_token'];
         } else {
             $data['payment_tamarapay_token'] = $this->config->get('payment_tamarapay_token');
+        }
+
+        if (isset($this->request->post['payment_tamarapay_merchant_public_key'])) {
+            $data['payment_tamarapay_merchant_public_key'] = $this->request->post['payment_tamarapay_merchant_public_key'];
+        } else {
+            $data['payment_tamarapay_merchant_public_key'] = $this->config->get('payment_tamarapay_merchant_public_key');
         }
 
         if (isset($this->request->post['payment_tamarapay_merchant_success_url'])) {
@@ -263,10 +267,29 @@ class ControllerExtensionPaymentTamarapay extends Controller {
     }
 
     protected function preparePaymentTypesDataForIndexPage(&$data) {
+        $data['single_checkout_enabled'] = $this->model_extension_payment_tamarapay->isEnabledSingleCheckout();
+        $data['select_enable_payment_type_extra_attributes'] = "";
+        if ($data['single_checkout_enabled']) {
+            $data['notifications'][] = "Single checkout has been enabled for your merchant account. You will not be able to enable/disable payment types from your side.";
+            $data['select_enable_payment_type_extra_attributes'] = "disabled";
+        }
+
+        if (isset($this->request->post['payment_tamarapay_types_pay_next_month_enabled'])) {
+            $data['payment_tamarapay_types_pay_next_month_enabled'] = $this->request->post['payment_tamarapay_types_pay_next_month_enabled'];
+        } else {
+            $data['payment_tamarapay_types_pay_next_month_enabled'] = $this->config->get('payment_tamarapay_types_pay_next_month_enabled');
+        }
+
         if (isset($this->request->post['payment_tamarapay_types_pay_by_later_enabled'])) {
             $data['payment_tamarapay_types_pay_by_later_enabled'] = $this->request->post['payment_tamarapay_types_pay_by_later_enabled'];
         } else {
             $data['payment_tamarapay_types_pay_by_later_enabled'] = $this->config->get('payment_tamarapay_types_pay_by_later_enabled');
+        }
+
+        if (isset($this->request->post['payment_tamarapay_types_pay_by_instalments_2_enabled'])) {
+            $data['payment_tamarapay_types_pay_by_instalments_2_enabled'] = $this->request->post['payment_tamarapay_types_pay_by_instalments_2_enabled'];
+        } else {
+            $data['payment_tamarapay_types_pay_by_instalments_2_enabled'] = $this->config->get('payment_tamarapay_types_pay_by_instalments_2_enabled');
         }
 
         if (isset($this->request->post['payment_tamarapay_types_pay_by_instalments_enabled'])) {
@@ -495,7 +518,7 @@ class ControllerExtensionPaymentTamarapay extends Controller {
         //backup file
         $backUpFilePath = DIR_SYSTEM. "startup-".date( "Ymd-His", strtotime( "now" )) .".php.bak";
         copy($this->getSystemStartupFilePath(), $backUpFilePath);
-        $data = PHP_EOL . "//Add Tamara vendor autoload".PHP_EOL . "if (is_file(DIR_SYSTEM . '../tamara/vendor/autoload.php')) {require_once(DIR_SYSTEM . '../tamara/vendor/autoload.php');}";
+        $data = PHP_EOL . "//Add Tamara vendor autoload".PHP_EOL . "if (is_file(DIR_SYSTEM . 'library/tamara/vendor/autoload.php')) {require_once(DIR_SYSTEM . 'library/tamara/vendor/autoload.php');}";
         $fp = fopen($this->getSystemStartupFilePath(), 'a');
         fwrite($fp, $data);
     }
@@ -503,16 +526,44 @@ class ControllerExtensionPaymentTamarapay extends Controller {
     private function removeVendorAutoload() {
         $contents = file_get_contents($this->getSystemStartupFilePath());
         $contents = str_replace("//Add Tamara vendor autoload", '', $contents);
-        $contents = str_replace("if (is_file(DIR_SYSTEM . '../tamara/vendor/autoload.php')) {require_once(DIR_SYSTEM . '../tamara/vendor/autoload.php');}", '', $contents);
+        $contents = str_replace("if (is_file(DIR_SYSTEM . 'library/tamara/vendor/autoload.php')) {require_once(DIR_SYSTEM . 'library/tamara/vendor/autoload.php');}", '', $contents);
         file_put_contents($this->getSystemStartupFilePath(), $contents);
     }
 
     private function isVendorAutoloadExist() {
         $contents = file_get_contents($this->getSystemStartupFilePath());
-        if (strpos($contents, "require_once(DIR_SYSTEM . '../tamara/vendor/autoload.php')") !== false) {
+        if (strpos($contents, "require_once(DIR_SYSTEM . 'library/tamara/vendor/autoload.php')") !== false) {
             return true;
         }
         return false;
+    }
+
+    private function removeLegacyAutoload() {
+        $contents = file_get_contents($this->getSystemStartupFilePath());
+        if (strpos($contents, "require_once(DIR_SYSTEM . '../tamara/vendor/autoload.php')") !== false) {
+            $contents = file_get_contents($this->getSystemStartupFilePath());
+            $contents = str_replace("//Add Tamara vendor autoload", '', $contents);
+            $contents = str_replace("if (is_file(DIR_SYSTEM . '../tamara/vendor/autoload.php')) {require_once(DIR_SYSTEM . '../tamara/vendor/autoload.php');}", '', $contents);
+            file_put_contents($this->getSystemStartupFilePath(), $contents);
+        }
+
+        //remove tamara directory
+        $this->deleteDir(realpath(DIR_SYSTEM . '../tamara'));
+        return true;
+    }
+
+    public function deleteDir($dir) {
+        $it = new RecursiveDirectoryIterator($dir, RecursiveDirectoryIterator::SKIP_DOTS);
+        $files = new RecursiveIteratorIterator($it,
+            RecursiveIteratorIterator::CHILD_FIRST);
+        foreach($files as $file) {
+            if ($file->isDir()){
+                rmdir($file->getRealPath());
+            } else {
+                unlink($file->getRealPath());
+            }
+        }
+        rmdir($dir);
     }
 
     private function getSystemStartupFilePath() {
@@ -571,8 +622,22 @@ class ControllerExtensionPaymentTamarapay extends Controller {
                 $this->addOrderReferenceIdColumn();
                 $this->updateSchemaVersion("1.4.0");
             }
+            if (version_compare($this->contextSchemaVersion, '1.5.0', '<')) {
+                $this->addPaymentTypeForOrder();
+                $this->updateSchemaVersion("1.5.0");
+            }
+            if (version_compare($this->contextSchemaVersion, '1.6.0', '<')) {
+                $this->removeLegacyAutoload();
+                $this->updateSchemaVersion("1.6.0");
+            }
         }
         return;
+    }
+
+    private function addPaymentTypeForOrder() {
+        $query = "ALTER TABLE `".DB_PREFIX."tamara_orders` 
+                            ADD `payment_type` varchar(255) COMMENT 'order reference id', ADD `number_of_installments` int(10) unsigned COMMENT 'number of installments'";
+        $this->db->query($query);
     }
 
     private function addOrderReferenceIdColumn() {
@@ -618,37 +683,13 @@ class ControllerExtensionPaymentTamarapay extends Controller {
     }
 
     /**
-     * Retrieve payments config from admin
+     * Flush Tamara cache
      */
-    public function retrievePaymentConfig() {
-        $url = $this->getTamaraPaymentUrlFromConfig();
-        $token = $this->getTamaraPaymentTokenFromConfig();
-        $result = ['success' => false];
-        if (!empty($url) && !empty($token)) {
-            $this->load->model('extension/payment/tamarapay');
-            $this->model_extension_payment_tamarapay->removePaymentTypesCache();
-            try {
-                $client = $this->model_extension_payment_tamarapay->createClient(['url' => $url, 'token' => $token]);
-
-                /**
-                 * @var $response \TMS\Tamara\Response\Checkout\GetPaymentTypesResponse
-                 */
-                $response = $this->model_extension_payment_tamarapay->getPaymentTypesOfClient($client);
-                if ($response->getStatusCode() == 401) {
-                    throw new \Exception("Merchant token is invalid");
-                }
-                if (!$response->isSuccess()) {
-                    throw new \Exception($response->getMessage());
-                }
-            } catch (\Exception $exception) {
-                $result['error'] = $exception->getMessage();
-            }
-            if (!isset($result['error'])) {
-                $result['success'] = true;
-            }
-        }
+    public function flushTamaraCache() {
+        $this->load->model('extension/payment/tamarapay');
+        $this->model_extension_payment_tamarapay->removePaymentTypesCache();
         $this->response->addHeader('Content-Type: application/json');
-        $this->response->setOutput(json_encode($result));
+        $this->response->setOutput(json_encode(['success' => true]));
     }
 
     /**

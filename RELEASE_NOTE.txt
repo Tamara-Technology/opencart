@@ -1,3 +1,13 @@
+Version 1.8.1
+- New:
+    - Add new method pay next month
+    - Add new method pay in 2 installments
+    - Support public key for widgets
+    - Improve discount obj name in payload of checkout request
+    - Improve display of configuration on admin page
+    - Support sandbox for the widgets
+    - Add Tamara logo to method title
+    - Update new payment method title on checkout page
 Version 1.7.9
 - New:
     - Redirect to custom success url when it is configured

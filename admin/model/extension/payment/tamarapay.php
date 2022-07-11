@@ -9,12 +9,12 @@ class ModelExtensionPaymentTamarapay extends Model
     /**
      * Define version of extension
      */
-    public const VERSION = '1.7.9';
+    public const VERSION = '1.8.1';
 
     /**
      * Define schema version
      */
-    public const SCHEMA_VERSION = '1.4.0';
+    public const SCHEMA_VERSION = '1.6.0';
 
     protected $paymentTypes;
 
@@ -27,6 +27,8 @@ class ModelExtensionPaymentTamarapay extends Model
     const SANDBOX_API_ENVIRONMENT = "1";
     const PRODUCTION_API_URL = "https://api.tamara.co";
     const PRODUCTION_API_ENVIRONMENT = "2";
+    const SINGLE_CHECKOUT_ENABLED = 'single_checkout_enabled';
+    const PAYMENT_TYPES_CACHED_TIME = 1800;
 
     /**
      * Get extension version
@@ -357,5 +359,53 @@ class ModelExtensionPaymentTamarapay extends Model
 
     public function removePaymentTypesCache() {
         $this->db->query("UPDATE `" . DB_PREFIX . "tamara_config` SET `value` = '' WHERE `key`='payment_types'");
+        $this->db->query("UPDATE `" . DB_PREFIX . "tamara_config` SET `value` = '' WHERE `key`='single_checkout_enabled'");
+    }
+
+    public function isEnabledSingleCheckout() {
+        return false;
+    }
+
+    public function getCachedSingleCheckoutValue() {
+        $tamaraConfig = $this->getSingleCheckoutEnabledFromDb();
+        if (empty($tamaraConfig['cached_time'])) {
+            return null;
+        }
+        if ((time() - intval($tamaraConfig['cached_time'])) > self::PAYMENT_TYPES_CACHED_TIME) {
+            return null;
+        }
+        return boolval($tamaraConfig['value']);
+    }
+
+    private function getSingleCheckoutEnabledFromDb() {
+        return $this->getTamaraCacheConfigFromDb(self::SINGLE_CHECKOUT_ENABLED);
+    }
+
+    private function saveCacheSingleCheckoutEnabled($str) {
+        $this->saveTamaraConfig(self::SINGLE_CHECKOUT_ENABLED, $str);
+    }
+
+    public function getTamaraCacheConfigFromDb($key) {
+        $query = "SELECT * FROM `" . DB_PREFIX . "tamara_config` WHERE `key`='{$key}' LIMIT 1";
+        $result = $this->db->query($query);
+        if ($result->num_rows > 0) {
+            $value = $result->row['value'];
+            if (empty($value)) {
+                return [];
+            }
+            return json_decode($value, true);
+        } else {
+            return [];
+        }
+    }
+
+    public function saveTamaraConfig($key, $value) {
+        $query = "SELECT * FROM `" . DB_PREFIX . "tamara_config` WHERE `key`='{$key}' LIMIT 1";
+        $result = $this->db->query($query);
+        if ($result->num_rows > 0) {
+            $this->db->query("UPDATE `" . DB_PREFIX . "tamara_config` SET `value` = '{$value}' WHERE `key` = '{$key}'");
+        } else {
+            $this->db->query("INSERT INTO `" . DB_PREFIX . "tamara_config`(id, `key`, value, created_at, updated_at) VALUES(NULL, '{$key}', '{$value}', NOW(), NOW())");
+        }
     }
 }
