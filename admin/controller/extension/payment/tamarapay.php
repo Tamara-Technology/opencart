@@ -548,7 +548,10 @@ class ControllerExtensionPaymentTamarapay extends Controller {
         }
 
         //remove tamara directory
-        $this->deleteDir(realpath(DIR_SYSTEM . '../tamara'));
+        $originalDir = realpath(DIR_SYSTEM . '../tamara');
+        if (!empty($originalDir)) {
+            $this->deleteDir($originalDir);
+        }
         return true;
     }
 
