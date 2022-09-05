@@ -83,8 +83,10 @@
                                                     <a href="javascript:void(0)" class="tamara-product-widget" data-lang="{{ language_code }}" data-currency="{{ method.currency }}" data-country-code="{{ country_code }}" data-price="{{ order_data.total_in_currency }}" data-payment-type="pay-next-month" data-disable-paylater="true" data-disable-installment="false" data-inject-template="false" data-installment-available-amount="{{ method.min_limit }}">{{ text_more_details }}</a>
                                                 </label>
                                             {% else %}
+                                                {% if method.name != 'pay_now' %}
                                                 <div id="tamara-installment-plan" style="margin-bottom: 10px;" class="tamara-installment-plan-widget" data-lang="{{ language_code }}" data-country-code="{{ country_code }}" data-price="{{ order_data.total_in_currency }}" data-currency="{{ method.currency }}" data-installment-minimum-amount="{{ method.min_limit }}" data-installment-maximum-amount="{{ method.max_limit }}" data-number-of-installments="{{ method.number_of_instalments }}" data-installment-available-amount="{{ method.min_limit }}"
                                                 ></div>
+                                                {% endif %}
                                             {% endif %}
                                         {% endif %}
                                     {% else %}

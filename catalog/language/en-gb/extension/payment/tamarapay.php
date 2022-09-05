@@ -34,6 +34,7 @@ $_['text_order_canceled']               = 'Your order has been canceled';
 $_['text_order_pay_failure']            = 'Pay with Tamara failed';
 $_['text_pay_by_later']                 = 'Buy now and pay in 30 days';
 $_['text_pay_next_month']                 = 'Pay it next month';
+$_['text_pay_now']                 = 'Pay now using Mada, Apple Pay or Credit card';
 $_['text_pay_by_instalments_2']           = 'Split in 2, interest-free';
 $_['text_pay_by_instalments']           = 'Split in 3, interest-free';
 $_['text_pay_by_instalments_4']           = 'Split in 4, interest-free';

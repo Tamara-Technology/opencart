@@ -24,7 +24,7 @@ class ModelExtensionPaymentTamarapay extends Model
     /**
      * Define version of extension
      */
-    public const VERSION = '1.8.1';
+    public const VERSION = '1.8.2';
 
     public const
         MAX_LIMIT = 'max_limit',
@@ -32,6 +32,7 @@ class ModelExtensionPaymentTamarapay extends Model
         PAY_LATER = 'PAY_BY_LATER',
         PAY_BY_INSTALMENTS = 'PAY_BY_INSTALMENTS',
         PAY_NEXT_MONTH = 'PAY_NEXT_MONTH',
+        PAY_NOW = 'PAY_NOW',
         PLATFORM = 'OpenCart',
         NO_DISCOUNT = 'nothing',
         EMPTY_STRING = 'N/A',
@@ -39,6 +40,7 @@ class ModelExtensionPaymentTamarapay extends Model
     const PAY_LATER_CODE = 'pay_by_later';
     const PAY_BY_INSTALMENTS_CODE = 'pay_by_instalments';
     const PAY_NEXT_MONTH_CODE = 'pay_next_month';
+    const PAY_NOW_CODE = 'pay_now';
     const SINGLE_CHECKOUT_CODE = 'single_checkout';
     const ALLOWED_WEBHOOKS = ['order_expired', 'order_declined'];
     const PAYMENT_TYPES_CACHED_TIME = 1800;
@@ -325,7 +327,7 @@ class ModelExtensionPaymentTamarapay extends Model
         $order->setLocale($locale);
         $order->setCurrency($this->getCurrencyCodeFromSession());
         $order->setTotalAmount($this->formatMoney($orderData['total'], $orderData['currency_code'], $orderData['currency_value']));
-        $order->setCountryCode($this->getIsoCountryFromSession());
+        $order->setCountryCode($orderData['shipping_iso_code_2']);
         if ($this->isInstallmentsPayment($paymentType)) {
             $order->setInstalments($this->getInstallmentsNumberByPaymentCode($paymentType));
         }
@@ -1430,6 +1432,9 @@ class ModelExtensionPaymentTamarapay extends Model
                 if ($paymentTypeClone->getName() == self::PAY_NEXT_MONTH) {
                     $typeName = self::PAY_NEXT_MONTH_CODE;
                 }
+                if ($paymentTypeClone->getName() == self::PAY_NOW) {
+                    $typeName = self::PAY_NOW_CODE;
+                }
                 if (!empty($typeName)) {
                     $result[$typeName] = [
                         'name' => $typeName,
@@ -1786,6 +1791,9 @@ class ModelExtensionPaymentTamarapay extends Model
         if ($paymentType == self::PAY_NEXT_MONTH) {
             return self::PAY_NEXT_MONTH_CODE;
         }
+        if ($paymentType == self::PAY_NOW) {
+            return self::PAY_NOW_CODE;
+        }
         if ($paymentType == self::PAY_LATER) {
             return self::PAY_LATER_CODE;
         }
@@ -1799,6 +1807,9 @@ class ModelExtensionPaymentTamarapay extends Model
         }
         if ($paymentType == self::PAY_NEXT_MONTH_CODE) {
             return self::PAY_NEXT_MONTH;
+        }
+        if ($paymentType == self::PAY_NOW_CODE) {
+            return self::PAY_NOW;
         }
         if ($paymentType == self::PAY_LATER_CODE) {
             return self::PAY_LATER;

@@ -280,6 +280,12 @@ class ControllerExtensionPaymentTamarapay extends Controller {
             $data['payment_tamarapay_types_pay_next_month_enabled'] = $this->config->get('payment_tamarapay_types_pay_next_month_enabled');
         }
 
+        if (isset($this->request->post['payment_tamarapay_types_pay_now_enabled'])) {
+            $data['payment_tamarapay_types_pay_now_enabled'] = $this->request->post['payment_tamarapay_types_pay_now_enabled'];
+        } else {
+            $data['payment_tamarapay_types_pay_now_enabled'] = $this->config->get('payment_tamarapay_types_pay_now_enabled');
+        }
+
         if (isset($this->request->post['payment_tamarapay_types_pay_by_later_enabled'])) {
             $data['payment_tamarapay_types_pay_by_later_enabled'] = $this->request->post['payment_tamarapay_types_pay_by_later_enabled'];
         } else {

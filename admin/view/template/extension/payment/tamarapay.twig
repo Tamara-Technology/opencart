@@ -294,6 +294,38 @@
                                         </div>
                                     </div>
 
+                                    <div class="panel-group" id="pay-now-group">
+                                        <div class="panel panel-default">
+                                            <div class="panel-heading">
+                                                <h4 class="panel-title"><a href="#collapse-pay-now" data-toggle="collapse" data-parent="#pay-now-group" class="accordion-toggle" aria-expanded="true">Pay now <i class="fa fa-caret-down"></i></a></h4>
+                                            </div>
+                                            <div class="panel-collapse collapse in" id="collapse-pay-now" aria-expanded="true">
+                                                <div class="panel-body">
+                                                    <div class="row">
+
+                                                        <div class="row form-group required">
+                                                            <label class="col-sm-4 control-label" for="pay-now-enabled">{{ entry_enable }}</label>
+                                                            <div class="col-sm-8">
+
+                                                                <select name="payment_tamarapay_types_pay_now_enabled" id="pay-now-enabled" class="form-control" {{ select_enable_payment_type_extra_attributes }}>
+                                                                    {% if payment_tamarapay_types_pay_now_enabled %}
+                                                                        <option value="1" selected="selected">{{ text_enabled }}</option>
+                                                                        <option value="0">{{ text_disabled }}</option>
+                                                                    {% else %}
+                                                                        <option value="1">{{ text_enabled }}</option>
+                                                                        <option value="0" selected="selected">{{ text_disabled }}</option>
+                                                                    {% endif %}
+                                                                </select>
+
+                                                            </div>
+                                                        </div>
+
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
                                     <div class="panel-group" id="pay-by-instalments-2-group">
                                         <div class="panel panel-default">
                                             <div class="panel-heading">
