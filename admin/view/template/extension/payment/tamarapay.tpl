@@ -15,13 +15,24 @@
     </div>
     <div class="container-fluid">
 
-        <?php echo $version_message ?>
-
-        <?php if($error_warning): ?>
-        <div class="alert alert-danger alert-dismissible"><i class="fa fa-exclamation-circle"></i> <?php echo $error_warning ?>
-            <button type="button" class="close" data-dismiss="alert">&times;</button>
-        </div>
+        <?php if ($is_using_latest_version !== null): ?>
+            <?php if ($is_using_latest_version): ?>
+                <div class="alert alert-success"><p>You are using latest version, read more about extension <a title="Read more" href="<?php echo $github['readme_link']; ?>">here</a></p></div>
+            <?php else: ?>
+                <div class="alert alert-danger"><p>You are using outdated version, please update <a title="Download" href="<?php echo $github['download_link']; ?>">here</a>, read more about extension <a title="Read more" href="<?php echo $github['readme_link']; ?>">here</a></p></div>
+            <?php endif; ?>
         <?php endif; ?>
+
+        <?php foreach ($notifications as $notification) { ?>
+            <div class="alert alert-warning"><p><?php echo $notification; ?></p></div>
+        <?php } ?>
+
+        <?php if ($error_warning): ?>
+            <div class="alert alert-danger alert-dismissible"><i class="fa fa-exclamation-circle"></i> <?php echo $error_warning; ?>
+                <button type="button" class="close" data-dismiss="alert">&times;</button>
+            </div>
+        <?php endif; ?>
+
         <div class="panel panel-default">
             <div class="panel-heading">
                 <h3 class="panel-title"><i class="fa fa-pencil"></i> <?php echo $text_edit ?></h3>
@@ -71,6 +82,15 @@
                                                     <?php if ($error_token_notification): ?>
                                                     <div class="text-danger"><?php echo $error_token_notification; ?></div>
                                                     <?php endif ?>
+                                                </div>
+                                            </div>
+                                            <div id="group-merchant-public-key" class="form-group <?php echo $tamarapay_merchant_public_key_extra_class ?>">
+                                                <label class="col-sm-2 control-label" for="input-merchant-public-key"><?php echo $entry_merchant_public_key ?></label>
+                                                <div class="col-sm-10">
+                                                    <input id="input-merchant-public-key" name="tamarapay_merchant_public_key" value="<?php echo $tamarapay_merchant_public_key ?>" type="text" class="form-control" />
+                                                    <?php if ($error_merchant_public_key): ?>
+                                                    <div class="text-danger"><?php echo $error_merchant_public_key ?></div>
+                                                    <?php endif; ?>
                                                 </div>
                                             </div>
                                             <div class="form-group">
@@ -207,6 +227,12 @@
                             <div class="panel-collapse collapse" id="collapse-payment-types" aria-expanded="false" style="height: 0px;">
                                 <div class="panel-body">
 
+                                    <div class="form-group">
+                                        <div class="col-sm-12">
+                                            <button type="button" id="update-payment-config">Pull new changes from Tamara / Flush cache</button>
+                                            <span id="update-payment-config-message" style="display: none;"></span>
+                                        </div>
+                                    </div>
 
                                     <div class="panel-group" id="pay-by-later-group">
                                         <div class="panel panel-default">
@@ -221,7 +247,7 @@
                                                             <label class="col-sm-4 control-label" for="pay-by-later-enabled"><?php echo $entry_enable ?></label>
                                                             <div class="col-sm-8">
 
-                                                                <select name="tamarapay_types_pay_by_later_enabled" id="pay-by-later-enabled" class="form-control">
+                                                                <select name="tamarapay_types_pay_by_later_enabled" id="pay-by-later-enabled" class="form-control" <?php echo $select_enable_payment_type_extra_attributes; ?>>
                                                                     <?php if ($tamarapay_types_pay_by_later_enabled): ?>
                                                                     <option value="1" selected="selected"><?php echo $text_enabled ?></option>
                                                                     <option value="0"><?php echo $text_disabled ?></option>
@@ -229,6 +255,102 @@
                                                                     <option value="1"><?php echo $text_enabled ?></option>
                                                                     <option value="0" selected="selected"><?php echo $text_disabled ?></option>
                                                                     <?php endif ?>
+                                                                </select>
+
+                                                            </div>
+                                                        </div>
+
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="panel-group" id="pay-next-month-group">
+                                        <div class="panel panel-default">
+                                            <div class="panel-heading">
+                                                <h4 class="panel-title"><a href="#collapse-pay-next-month" data-toggle="collapse" data-parent="#pay-next-month-group" class="accordion-toggle" aria-expanded="true">Pay next month <i class="fa fa-caret-down"></i></a></h4>
+                                            </div>
+                                            <div class="panel-collapse collapse in" id="collapse-pay-next-month" aria-expanded="true">
+                                                <div class="panel-body">
+                                                    <div class="row">
+
+                                                        <div class="row form-group required">
+                                                            <label class="col-sm-4 control-label" for="pay-next-month-enabled"><?php echo $entry_enable; ?></label>
+                                                            <div class="col-sm-8">
+
+                                                                <select name="tamarapay_types_pay_next_month_enabled" id="pay-next-month-enabled" class="form-control" <?php echo $select_enable_payment_type_extra_attributes; ?>>
+                                                                <?php if ($tamarapay_types_pay_next_month_enabled): ?>
+                                                                        <option value="1" selected="selected"><?php echo $text_enabled; ?></option>
+                                                                <option value="0"><?php echo $text_disabled; ?></option>
+                                                                <?php else: ?>
+                                                                <option value="1"><?php echo $text_enabled; ?></option>
+                                                                <option value="0" selected="selected"><?php echo $text_disabled; ?></option>
+                                                                <?php endif; ?>
+                                                                </select>
+
+                                                            </div>
+                                                        </div>
+
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="panel-group" id="pay-now-group">
+                                        <div class="panel panel-default">
+                                            <div class="panel-heading">
+                                                <h4 class="panel-title"><a href="#collapse-pay-now" data-toggle="collapse" data-parent="#pay-now-group" class="accordion-toggle" aria-expanded="true">Pay now <i class="fa fa-caret-down"></i></a></h4>
+                                            </div>
+                                            <div class="panel-collapse collapse in" id="collapse-pay-now" aria-expanded="true">
+                                                <div class="panel-body">
+                                                    <div class="row">
+
+                                                        <div class="row form-group required">
+                                                            <label class="col-sm-4 control-label" for="pay-now-enabled"><?php echo $entry_enable; ?></label>
+                                                            <div class="col-sm-8">
+
+                                                                <select name="tamarapay_types_pay_now_enabled" id="pay-now-enabled" class="form-control">
+                                                                    <?php if ($tamarapay_types_pay_now_enabled): ?>
+                                                                    <option value="1" selected="selected"><?php echo $text_enabled; ?></option>
+                                                                    <option value="0"><?php echo $text_disabled; ?></option>
+                                                                    <?php else: ?>
+                                                                    <option value="1"><?php echo $text_enabled; ?></option>
+                                                                    <option value="0" selected="selected"><?php echo $text_disabled; ?></option>
+                                                                    <?php endif; ?>
+                                                                </select>
+
+                                                            </div>
+                                                        </div>
+
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="panel-group" id="pay-by-instalments-2-group">
+                                        <div class="panel panel-default">
+                                            <div class="panel-heading">
+                                                <h2 class="panel-title"><a href="#collapse-pay-by-instalments-2" data-toggle="collapse" data-parent="#pay-by-instalments-2-group" class="accordion-toggle" aria-expanded="true">Pay in 2 instalments <i class="fa fa-caret-down"></i></a></h2>
+                                            </div>
+                                            <div class="panel-collapse collapse in" id="collapse-pay-by-instalments-2" aria-expanded="true">
+                                                <div class="panel-body">
+                                                    <div class="row">
+
+                                                        <div class="row form-group required">
+                                                            <label class="col-sm-4 control-label" for="pay-by-instalments-2-enabled"><?php echo $entry_enable; ?></label>
+                                                            <div class="col-sm-8">
+
+                                                                <select name="tamarapay_types_pay_by_instalments_2_enabled" id="pay-by-instalments-2-enabled" class="form-control" <?php echo $select_enable_payment_type_extra_attributes; ?>>
+                                                                <?php if ($tamarapay_types_pay_by_instalments_2_enabled): ?>
+                                                                <option value="1" selected="selected"><?php echo $text_enabled; ?></option>
+                                                                <option value="0"><?php echo $text_disabled; ?></option>
+                                                                <?php else: ?>
+                                                                <option value="1"><?php echo $text_enabled; ?></option>
+                                                                <option value="0" selected="selected"><?php echo $text_disabled; ?></option>
+                                                                <?php endif; ?>
                                                                 </select>
 
                                                             </div>
@@ -253,7 +375,7 @@
                                                             <label class="col-sm-4 control-label" for="pay-by-instalments-enabled"><?php echo $entry_enable ?></label>
                                                             <div class="col-sm-8">
 
-                                                                <select name="tamarapay_types_pay_by_instalments_enabled" id="pay-by-instalments-enabled" class="form-control">
+                                                                <select name="tamarapay_types_pay_by_instalments_enabled" id="pay-by-instalments-enabled" class="form-control" <?php echo $select_enable_payment_type_extra_attributes; ?>>
                                                                     <?php if ($tamarapay_types_pay_by_instalments_enabled): ?>
                                                                     <option value="1" selected="selected"><?php echo $text_enabled ?></option>
                                                                     <option value="0"><?php echo $text_disabled ?></option>
@@ -285,7 +407,7 @@
                                                             <label class="col-sm-4 control-label" for="pay-by-instalments-4-enabled"><?php echo $entry_enable ?></label>
                                                             <div class="col-sm-8">
 
-                                                                <select name="tamarapay_types_pay_by_instalments_4_enabled" id="pay-by-instalments-4-enabled" class="form-control">
+                                                                <select name="tamarapay_types_pay_by_instalments_4_enabled" id="pay-by-instalments-4-enabled" class="form-control" <?php echo $select_enable_payment_type_extra_attributes; ?>>
                                                                     <?php if ($tamarapay_types_pay_by_instalments_4_enabled): ?>
                                                                     <option value="1" selected="selected"><?php echo $text_enabled ?></option>
                                                                     <option value="0"><?php echo $text_disabled ?></option>
@@ -317,7 +439,7 @@
                                                             <label class="col-sm-4 control-label" for="pay-by-instalments-5-enabled"><?php echo $entry_enable ?></label>
                                                             <div class="col-sm-8">
 
-                                                                <select name="tamarapay_types_pay_by_instalments_5_enabled" id="pay-by-instalments-5-enabled" class="form-control">
+                                                                <select name="tamarapay_types_pay_by_instalments_5_enabled" id="pay-by-instalments-5-enabled" class="form-control" <?php echo $select_enable_payment_type_extra_attributes; ?>>
                                                                     <?php if ($tamarapay_types_pay_by_instalments_5_enabled): ?>
                                                                     <option value="1" selected="selected"><?php echo $text_enabled ?></option>
                                                                     <option value="0"><?php echo $text_disabled ?></option>
@@ -349,7 +471,7 @@
                                                             <label class="col-sm-4 control-label" for="pay-by-instalments-6-enabled"><?php echo $entry_enable ?></label>
                                                             <div class="col-sm-8">
 
-                                                                <select name="tamarapay_types_pay_by_instalments_6_enabled" id="pay-by-instalments-6-enabled" class="form-control">
+                                                                <select name="tamarapay_types_pay_by_instalments_6_enabled" id="pay-by-instalments-6-enabled" class="form-control" <?php echo $select_enable_payment_type_extra_attributes; ?>>
                                                                     <?php if ($tamarapay_types_pay_by_instalments_6_enabled): ?>
                                                                     <option value="1" selected="selected"><?php echo $text_enabled ?></option>
                                                                     <option value="0"><?php echo $text_disabled ?></option>
@@ -381,7 +503,7 @@
                                                             <label class="col-sm-4 control-label" for="pay-by-instalments-7-enabled"><?php echo $entry_enable ?></label>
                                                             <div class="col-sm-8">
 
-                                                                <select name="tamarapay_types_pay_by_instalments_7_enabled" id="pay-by-instalments-7-enabled" class="form-control">
+                                                                <select name="tamarapay_types_pay_by_instalments_7_enabled" id="pay-by-instalments-7-enabled" class="form-control" <?php echo $select_enable_payment_type_extra_attributes; ?>>
                                                                     <?php if ($tamarapay_types_pay_by_instalments_7_enabled): ?>
                                                                     <option value="1" selected="selected"><?php echo $text_enabled ?></option>
                                                                     <option value="0"><?php echo $text_disabled ?></option>
@@ -413,7 +535,7 @@
                                                             <label class="col-sm-4 control-label" for="pay-by-instalments-8-enabled"><?php echo $entry_enable ?></label>
                                                             <div class="col-sm-8">
 
-                                                                <select name="tamarapay_types_pay_by_instalments_8_enabled" id="pay-by-instalments-8-enabled" class="form-control">
+                                                                <select name="tamarapay_types_pay_by_instalments_8_enabled" id="pay-by-instalments-8-enabled" class="form-control" <?php echo $select_enable_payment_type_extra_attributes; ?>>
                                                                     <?php if ($tamarapay_types_pay_by_instalments_8_enabled): ?>
                                                                     <option value="1" selected="selected"><?php echo $text_enabled ?></option>
                                                                     <option value="0"><?php echo $text_disabled ?></option>
@@ -445,7 +567,7 @@
                                                             <label class="col-sm-4 control-label" for="pay-by-instalments-9-enabled"><?php echo $entry_enable ?></label>
                                                             <div class="col-sm-8">
 
-                                                                <select name="tamarapay_types_pay_by_instalments_9_enabled" id="pay-by-instalments-9-enabled" class="form-control">
+                                                                <select name="tamarapay_types_pay_by_instalments_9_enabled" id="pay-by-instalments-9-enabled" class="form-control" <?php echo $select_enable_payment_type_extra_attributes; ?>>
                                                                     <?php if ($tamarapay_types_pay_by_instalments_9_enabled): ?>
                                                                     <option value="1" selected="selected"><?php echo $text_enabled ?></option>
                                                                     <option value="0"><?php echo $text_disabled ?></option>
@@ -477,7 +599,7 @@
                                                             <label class="col-sm-4 control-label" for="pay-by-instalments-10-enabled"><?php echo $entry_enable ?></label>
                                                             <div class="col-sm-8">
 
-                                                                <select name="tamarapay_types_pay_by_instalments_10_enabled" id="pay-by-instalments-10-enabled" class="form-control">
+                                                                <select name="tamarapay_types_pay_by_instalments_10_enabled" id="pay-by-instalments-10-enabled" class="form-control" <?php echo $select_enable_payment_type_extra_attributes; ?>>
                                                                     <?php if ($tamarapay_types_pay_by_instalments_10_enabled): ?>
                                                                     <option value="1" selected="selected"><?php echo $text_enabled ?></option>
                                                                     <option value="0"><?php echo $text_disabled ?></option>
@@ -509,7 +631,7 @@
                                                             <label class="col-sm-4 control-label" for="pay-by-instalments-11-enabled"><?php echo $entry_enable ?></label>
                                                             <div class="col-sm-8">
 
-                                                                <select name="tamarapay_types_pay_by_instalments_11_enabled" id="pay-by-instalments-11-enabled" class="form-control">
+                                                                <select name="tamarapay_types_pay_by_instalments_11_enabled" id="pay-by-instalments-11-enabled" class="form-control" <?php echo $select_enable_payment_type_extra_attributes; ?>>
                                                                     <?php if ($tamarapay_types_pay_by_instalments_11_enabled): ?>
                                                                     <option value="1" selected="selected"><?php echo $text_enabled ?></option>
                                                                     <option value="0"><?php echo $text_disabled ?></option>
@@ -541,7 +663,7 @@
                                                             <label class="col-sm-4 control-label" for="pay-by-instalments-12-enabled"><?php echo $entry_enable ?></label>
                                                             <div class="col-sm-8">
 
-                                                                <select name="tamarapay_types_pay_by_instalments_12_enabled" id="pay-by-instalments-12-enabled" class="form-control">
+                                                                <select name="tamarapay_types_pay_by_instalments_12_enabled" id="pay-by-instalments-12-enabled" class="form-control" <?php echo $select_enable_payment_type_extra_attributes; ?>>
                                                                     <?php if ($tamarapay_types_pay_by_instalments_12_enabled): ?>
                                                                     <option value="1" selected="selected"><?php echo $text_enabled ?></option>
                                                                     <option value="0"><?php echo $text_disabled ?></option>
@@ -557,14 +679,6 @@
                                                     </div>
                                                 </div>
                                             </div>
-                                        </div>
-                                    </div>
-
-
-                                    <div class="form-group">
-                                        <div class="col-sm-12">
-                                            <button type="button" id="update-payment-config">Pull / flush payment types</button>
-                                            <span id="update-payment-config-message" style="display: none;"></span>
                                         </div>
                                     </div>
 
@@ -762,7 +876,7 @@
 <script type="text/javascript"><!--
     $('#update-payment-config').on('click', function() {
         $.ajax({
-            url: 'index.php?route=extension/payment/tamarapay/retrievePaymentConfig&token=<?php echo $token ?>',
+            url: 'index.php?route=extension/payment/tamarapay/flushTamaraCache&token=<?php echo $token ?>',
             type: 'get',
             contentType: 'application/json',
             dataType: 'json',

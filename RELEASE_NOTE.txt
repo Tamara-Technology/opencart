@@ -1,3 +1,20 @@
+Version 1.7.4
+- New:
+    - Add new method pay now
+    - Improve code
+    - Support Single checkout experience
+    - Add new method pay next month
+    - Add new method pay in 2 installments
+    - Support public key for widgets
+    - Improve discount obj name in payload of checkout request
+    - Improve display of configuration on admin page
+    - Support sandbox for the widgets
+    - Add Tamara logo to method title
+    - Update new payment method title on checkout page
+    - Add the widget to cart page
+    - Redirect to custom success url when it is configured
+    - Update new logo
+    - Add ocmod.zip file
 Version 1.7.3
 - New:
     - Improve code to display product widget

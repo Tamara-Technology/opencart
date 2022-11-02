@@ -6,7 +6,7 @@ $_['heading_title']			= 'Tamarapay';
 $_['text_extension']		= 'Extensions';
 $_['text_success']			= 'Success: You have modified Tamarapay payment module!';
 $_['text_edit']             = 'Edit Tamarapay';
-$_['text_tamarapay']		= '<a href="http://tamarapay.com/" target="_blank"><img src="view/image/payment/tamarapay.png" alt="Tamarapay" title="Tamarapay" style="border: 1px solid #EEEEEE;" /></a>';
+$_['text_tamarapay']		= '<a href="http://tamarapay.com/" target="_blank"><img src="https://cdn.tamara.co/assets/svg/tamara-logo-badge-en.svg" alt="Tamarapay" title="Tamarapay" style="border: 1px solid #EEEEEE;" /></a>';
 $_['text_production']		= 'Production';
 $_['text_sandbox']			= 'Sandbox';
 $_['text_payment_info']		= 'Refund information';
@@ -63,6 +63,8 @@ $_['entry_only_show_for_these_customer']  = "Only show Tamara for these customer
 $_['entry_enable_tamara_checkout_success_page'] = "Enable Tamara checkout success page";
 $_['entry_api_environment']				= 'API Environment';
 $_['entry_enable_under_over_warning']               = 'Display under/over warning message at checkout page';
+$_['entry_single_checkout_enabled']               = 'Enable Single checkout';
+$_['entry_merchant_public_key']               = 'Public key';
 
 // Help
 $_['help_debug']			= 'Enabling debug will write sensitive data to a log file. You should always disable unless instructed otherwise.';
