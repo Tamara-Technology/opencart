@@ -76,7 +76,7 @@ class ConsoleLogger extends \TMS\Psr\Log\AbstractLogger
      */
     private function interpolate(string $message, array $context) : string
     {
-        if (\false === \strpos($message, '{')) {
+        if (!str_contains($message, '{')) {
             return $message;
         }
         $replacements = [];

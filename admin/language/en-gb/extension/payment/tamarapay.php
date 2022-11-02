@@ -63,6 +63,7 @@ $_['entry_min_limit_amount']            = 'Min Limit Amount of Order';
 $_['entry_max_limit_amount']            = 'Max Limit Amount of Order';
 $_['entry_auto_fetching']               = 'Auto fetching in the first time after you save the credential';
 $_['entry_enable_under_over_warning']               = 'Display under/over warning message at checkout page';
+$_['entry_single_checkout_enabled']               = 'Enable Single checkout';
 $_['entry_merchant_public_key']               = 'Public key';
 
 // Help
@@ -86,3 +87,4 @@ $_['error_merchant_success_url']        = 'Merchant Success URL Required';
 $_['error_merchant_failure_url']        = 'Merchant Failure URL Required';
 $_['error_merchant_cancel_url']         = 'Merchant Cancel URL Required';
 $_['error_merchant_notification_url']   = 'Merchant Notification URL Required';
+$_['error_field_is_required']   = 'This field is required';

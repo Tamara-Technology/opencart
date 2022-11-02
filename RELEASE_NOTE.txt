@@ -1,3 +1,8 @@
+Version 1.8.4
+- New:
+    - Support Single checkout experience
+    - Add the widget to cart page
+    - Improve code
 Version 1.8.2
 - New:
     - Add pay now

@@ -10,7 +10,7 @@
  */
 namespace TMS\Symfony\Component\Console\Output;
 
-use TMS\Symfony\Component\Console\Formatter\NullOutputFormatter;
+use TMS\Symfony\Component\Console\Formatter\OutputFormatter;
 use TMS\Symfony\Component\Console\Formatter\OutputFormatterInterface;
 /**
  * NullOutput suppresses all output.
@@ -22,7 +22,6 @@ use TMS\Symfony\Component\Console\Formatter\OutputFormatterInterface;
  */
 class NullOutput implements \TMS\Symfony\Component\Console\Output\OutputInterface
 {
-    private $formatter;
     /**
      * {@inheritdoc}
      */
@@ -35,16 +34,13 @@ class NullOutput implements \TMS\Symfony\Component\Console\Output\OutputInterfac
      */
     public function getFormatter()
     {
-        if ($this->formatter) {
-            return $this->formatter;
-        }
         // to comply with the interface we must return a OutputFormatterInterface
-        return $this->formatter = new \TMS\Symfony\Component\Console\Formatter\NullOutputFormatter();
+        return new \TMS\Symfony\Component\Console\Formatter\OutputFormatter();
     }
     /**
      * {@inheritdoc}
      */
-    public function setDecorated(bool $decorated)
+    public function setDecorated($decorated)
     {
         // do nothing
     }
@@ -58,7 +54,7 @@ class NullOutput implements \TMS\Symfony\Component\Console\Output\OutputInterfac
     /**
      * {@inheritdoc}
      */
-    public function setVerbosity(int $level)
+    public function setVerbosity($level)
     {
         // do nothing
     }
@@ -100,14 +96,14 @@ class NullOutput implements \TMS\Symfony\Component\Console\Output\OutputInterfac
     /**
      * {@inheritdoc}
      */
-    public function writeln($messages, int $options = self::OUTPUT_NORMAL)
+    public function writeln($messages, $options = self::OUTPUT_NORMAL)
     {
         // do nothing
     }
     /**
      * {@inheritdoc}
      */
-    public function write($messages, bool $newline = \false, int $options = self::OUTPUT_NORMAL)
+    public function write($messages, $newline = \false, $options = self::OUTPUT_NORMAL)
     {
         // do nothing
     }

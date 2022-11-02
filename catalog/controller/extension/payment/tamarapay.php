@@ -17,7 +17,7 @@ class ControllerExtensionPaymentTamarapay extends Controller
         if (!$this->model_extension_payment_tamarapay->isCurrencySupported()) {
             return $this->renderIndexTemplate(['error_get_payment' => $this->language->get('error_wrong_currency')]);
         }
-        $data['single_checkout_enabled'] = $this->model_extension_payment_tamarapay->isEnabledSingleCheckout();
+        $data['single_checkout_enabled'] = $this->model_extension_payment_tamarapay->isSingleCheckoutVersion();
         if (!empty($this->session->data['methods_for_checkout_page'])) {
             $methods = $this->session->data['methods_for_checkout_page'];
         } else {
@@ -26,59 +26,22 @@ class ControllerExtensionPaymentTamarapay extends Controller
         if (empty($methods)) {
             return $this->renderIndexTemplate(['error_get_payment' => $this->language->get('error_no_method_available')]);
         }
-        $totalTypeAvailable = 0;
-        $paymentAvailableForCurrency = "";
-        $numberOfInstallments = [];
-        $methodsNameInWidget = [];
-        $existsPayLaterOrPayNextMonth = false;
-        $existsPayInX = false; //number of installments > 4
-        $existsPayByInstallments = false; //number of installments <= 4
-        $minLimitAllMethods = null;
-        foreach ($methods as $method) {
-            $paymentAvailableForCurrency = $method['currency'];
-            $isInstallments = false;
-            if ($this->model_extension_payment_tamarapay->isInstallmentsPayment($method['name'])) {
-                $isInstallments = true;
-            }
-            if ($method['is_in_limit']) {
-                $totalTypeAvailable++;
-                if ($minLimitAllMethods === null) {
-                    $minLimitAllMethods = $method['min_limit'];
-                } else {
-                    if ($method['min_limit'] < $minLimitAllMethods) {
-                        $minLimitAllMethods = $method['min_limit'];
-                    }
-                }
-                if ($isInstallments) {
-                    $methodsNameInWidget[] = "installment";
-                    $numberOfInstallments[] = $method['number_of_instalments'];
-                    if (intval($method['number_of_instalments']) > 4) {
-                        $existsPayInX = true;
-                    } else {
-                        $existsPayByInstallments = true;
-                    }
-                } else {
-                    if ($method['name'] == "pay_by_later") {
-                        $methodsNameInWidget[] = "paylater";
-                        $existsPayLaterOrPayNextMonth = true;
-                    } else {
-                        $methodsNameInWidget[] = "pay-next-month";
-                        $existsPayLaterOrPayNextMonth = true;
-                    }
-                }
-            }
+        $paymentAvailableForCurrency = $this->getCurrencyFromPaymentMethods($methods);
+        $data['exists_pay_now'] = $this->model_extension_payment_tamarapay->isExistPayNow($methods);
+        if ($data['single_checkout_enabled']) {
+            $this->addExtraDataForSingleCheckoutVersion($methods, $data);
+        } else {
+            $this->addExtraDataForCommonVersion($methods, $data);
         }
-        $data['number_of_installments'] = implode(";" , $numberOfInstallments);
         $data['methods'] = $methods;
-        $data['methods_name_in_widget'] = implode(";", array_unique($methodsNameInWidget));
-        $data['exists_pay_later_or_pay_next_month'] = $existsPayLaterOrPayNextMonth;
-        $data['exists_pay_in_x'] = $existsPayInX;
-        $data['exists_pay_by_installments'] = $existsPayByInstallments;
-        $data['merchant_public_key'] = $this->config->get("payment_tamarapay_merchant_public_key");
-        $data['total_method_available'] = $totalTypeAvailable;
+        $data['merchant_public_key'] = $this->model_extension_payment_tamarapay->getMerchantPublicKey();
+//        $data['is_use_widget_v1'] = empty($data['merchant_public_key']);
+//        if ($data['total_method_available'] > 1) {
+//            $data['is_use_widget_v1'] = true;
+//        }
+        $data['is_use_widget_v1'] = true;
         $data['use_iframe_checkout'] = false;
         $data['merchant_urls'] = $this->model_extension_payment_tamarapay->getMerchantUrls();
-        $data['min_limit_all_methods'] = $minLimitAllMethods;
         $data['is_sandbox_mode'] = $this->model_extension_payment_tamarapay->isSandboxMode();
         $data['tamara_widget_url'] = 'https://cdn.tamara.co/widget/tamara-widget.min.js';
         $data['tamara_product_widget_url'] = 'https://cdn.tamara.co/widget/product-widget.min.js';
@@ -120,8 +83,12 @@ class ControllerExtensionPaymentTamarapay extends Controller
         $this->load->model('extension/payment/tamarapay');
 
         $paymentType = "";
-        if ($this->model_extension_payment_tamarapay->isEnabledSingleCheckout()){
-            $paymentType = "single_checkout";
+        if ($this->model_extension_payment_tamarapay->isSingleCheckoutVersion()){
+            if (!isset($this->request->post['payment_type'])){
+                $paymentType = "single_checkout";
+            } else {
+                $paymentType = $this->request->post['payment_type'];
+            }
         } else {
             $error = [];
 
@@ -434,11 +401,11 @@ class ControllerExtensionPaymentTamarapay extends Controller
             return $output;
         }
         $productId = $data['product_id'];
-        $excludeProductIds = explode(",",$this->config->get('payment_tamarapay_pdp_wg_exclude_product_ids'));
+        $excludeProductIds = explode(",",strval($this->config->get('payment_tamarapay_pdp_wg_exclude_product_ids')));
         if (in_array($productId, $excludeProductIds)) {
             return $output;
         }
-        $excludeCategoryIds = explode(",",$this->config->get('payment_tamarapay_pdp_wg_exclude_category_ids'));
+        $excludeCategoryIds = explode(",",strval($this->config->get('payment_tamarapay_pdp_wg_exclude_category_ids')));
         $productCategories = [];
         if (isset($this->request->get['path'])) {
             $productCategories = explode("_", $this->request->get['path']);
@@ -456,26 +423,71 @@ class ControllerExtensionPaymentTamarapay extends Controller
             if ((float)$productInfo['special']) {
                 $finalPrice = $this->model_extension_payment_tamarapay->getValueInCurrency($this->tax->calculate($productInfo['special'], $productInfo['tax_class_id'], $this->config->get('config_tax')), $this->session->data['currency']);
             }
+            $widgetHtml = $this->getWidgetHtml($finalPrice);
+            if (!empty($widgetHtml)) {
+                $output = substr_replace($output, $widgetHtml, $matches[0][1], 0);
+            }
+        }
+        return $output;
+    }
 
-            $bestMethodForCustomer = $this->model_extension_payment_tamarapay->getBestMethodForCustomer($finalPrice, $this->model_extension_payment_tamarapay->getCurrencyCodeFromSession());
-            if (empty($bestMethodForCustomer)) {
+    public function addPromoWidgetForCartPage($route, $data, $output) {
+        preg_match('/<div .*class="buttons clearfix"/', $output, $matches, PREG_OFFSET_CAPTURE);
+        if (empty($matches[0][1])) {
+            return $output;
+        }
+        if (!$this->config->get("payment_tamarapay_status")) {
+            return $output;
+        }
+        $excludeProductIds = explode(",",strval($this->config->get('payment_tamarapay_pdp_wg_exclude_product_ids')));
+        $products = $this->cart->getProducts();
+        foreach ($products as $product) {
+            if (in_array($product['product_id'], $excludeProductIds)) {
                 return $output;
             }
+        }
+        $this->load->model('extension/payment/helper/tamara_opencart');
+        $cartValue = $this->model_extension_payment_helper_tamara_opencart->getTotalAmountInCurrency();
+        if (empty($cartValue)) {
+            return $output;
+        }
+        $widgetHtml = $this->getWidgetHtml($cartValue);
+        if (!empty($widgetHtml)) {
+            $widgetHtml .= '<style>#tamara_promo_widget {text-align: right;}</style>';
+            $output = substr_replace($output, $widgetHtml, $matches[0][1], 0);
+        }
+        return $output;
+    }
 
-            $countryCode = $this->model_extension_payment_tamarapay->getSupportedCountriesByCurrency($bestMethodForCustomer['currency'])[0];
-            $languageCode = $this->language->get('code');
-            if (empty($languageCode)) {
-                $languageCode = 'en';
-            }
-            $str = '<div id="tamara-product-widget" class="tamara-product-widget" data-lang="'. $languageCode .'" data-price="'. $finalPrice .'" data-currency="'. $bestMethodForCustomer['currency'] .'" data-country-code="'. $countryCode .'" data-installment-available-amount="'. $bestMethodForCustomer['min_limit'] .'"';
+    public function getWidgetHtml($price) {
+        $result = '';
+        $this->load->model('extension/payment/tamarapay');
+        $bestMethodForCustomer = $this->model_extension_payment_tamarapay->getBestMethodForCustomer($price, $this->model_extension_payment_tamarapay->getCurrencyCodeFromSession());
+        if (empty($bestMethodForCustomer)) {
+            return $result;
+        }
+
+        //list of the payment types which does not have the widget
+        if (in_array($bestMethodForCustomer['name'], ['pay_now'])) {
+            return $result;
+        }
+        $countryCode = $this->model_extension_payment_tamarapay->getSupportedCountriesByCurrency($bestMethodForCustomer['currency'])[0];
+        $languageCode = $this->language->get('code');
+        if (empty($languageCode)) {
+            $languageCode = 'en';
+        }
+        $publicKey = $this->config->get('payment_tamarapay_merchant_public_key');
+        $isUseWidgetV1 = empty($publicKey);
+        if ($isUseWidgetV1) {
+            $result = '<div id="tamara-product-widget" class="tamara-product-widget" data-lang="'. $languageCode .'" data-price="'. $price .'" data-currency="'. $bestMethodForCustomer['currency'] .'" data-country-code="'. $countryCode .'" data-installment-available-amount="'. $bestMethodForCustomer['min_limit'] .'"';
             if ($this->model_extension_payment_tamarapay->isInstallmentsPayment($bestMethodForCustomer['name'])) {
-                $str .= (' data-payment-type="installment" data-number-of-installments="'.$bestMethodForCustomer['number_of_instalments'].'" data-installment-minimum-amount="' .$bestMethodForCustomer['min_limit']. '" data-installment-maximum-amount="'.$bestMethodForCustomer['max_limit'].'" data-disable-paylater="true"></div>');
+                $result .= (' data-payment-type="installment" data-number-of-installments="'.$bestMethodForCustomer['number_of_instalments'].'" data-installment-minimum-amount="' .$bestMethodForCustomer['min_limit']. '" data-installment-maximum-amount="'.$bestMethodForCustomer['max_limit'].'" data-disable-paylater="true"></div>');
             } else {
                 if ($bestMethodForCustomer['name'] == "pay_by_later") {
-                    $str .= (' data-payment-type="paylater" data-disable-paylater="false" data-disable-product-limit="true" data-disable-installment="true" data-pay-later-max-amount="'. $bestMethodForCustomer['max_limit'] .'"></div>');
+                    $result .= (' data-payment-type="paylater" data-disable-paylater="false" data-disable-product-limit="true" data-disable-installment="true" data-pay-later-max-amount="'. $bestMethodForCustomer['max_limit'] .'"></div>');
                 } else {
                     if ($bestMethodForCustomer['name'] == "pay_next_month") {
-                        $str .= (' data-payment-type="pay-next-month" data-disable-paylater="true" data-disable-installment="false"></div>');
+                        $result .= (' data-payment-type="pay-next-month" data-disable-paylater="true" data-disable-installment="false"></div>');
                     }
                 }
             }
@@ -484,8 +496,7 @@ class ControllerExtensionPaymentTamarapay extends Controller
             if ($this->model_extension_payment_tamarapay->isSandboxMode()) {
                 $productWidgetUrl = "https://cdn-sandbox.tamara.co/widget/product-widget.min.js";
             }
-            $str .= '
-            <script charset="utf-8" src="'. $productWidgetUrl .'?t='.time().'"></script>
+            $result .= '
             <script type="text/javascript">
                 window.tamara = [];
                 window.langCode = "'.$languageCode.'";
@@ -495,7 +506,7 @@ class ControllerExtensionPaymentTamarapay extends Controller
                 document.getElementById("tamara-product-widget").setAttribute("data-lang", window.langCode);
                 var existTamaraProductWidget = setInterval(function () {
                     if (window.TamaraProductWidget) {
-                        window.TamaraProductWidget.init({ lang: window.tamara.langCode, currency: window.tamara.currencyCode, publicKey: window.tamara.widgetPublicKey });
+                        window.TamaraProductWidget.init({ lang: window.tamara.langCode, currency: window.tamara.currencyCode});
                         window.TamaraProductWidget.render();
                         clearInterval(existTamaraProductWidget);
                     }
@@ -505,12 +516,26 @@ class ControllerExtensionPaymentTamarapay extends Controller
                     }
                 }, 300);
             </script>
+            <script charset="utf-8" defer src="'. $productWidgetUrl .'?t='.time().'"></script>
             ';
-
-            $str = ("\n\n" . "<div class='tamara-promo' style='margin-bottom: 10px;'>" . $str . "</div>" . "\n\n");
-            $output = substr_replace($output, $str, $matches[0][1], 0);
-            return $output;
+        } else {
+            if ($this->model_extension_payment_tamarapay->isSandboxMode()) {
+                $widgetUrl = "https://cdn-sandbox.tamara.co/widget-v2/tamara-widget.js";
+            } else {
+                $widgetUrl = "https://cdn.tamara.co/widget-v2/tamara-widget.js";
+            }
+            $result = '<tamara-widget id="tamara_promo_widget" type="tamara-summary" amount="' . $price . '" inline-type="2"></tamara-widget>';
+            $result .= ('<script>
+                    var tamaraWidgetConfig = {
+                        lang: "'. $languageCode .'",
+                        country: "'. $countryCode .'",
+                        publicKey: "'. $publicKey .'"
+                    }
+                    </script>
+                    <script charset="utf-8" defer src="'. $widgetUrl .'?t='.time().'"></script>'
+            );
         }
+        return ('<div class="tamara-promo" style="margin-bottom: 10px;">' . $result . '</div>');
     }
 
     /**
@@ -536,7 +561,106 @@ class ControllerExtensionPaymentTamarapay extends Controller
             }
             return true;
         } catch (\Exception $exception) {
-            return false;
+            $this->log(["Exception when canCancelByRedirect " . $exception->getMessage()]);
+        }
+        return false;
+    }
+
+    private function addExtraDataForSingleCheckoutVersion($methods, &$data) {
+        $orderValue = $this->model_extension_payment_tamarapay->getOrderTotalFromSession();
+        $countryCode = $this->model_extension_payment_tamarapay->getCustomerCountryCodeFromSession();
+        if ($this->customer->isLogged()) {
+            $phoneNumber = $this->customer->getTelephone();
+        } else {
+            $phoneNumber = $this->session->data['guest']['telephone'];
+        }
+        $data['single_checkout_available_for_this_customer'] = $this->model_extension_payment_tamarapay->isCustomerHasAvailablePaymentOptions($countryCode, $orderValue, $phoneNumber);
+        $totalTypeAvailable = 0;
+        $payNowInLimit = false;
+        if ($data['exists_pay_now']) {
+            foreach ($methods as $method) {
+                if ($this->model_extension_payment_tamarapay->isPayNowPayment($method['name'])) {
+                    if ($method['is_in_limit']){
+                        $payNowInLimit = true;
+                    }
+                }
+            }
+            if ($payNowInLimit) {
+                $totalTypeAvailable++;
+            }
+        }
+        if ($data['single_checkout_available_for_this_customer']) {
+            $totalTypeAvailable++;
+        }
+        $data['single_checkout_payment_title'] = $this->model_extension_payment_tamarapay->getPaymentTitle($methods);
+        $data['total_method_available'] = $totalTypeAvailable;
+    }
+
+    private function addExtraDataForCommonVersion($methods, &$data) {
+        $totalTypeAvailable = 0;
+        $numberOfInstallments = [];
+        $methodsNameInWidget = [];
+        $existsPayLaterOrPayNextMonth = false;
+        $existsPayInX = false; //number of installments > 4
+        $existsPayByInstallments = false; //number of installments <= 4
+        $existsPayNow = false;
+        $minLimitAllMethods = null;
+        foreach ($methods as $method) {
+            $isInstallments = false;
+            if ($this->model_extension_payment_tamarapay->isInstallmentsPayment($method['name'])) {
+                $isInstallments = true;
+            }
+            if ($method['is_in_limit']) {
+                $totalTypeAvailable++;
+                if ($minLimitAllMethods === null) {
+                    $minLimitAllMethods = $method['min_limit'];
+                } else {
+                    if ($method['min_limit'] < $minLimitAllMethods) {
+                        $minLimitAllMethods = $method['min_limit'];
+                    }
+                }
+                if ($isInstallments) {
+                    $methodsNameInWidget[] = "installment";
+                    $numberOfInstallments[] = $method['number_of_instalments'];
+                    if (intval($method['number_of_instalments']) > 4) {
+                        $existsPayInX = true;
+                    } else {
+                        $existsPayByInstallments = true;
+                    }
+                } else {
+                    if ($method['name'] == "pay_by_later") {
+                        $methodsNameInWidget[] = "paylater";
+                        $existsPayLaterOrPayNextMonth = true;
+                    } else {
+                        if ($method['name'] == "pay_next_month") {
+                            $methodsNameInWidget[] = "pay-next-month";
+                            $existsPayLaterOrPayNextMonth = true;
+                        } else {
+                            if ($this->model_extension_payment_tamarapay->isPayNowPayment($method['name'])) {
+                                $existsPayNow = true;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        $data['total_method_available'] = $totalTypeAvailable;
+        $data['number_of_installments'] = implode(";" , $numberOfInstallments);
+        $data['methods_name_in_widget'] = implode(";", array_unique($methodsNameInWidget));
+        $data['exists_pay_later_or_pay_next_month'] = $existsPayLaterOrPayNextMonth;
+        $data['exists_pay_in_x'] = $existsPayInX;
+        $data['exists_pay_by_installments'] = $existsPayByInstallments;
+        $data['min_limit_all_methods'] = $minLimitAllMethods;
+        if ($existsPayNow && $totalTypeAvailable == 1) {
+            $data['only_pay_now'] = true;
+        } else {
+            $data['only_pay_now'] = false;
+        }
+    }
+
+    public function getCurrencyFromPaymentMethods($methods) {
+        foreach ($methods as $method) {
+            return $method['currency'];
         }
     }
 }

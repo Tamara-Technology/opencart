@@ -41,8 +41,8 @@ class RedisSessionHandler extends \TMS\Symfony\Component\HttpFoundation\Session\
      */
     public function __construct($redis, array $options = [])
     {
-        if (!$redis instanceof \Redis && !$redis instanceof \RedisArray && !$redis instanceof \RedisCluster && !$redis instanceof \TMS\Predis\ClientInterface && !$redis instanceof \TMS\Symfony\Component\Cache\Traits\RedisProxy && !$redis instanceof \TMS\Symfony\Component\Cache\Traits\RedisClusterProxy) {
-            throw new \InvalidArgumentException(\sprintf('"%s()" expects parameter 1 to be Redis, RedisArray, RedisCluster or Predis\\ClientInterface, "%s" given.', __METHOD__, get_debug_type($redis)));
+        if (!$redis instanceof \TMS\Redis && !$redis instanceof \TMS\RedisArray && !$redis instanceof \TMS\RedisCluster && !$redis instanceof \TMS\Predis\ClientInterface && !$redis instanceof \TMS\Symfony\Component\Cache\Traits\RedisProxy && !$redis instanceof \TMS\Symfony\Component\Cache\Traits\RedisClusterProxy) {
+            throw new \InvalidArgumentException(\sprintf('"%s()" expects parameter 1 to be Redis, RedisArray, RedisCluster or Predis\\ClientInterface, "%s" given.', __METHOD__, \is_object($redis) ? \get_class($redis) : \gettype($redis)));
         }
         if ($diff = \array_diff(\array_keys($options), ['prefix', 'ttl'])) {
             throw new \InvalidArgumentException(\sprintf('The following options are not supported "%s".', \implode(', ', $diff)));
@@ -54,14 +54,14 @@ class RedisSessionHandler extends \TMS\Symfony\Component\HttpFoundation\Session\
     /**
      * {@inheritdoc}
      */
-    protected function doRead(string $sessionId) : string
+    protected function doRead($sessionId) : string
     {
         return $this->redis->get($this->prefix . $sessionId) ?: '';
     }
     /**
      * {@inheritdoc}
      */
-    protected function doWrite(string $sessionId, string $data) : bool
+    protected function doWrite($sessionId, $data) : bool
     {
         $result = $this->redis->setEx($this->prefix . $sessionId, (int) ($this->ttl ?? \ini_get('session.gc_maxlifetime')), $data);
         return $result && !$result instanceof \TMS\Predis\Response\ErrorInterface;
@@ -69,38 +69,33 @@ class RedisSessionHandler extends \TMS\Symfony\Component\HttpFoundation\Session\
     /**
      * {@inheritdoc}
      */
-    protected function doDestroy(string $sessionId) : bool
+    protected function doDestroy($sessionId) : bool
     {
-        static $unlink = \true;
-        if ($unlink) {
-            try {
-                $unlink = \false !== $this->redis->unlink($this->prefix . $sessionId);
-            } catch (\Throwable $e) {
-                $unlink = \false;
-            }
-        }
-        if (!$unlink) {
-            $this->redis->del($this->prefix . $sessionId);
-        }
+        $this->redis->del($this->prefix . $sessionId);
         return \true;
     }
     /**
      * {@inheritdoc}
      */
+    #[\ReturnTypeWillChange]
     public function close() : bool
     {
         return \true;
     }
     /**
      * {@inheritdoc}
+     *
+     * @return int|false
      */
-    public function gc($maxlifetime) : bool
+    #[\ReturnTypeWillChange]
+    public function gc($maxlifetime)
     {
-        return \true;
+        return 0;
     }
     /**
      * @return bool
      */
+    #[\ReturnTypeWillChange]
     public function updateTimestamp($sessionId, $data)
     {
         return (bool) $this->redis->expire($this->prefix . $sessionId, (int) ($this->ttl ?? \ini_get('session.gc_maxlifetime')));

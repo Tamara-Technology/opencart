@@ -31,11 +31,9 @@ class Session implements \TMS\Symfony\Component\HttpFoundation\Session\SessionIn
     private $attributeName;
     private $data = [];
     private $usageIndex = 0;
-    private $usageReporter;
-    public function __construct(\TMS\Symfony\Component\HttpFoundation\Session\Storage\SessionStorageInterface $storage = null, \TMS\Symfony\Component\HttpFoundation\Session\Attribute\AttributeBagInterface $attributes = null, \TMS\Symfony\Component\HttpFoundation\Session\Flash\FlashBagInterface $flashes = null, callable $usageReporter = null)
+    public function __construct(\TMS\Symfony\Component\HttpFoundation\Session\Storage\SessionStorageInterface $storage = null, \TMS\Symfony\Component\HttpFoundation\Session\Attribute\AttributeBagInterface $attributes = null, \TMS\Symfony\Component\HttpFoundation\Session\Flash\FlashBagInterface $flashes = null)
     {
         $this->storage = $storage ?? new \TMS\Symfony\Component\HttpFoundation\Session\Storage\NativeSessionStorage();
-        $this->usageReporter = $usageReporter;
         $attributes = $attributes ?? new \TMS\Symfony\Component\HttpFoundation\Session\Attribute\AttributeBag();
         $this->attributeName = $attributes->getName();
         $this->registerBag($attributes);
@@ -53,21 +51,21 @@ class Session implements \TMS\Symfony\Component\HttpFoundation\Session\SessionIn
     /**
      * {@inheritdoc}
      */
-    public function has(string $name)
+    public function has($name)
     {
         return $this->getAttributeBag()->has($name);
     }
     /**
      * {@inheritdoc}
      */
-    public function get(string $name, $default = null)
+    public function get($name, $default = null)
     {
         return $this->getAttributeBag()->get($name, $default);
     }
     /**
      * {@inheritdoc}
      */
-    public function set(string $name, $value)
+    public function set($name, $value)
     {
         $this->getAttributeBag()->set($name, $value);
     }
@@ -88,7 +86,7 @@ class Session implements \TMS\Symfony\Component\HttpFoundation\Session\SessionIn
     /**
      * {@inheritdoc}
      */
-    public function remove(string $name)
+    public function remove($name)
     {
         return $this->getAttributeBag()->remove($name);
     }
@@ -111,6 +109,7 @@ class Session implements \TMS\Symfony\Component\HttpFoundation\Session\SessionIn
      *
      * @return \ArrayIterator An \ArrayIterator instance
      */
+    #[\ReturnTypeWillChange]
     public function getIterator()
     {
         return new \ArrayIterator($this->getAttributeBag()->all());
@@ -120,6 +119,7 @@ class Session implements \TMS\Symfony\Component\HttpFoundation\Session\SessionIn
      *
      * @return int
      */
+    #[\ReturnTypeWillChange]
     public function count()
     {
         return \count($this->getAttributeBag()->all());
@@ -135,9 +135,6 @@ class Session implements \TMS\Symfony\Component\HttpFoundation\Session\SessionIn
     {
         if ($this->isStarted()) {
             ++$this->usageIndex;
-            if ($this->usageReporter && 0 <= $this->usageIndex) {
-                ($this->usageReporter)();
-            }
         }
         foreach ($this->data as &$data) {
             if (!empty($data)) {
@@ -149,7 +146,7 @@ class Session implements \TMS\Symfony\Component\HttpFoundation\Session\SessionIn
     /**
      * {@inheritdoc}
      */
-    public function invalidate(int $lifetime = null)
+    public function invalidate($lifetime = null)
     {
         $this->storage->clear();
         return $this->migrate(\true, $lifetime);
@@ -157,7 +154,7 @@ class Session implements \TMS\Symfony\Component\HttpFoundation\Session\SessionIn
     /**
      * {@inheritdoc}
      */
-    public function migrate(bool $destroy = \false, int $lifetime = null)
+    public function migrate($destroy = \false, $lifetime = null)
     {
         return $this->storage->regenerate($destroy, $lifetime);
     }
@@ -178,7 +175,7 @@ class Session implements \TMS\Symfony\Component\HttpFoundation\Session\SessionIn
     /**
      * {@inheritdoc}
      */
-    public function setId(string $id)
+    public function setId($id)
     {
         if ($this->storage->getId() !== $id) {
             $this->storage->setId($id);
@@ -194,7 +191,7 @@ class Session implements \TMS\Symfony\Component\HttpFoundation\Session\SessionIn
     /**
      * {@inheritdoc}
      */
-    public function setName(string $name)
+    public function setName($name)
     {
         $this->storage->setName($name);
     }
@@ -204,9 +201,6 @@ class Session implements \TMS\Symfony\Component\HttpFoundation\Session\SessionIn
     public function getMetadataBag()
     {
         ++$this->usageIndex;
-        if ($this->usageReporter && 0 <= $this->usageIndex) {
-            ($this->usageReporter)();
-        }
         return $this->storage->getMetadataBag();
     }
     /**
@@ -214,12 +208,12 @@ class Session implements \TMS\Symfony\Component\HttpFoundation\Session\SessionIn
      */
     public function registerBag(\TMS\Symfony\Component\HttpFoundation\Session\SessionBagInterface $bag)
     {
-        $this->storage->registerBag(new \TMS\Symfony\Component\HttpFoundation\Session\SessionBagProxy($bag, $this->data, $this->usageIndex, $this->usageReporter));
+        $this->storage->registerBag(new \TMS\Symfony\Component\HttpFoundation\Session\SessionBagProxy($bag, $this->data, $this->usageIndex));
     }
     /**
      * {@inheritdoc}
      */
-    public function getBag(string $name)
+    public function getBag($name)
     {
         $bag = $this->storage->getBag($name);
         return \method_exists($bag, 'getBag') ? $bag->getBag() : $bag;

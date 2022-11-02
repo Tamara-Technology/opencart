@@ -32,11 +32,11 @@ class HelpCommand extends \TMS\Symfony\Component\Console\Command\Command
         $this->setName('help')->setDefinition([new \TMS\Symfony\Component\Console\Input\InputArgument('command_name', \TMS\Symfony\Component\Console\Input\InputArgument::OPTIONAL, 'The command name', 'help'), new \TMS\Symfony\Component\Console\Input\InputOption('format', null, \TMS\Symfony\Component\Console\Input\InputOption::VALUE_REQUIRED, 'The output format (txt, xml, json, or md)', 'txt'), new \TMS\Symfony\Component\Console\Input\InputOption('raw', null, \TMS\Symfony\Component\Console\Input\InputOption::VALUE_NONE, 'To output raw command help')])->setDescription('Display help for a command')->setHelp(<<<'EOF'
 The <info>%command.name%</info> command displays help for a given command:
 
-  <info>%command.full_name% list</info>
+  <info>php %command.full_name% list</info>
 
 You can also output the help in other formats by using the <comment>--format</comment> option:
 
-  <info>%command.full_name% --format=xml list</info>
+  <info>php %command.full_name% --format=xml list</info>
 
 To display the list of available commands, please use the <info>list</info> command.
 EOF

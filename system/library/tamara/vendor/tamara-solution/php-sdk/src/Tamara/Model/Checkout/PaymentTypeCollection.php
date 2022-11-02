@@ -17,9 +17,10 @@ class PaymentTypeCollection implements \IteratorAggregate, \Countable
     private $data = [];
     public function __construct(array $paymentTypes)
     {
+        $zeroDefault = [\TMS\Tamara\Model\Money::AMOUNT => 0.0, \TMS\Tamara\Model\Money::CURRENCY => 'SAR'];
         foreach ($paymentTypes as $paymentType) {
-            $minLimit = $paymentType[self::MIN_LIMIT];
-            $maxLimit = $paymentType[self::MAX_LIMIT];
+            $minLimit = $paymentType[self::MIN_LIMIT] ?? $zeroDefault;
+            $maxLimit = $paymentType[self::MAX_LIMIT] ?? $zeroDefault;
             $this->data[] = new \TMS\Tamara\Model\Checkout\PaymentType($paymentType[self::NAME], $paymentType[self::DESCRIPTION], new \TMS\Tamara\Model\Money((float) $minLimit[\TMS\Tamara\Model\Money::AMOUNT], $minLimit[\TMS\Tamara\Model\Money::CURRENCY]), new \TMS\Tamara\Model\Money((float) $maxLimit[\TMS\Tamara\Model\Money::AMOUNT], $maxLimit[\TMS\Tamara\Model\Money::CURRENCY]), $this->parseSupportedInstalments($paymentType));
         }
     }
@@ -36,11 +37,12 @@ class PaymentTypeCollection implements \IteratorAggregate, \Countable
     }
     private function parseSupportedInstalments(array $data) : array
     {
+        $zeroDefault = [\TMS\Tamara\Model\Money::AMOUNT => 0.0, \TMS\Tamara\Model\Money::CURRENCY => 'SAR'];
         $result = [];
         if (isset($data[\TMS\Tamara\Model\Checkout\PaymentType::SUPPORTED_INSTALMENTS]) && !empty($data[\TMS\Tamara\Model\Checkout\PaymentType::SUPPORTED_INSTALMENTS])) {
             foreach ($data[\TMS\Tamara\Model\Checkout\PaymentType::SUPPORTED_INSTALMENTS] as $item) {
-                $minLimit = $item[self::MIN_LIMIT];
-                $maxLimit = $item[self::MAX_LIMIT];
+                $minLimit = $item[self::MIN_LIMIT] ?? $zeroDefault;
+                $maxLimit = $item[self::MAX_LIMIT] ?? $zeroDefault;
                 $instalment = new \TMS\Tamara\Model\Checkout\Instalment((int) $item[\TMS\Tamara\Model\Order\Order::INSTALMENTS], new \TMS\Tamara\Model\Money((float) $minLimit[\TMS\Tamara\Model\Money::AMOUNT], $minLimit[\TMS\Tamara\Model\Money::CURRENCY]), new \TMS\Tamara\Model\Money((float) $maxLimit[\TMS\Tamara\Model\Money::AMOUNT], $maxLimit[\TMS\Tamara\Model\Money::CURRENCY]));
                 $result[] = $instalment;
             }

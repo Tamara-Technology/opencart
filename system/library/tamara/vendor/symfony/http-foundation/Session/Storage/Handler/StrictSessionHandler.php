@@ -22,13 +22,23 @@ class StrictSessionHandler extends \TMS\Symfony\Component\HttpFoundation\Session
     public function __construct(\SessionHandlerInterface $handler)
     {
         if ($handler instanceof \SessionUpdateTimestampHandlerInterface) {
-            throw new \LogicException(\sprintf('"%s" is already an instance of "SessionUpdateTimestampHandlerInterface", you cannot wrap it with "%s".', get_debug_type($handler), self::class));
+            throw new \LogicException(\sprintf('"%s" is already an instance of "SessionUpdateTimestampHandlerInterface", you cannot wrap it with "%s".', \get_class($handler), self::class));
         }
         $this->handler = $handler;
     }
     /**
+     * Returns true if this handler wraps an internal PHP session save handler using \SessionHandler.
+     *
+     * @internal
+     */
+    public function isWrapper() : bool
+    {
+        return $this->handler instanceof \SessionHandler;
+    }
+    /**
      * @return bool
      */
+    #[\ReturnTypeWillChange]
     public function open($savePath, $sessionName)
     {
         parent::open($savePath, $sessionName);
@@ -37,13 +47,14 @@ class StrictSessionHandler extends \TMS\Symfony\Component\HttpFoundation\Session
     /**
      * {@inheritdoc}
      */
-    protected function doRead(string $sessionId)
+    protected function doRead($sessionId)
     {
         return $this->handler->read($sessionId);
     }
     /**
      * @return bool
      */
+    #[\ReturnTypeWillChange]
     public function updateTimestamp($sessionId, $data)
     {
         return $this->write($sessionId, $data);
@@ -51,13 +62,14 @@ class StrictSessionHandler extends \TMS\Symfony\Component\HttpFoundation\Session
     /**
      * {@inheritdoc}
      */
-    protected function doWrite(string $sessionId, string $data)
+    protected function doWrite($sessionId, $data)
     {
         return $this->handler->write($sessionId, $data);
     }
     /**
      * @return bool
      */
+    #[\ReturnTypeWillChange]
     public function destroy($sessionId)
     {
         $this->doDestroy = \true;
@@ -67,7 +79,7 @@ class StrictSessionHandler extends \TMS\Symfony\Component\HttpFoundation\Session
     /**
      * {@inheritdoc}
      */
-    protected function doDestroy(string $sessionId)
+    protected function doDestroy($sessionId)
     {
         $this->doDestroy = \false;
         return $this->handler->destroy($sessionId);
@@ -75,13 +87,15 @@ class StrictSessionHandler extends \TMS\Symfony\Component\HttpFoundation\Session
     /**
      * @return bool
      */
+    #[\ReturnTypeWillChange]
     public function close()
     {
         return $this->handler->close();
     }
     /**
-     * @return bool
+     * @return int|false
      */
+    #[\ReturnTypeWillChange]
     public function gc($maxlifetime)
     {
         return $this->handler->gc($maxlifetime);

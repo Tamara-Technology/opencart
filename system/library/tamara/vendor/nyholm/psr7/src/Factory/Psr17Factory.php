@@ -47,12 +47,14 @@ class Psr17Factory implements \TMS\Psr\Http\Message\RequestFactoryInterface, \TM
     }
     public function createStreamFromFile(string $filename, string $mode = 'r') : \TMS\Psr\Http\Message\StreamInterface
     {
-        $resource = @\fopen($filename, $mode);
-        if (\false === $resource) {
-            if ('' === $mode || \false === \in_array($mode[0], ['r', 'w', 'a', 'x', 'c'])) {
-                throw new \InvalidArgumentException('The mode ' . $mode . ' is invalid.');
+        if ('' === $filename) {
+            throw new \RuntimeException('Path cannot be empty');
+        }
+        if (\false === ($resource = @\fopen($filename, $mode))) {
+            if ('' === $mode || \false === \in_array($mode[0], ['r', 'w', 'a', 'x', 'c'], \true)) {
+                throw new \InvalidArgumentException(\sprintf('The mode "%s" is invalid.', $mode));
             }
-            throw new \RuntimeException('The file ' . $filename . ' cannot be opened.');
+            throw new \RuntimeException(\sprintf('The file "%s" cannot be opened: %s', $filename, \error_get_last()['message'] ?? ''));
         }
         return \TMS\Nyholm\Psr7\Stream::create($resource);
     }

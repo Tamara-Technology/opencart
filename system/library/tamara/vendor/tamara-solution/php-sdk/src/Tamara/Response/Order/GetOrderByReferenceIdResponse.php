@@ -36,7 +36,7 @@ class GetOrderByReferenceIdResponse extends \TMS\Tamara\Response\ClientResponse
      */
     private $status;
     /**
-     * @var Address
+     * @var Address|null
      */
     private $billingAddress;
     /**
@@ -119,9 +119,9 @@ class GetOrderByReferenceIdResponse extends \TMS\Tamara\Response\ClientResponse
     {
         return $this->status;
     }
-    public function getBillingAddress() : \TMS\Tamara\Model\Order\Address
+    public function getBillingAddress() : ?\TMS\Tamara\Model\Order\Address
     {
-        return $this->billingAddress;
+        return $this->billingAddress ?? null;
     }
     public function getShippingAddress() : \TMS\Tamara\Model\Order\Address
     {
@@ -191,7 +191,7 @@ class GetOrderByReferenceIdResponse extends \TMS\Tamara\Response\ClientResponse
         $this->orderNumber = $responseData[self::ORDER_NUMBER] ?? $this->orderReferenceId;
         $this->consumer = \TMS\Tamara\Model\Order\Consumer::fromArray($responseData[self::CONSUMER]);
         $this->status = $responseData[self::STATUS];
-        $this->billingAddress = \TMS\Tamara\Model\Order\Address::fromArray($responseData[self::BILLING_ADDRESS]);
+        $this->billingAddress = \is_array($responseData[self::BILLING_ADDRESS]) ? \TMS\Tamara\Model\Order\Address::fromArray($responseData[self::BILLING_ADDRESS]) : null;
         $this->shippingAddress = \TMS\Tamara\Model\Order\Address::fromArray($responseData[self::SHIPPING_ADDRESS]);
         $this->paymentType = $responseData[self::PAYMENT_TYPE] ?? '';
         $this->totalAmount = \TMS\Tamara\Model\Money::fromArray($responseData[self::TOTAL_AMOUNT]);

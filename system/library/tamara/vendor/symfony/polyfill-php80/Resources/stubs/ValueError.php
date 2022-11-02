@@ -2,7 +2,8 @@
 
 namespace TMS;
 
-class ValueError extends \Error
-{
+if (\PHP_VERSION_ID < 80000) {
+    class ValueError extends \Error
+    {
+    }
 }
-\class_alias('TMS\\ValueError', 'ValueError', \false);

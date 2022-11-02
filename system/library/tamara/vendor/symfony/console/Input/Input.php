@@ -77,9 +77,9 @@ abstract class Input implements \TMS\Symfony\Component\Console\Input\InputInterf
     /**
      * {@inheritdoc}
      */
-    public function setInteractive(bool $interactive)
+    public function setInteractive($interactive)
     {
-        $this->interactive = $interactive;
+        $this->interactive = (bool) $interactive;
     }
     /**
      * {@inheritdoc}
@@ -91,9 +91,9 @@ abstract class Input implements \TMS\Symfony\Component\Console\Input\InputInterf
     /**
      * {@inheritdoc}
      */
-    public function getArgument(string $name)
+    public function getArgument($name)
     {
-        if (!$this->definition->hasArgument($name)) {
+        if (!$this->definition->hasArgument((string) $name)) {
             throw new \TMS\Symfony\Component\Console\Exception\InvalidArgumentException(\sprintf('The "%s" argument does not exist.', $name));
         }
         return $this->arguments[$name] ?? $this->definition->getArgument($name)->getDefault();
@@ -101,9 +101,9 @@ abstract class Input implements \TMS\Symfony\Component\Console\Input\InputInterf
     /**
      * {@inheritdoc}
      */
-    public function setArgument(string $name, $value)
+    public function setArgument($name, $value)
     {
-        if (!$this->definition->hasArgument($name)) {
+        if (!$this->definition->hasArgument((string) $name)) {
             throw new \TMS\Symfony\Component\Console\Exception\InvalidArgumentException(\sprintf('The "%s" argument does not exist.', $name));
         }
         $this->arguments[$name] = $value;
@@ -113,7 +113,7 @@ abstract class Input implements \TMS\Symfony\Component\Console\Input\InputInterf
      */
     public function hasArgument($name)
     {
-        return $this->definition->hasArgument($name);
+        return $this->definition->hasArgument((string) $name);
     }
     /**
      * {@inheritdoc}
@@ -125,7 +125,7 @@ abstract class Input implements \TMS\Symfony\Component\Console\Input\InputInterf
     /**
      * {@inheritdoc}
      */
-    public function getOption(string $name)
+    public function getOption($name)
     {
         if (!$this->definition->hasOption($name)) {
             throw new \TMS\Symfony\Component\Console\Exception\InvalidArgumentException(\sprintf('The "%s" option does not exist.', $name));
@@ -135,7 +135,7 @@ abstract class Input implements \TMS\Symfony\Component\Console\Input\InputInterf
     /**
      * {@inheritdoc}
      */
-    public function setOption(string $name, $value)
+    public function setOption($name, $value)
     {
         if (!$this->definition->hasOption($name)) {
             throw new \TMS\Symfony\Component\Console\Exception\InvalidArgumentException(\sprintf('The "%s" option does not exist.', $name));
@@ -145,16 +145,18 @@ abstract class Input implements \TMS\Symfony\Component\Console\Input\InputInterf
     /**
      * {@inheritdoc}
      */
-    public function hasOption(string $name)
+    public function hasOption($name)
     {
         return $this->definition->hasOption($name);
     }
     /**
      * Escapes a token through escapeshellarg if it contains unsafe chars.
      *
+     * @param string $token
+     *
      * @return string
      */
-    public function escapeToken(string $token)
+    public function escapeToken($token)
     {
         return \preg_match('{^[\\w-]+$}', $token) ? $token : \escapeshellarg($token);
     }

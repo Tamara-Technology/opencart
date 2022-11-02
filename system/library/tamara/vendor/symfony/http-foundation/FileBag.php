@@ -38,7 +38,7 @@ class FileBag extends \TMS\Symfony\Component\HttpFoundation\ParameterBag
     /**
      * {@inheritdoc}
      */
-    public function set(string $key, $value)
+    public function set($key, $value)
     {
         if (!\is_array($value) && !$value instanceof \TMS\Symfony\Component\HttpFoundation\File\UploadedFile) {
             throw new \InvalidArgumentException('An uploaded file must be an array or an instance of UploadedFile.');
@@ -66,21 +66,21 @@ class FileBag extends \TMS\Symfony\Component\HttpFoundation\ParameterBag
         if ($file instanceof \TMS\Symfony\Component\HttpFoundation\File\UploadedFile) {
             return $file;
         }
-        if (\is_array($file)) {
-            $file = $this->fixPhpFilesArray($file);
-            $keys = \array_keys($file);
-            \sort($keys);
-            if (self::FILE_KEYS == $keys) {
-                if (\UPLOAD_ERR_NO_FILE == $file['error']) {
-                    $file = null;
-                } else {
-                    $file = new \TMS\Symfony\Component\HttpFoundation\File\UploadedFile($file['tmp_name'], $file['name'], $file['type'], $file['error'], \false);
-                }
+        $file = $this->fixPhpFilesArray($file);
+        $keys = \array_keys($file);
+        \sort($keys);
+        if (self::FILE_KEYS == $keys) {
+            if (\UPLOAD_ERR_NO_FILE == $file['error']) {
+                $file = null;
             } else {
-                $file = \array_map([$this, 'convertFileInformation'], $file);
-                if (\array_keys($keys) === $keys) {
-                    $file = \array_filter($file);
-                }
+                $file = new \TMS\Symfony\Component\HttpFoundation\File\UploadedFile($file['tmp_name'], $file['name'], $file['type'], $file['error'], \false);
+            }
+        } else {
+            $file = \array_map(function ($v) {
+                return $v instanceof \TMS\Symfony\Component\HttpFoundation\File\UploadedFile || \is_array($v) ? $this->convertFileInformation($v) : $v;
+            }, $file);
+            if (\array_keys($keys) === $keys) {
+                $file = \array_filter($file);
             }
         }
         return $file;
@@ -103,6 +103,8 @@ class FileBag extends \TMS\Symfony\Component\HttpFoundation\ParameterBag
      */
     protected function fixPhpFilesArray($data)
     {
+        // Remove extra key added by PHP 8.1.
+        unset($data['full_path']);
         $keys = \array_keys($data);
         \sort($keys);
         if (self::FILE_KEYS != $keys || !isset($data['name']) || !\is_array($data['name'])) {

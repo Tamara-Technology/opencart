@@ -34,7 +34,7 @@ class AutoExpireFlashBag implements \TMS\Symfony\Component\HttpFoundation\Sessio
     {
         return $this->name;
     }
-    public function setName(string $name)
+    public function setName($name)
     {
         $this->name = $name;
     }
@@ -53,14 +53,14 @@ class AutoExpireFlashBag implements \TMS\Symfony\Component\HttpFoundation\Sessio
     /**
      * {@inheritdoc}
      */
-    public function add(string $type, $message)
+    public function add($type, $message)
     {
         $this->flashes['new'][$type][] = $message;
     }
     /**
      * {@inheritdoc}
      */
-    public function peek(string $type, array $default = [])
+    public function peek($type, array $default = [])
     {
         return $this->has($type) ? $this->flashes['display'][$type] : $default;
     }
@@ -69,12 +69,12 @@ class AutoExpireFlashBag implements \TMS\Symfony\Component\HttpFoundation\Sessio
      */
     public function peekAll()
     {
-        return \array_key_exists('display', $this->flashes) ? (array) $this->flashes['display'] : [];
+        return \array_key_exists('display', $this->flashes) ? $this->flashes['display'] : [];
     }
     /**
      * {@inheritdoc}
      */
-    public function get(string $type, array $default = [])
+    public function get($type, array $default = [])
     {
         $return = $default;
         if (!$this->has($type)) {
@@ -105,14 +105,14 @@ class AutoExpireFlashBag implements \TMS\Symfony\Component\HttpFoundation\Sessio
     /**
      * {@inheritdoc}
      */
-    public function set(string $type, $messages)
+    public function set($type, $messages)
     {
         $this->flashes['new'][$type] = (array) $messages;
     }
     /**
      * {@inheritdoc}
      */
-    public function has(string $type)
+    public function has($type)
     {
         return \array_key_exists($type, $this->flashes['display']) && $this->flashes['display'][$type];
     }

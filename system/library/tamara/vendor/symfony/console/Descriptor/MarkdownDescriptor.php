@@ -39,7 +39,7 @@ class MarkdownDescriptor extends \TMS\Symfony\Component\Console\Descriptor\Descr
     /**
      * {@inheritdoc}
      */
-    protected function write(string $content, bool $decorated = \true)
+    protected function write($content, $decorated = \true)
     {
         parent::write($content, $decorated);
     }
@@ -70,9 +70,7 @@ class MarkdownDescriptor extends \TMS\Symfony\Component\Console\Descriptor\Descr
             $this->write('### Arguments');
             foreach ($definition->getArguments() as $argument) {
                 $this->write("\n\n");
-                if (null !== ($describeInputArgument = $this->describeInputArgument($argument))) {
-                    $this->write($describeInputArgument);
-                }
+                $this->write($this->describeInputArgument($argument));
             }
         }
         if (\count($definition->getOptions()) > 0) {
@@ -82,9 +80,7 @@ class MarkdownDescriptor extends \TMS\Symfony\Component\Console\Descriptor\Descr
             $this->write('### Options');
             foreach ($definition->getOptions() as $option) {
                 $this->write("\n\n");
-                if (null !== ($describeInputOption = $this->describeInputOption($option))) {
-                    $this->write($describeInputOption);
-                }
+                $this->write($this->describeInputOption($option));
             }
         }
     }
@@ -93,6 +89,7 @@ class MarkdownDescriptor extends \TMS\Symfony\Component\Console\Descriptor\Descr
      */
     protected function describeCommand(\TMS\Symfony\Component\Console\Command\Command $command, array $options = [])
     {
+        $command->getSynopsis();
         $command->mergeApplicationDefinition(\false);
         $this->write('`' . $command->getName() . "`\n" . \str_repeat('-', \TMS\Symfony\Component\Console\Helper\Helper::strlen($command->getName()) + 2) . "\n\n" . ($command->getDescription() ? $command->getDescription() . "\n\n" : '') . '### Usage' . "\n\n" . \array_reduce(\array_merge([$command->getSynopsis()], $command->getAliases(), $command->getUsages()), function ($carry, $usage) {
             return $carry . '* `' . $usage . '`' . "\n";
@@ -101,10 +98,9 @@ class MarkdownDescriptor extends \TMS\Symfony\Component\Console\Descriptor\Descr
             $this->write("\n");
             $this->write($help);
         }
-        $definition = $command->getDefinition();
-        if ($definition->getOptions() || $definition->getArguments()) {
+        if ($command->getNativeDefinition()) {
             $this->write("\n\n");
-            $this->describeInputDefinition($definition);
+            $this->describeInputDefinition($command->getNativeDefinition());
         }
     }
     /**
@@ -128,9 +124,7 @@ class MarkdownDescriptor extends \TMS\Symfony\Component\Console\Descriptor\Descr
         }
         foreach ($description->getCommands() as $command) {
             $this->write("\n\n");
-            if (null !== ($describeCommand = $this->describeCommand($command))) {
-                $this->write($describeCommand);
-            }
+            $this->write($this->describeCommand($command));
         }
     }
     private function getApplicationTitle(\TMS\Symfony\Component\Console\Application $application) : string

@@ -8,7 +8,7 @@ $_['text_success']         = 'Success';
 $_['text_customer']        = '<p>Your order has been successfully processed!</p><p>You can view your order history by going to the <a href="%s">my account</a> page and by clicking on <a href="%s">history</a>.</p><p>If your purchase has an associated download, you can go to the account <a href="%s">downloads</a> page to view them.</p><p>Please direct any questions you have to the <a href="%s">store owner</a>.</p><p>Thanks for shopping with us online!</p>';
 $_['text_guest']           = '<p>Your order has been successfully processed!</p><p>Please direct any questions you have to the <a href="%s">store owner</a>.</p><p>Thanks for shopping with us online!</p>';
 
-// Text
+// Text payment title
 $_['text_title']						= 'Split it up to 4 payments with Tamara, interest-free';
 $_['text_title_normal']					= 'Split your payments. No hidden fees, no interest!';
 $_['text_title_sko_2']					= 'Split it up to 2 payments with Tamara, interest-free';
@@ -22,16 +22,6 @@ $_['text_title_sko_9']					= 'Split it up to 9 payments with Tamara, interest-fr
 $_['text_title_sko_10']					= 'Split it up to 10 payments with Tamara, interest-free';
 $_['text_title_sko_11']					= 'Split it up to 11 payments with Tamara, interest-free';
 $_['text_title_sko_12']					= 'Split it up to 12 payments with Tamara, interest-free';
-$_['text_payment_success']				= 'Payment success, details below';
-$_['text_payment_failed']				= 'Payment failed, details below';
-$_['text_choose_payment']               = 'Please select a Tamara payment type';
-$_['text_min_amount']                   = 'Min limit:';
-$_['text_max_amount']                   = 'Max limit:';
-$_['text_under_over_limit']             = 'The grand total of order is over/under limit of Tamara.';
-$_['text_more_details']                 = 'More details...';
-$_['text_know_more']                    = 'Know more?';
-$_['text_order_canceled']               = 'Your order has been canceled';
-$_['text_order_pay_failure']            = 'Pay with Tamara failed';
 $_['text_pay_by_later']                 = 'Buy now and pay in 30 days';
 $_['text_pay_next_month']                 = 'Pay it next month';
 $_['text_pay_now']                 = 'Pay now using Mada, Apple Pay or Credit card';
@@ -46,6 +36,17 @@ $_['text_pay_by_instalments_9']           = 'Split in 9, interest-free';
 $_['text_pay_by_instalments_10']           = 'Split in 10, interest-free';
 $_['text_pay_by_instalments_11']           = 'Split in 11, interest-free';
 $_['text_pay_by_instalments_12']           = 'Split in 12, interest-free';
+
+$_['text_payment_success']				= 'Payment success, details below';
+$_['text_payment_failed']				= 'Payment failed, details below';
+$_['text_choose_payment']               = 'Please select a Tamara payment type';
+$_['text_min_amount']                   = 'Min limit:';
+$_['text_max_amount']                   = 'Max limit:';
+$_['text_under_over_limit']             = 'The grand total of order is over/under limit of Tamara.';
+$_['text_more_details']                 = 'More details...';
+$_['text_know_more']                    = 'Know more?';
+$_['text_order_canceled']               = 'Your order has been canceled';
+$_['text_order_pay_failure']            = 'Pay with Tamara failed';
 $_['text_terms_and_conditions']           = 'Terms and conditions';
 
 // Error
@@ -66,7 +67,6 @@ $_['error_cannot_process_authorise_notification'] = 'Cannot process authorise no
 $_['error_cannot_process_webhook'] = 'Cannot process webhook';
 $_['error_webhook_event_type_not_allowed'] = 'Webhook event type is not allowed';
 $_['error_no_method_available']         = 'Tamara payment is not available for this order currently';
-
 $_['consumer_invalid_phone_number']     = 'Your phone number is invalid, please check again.';
 $_['total_amount_invalid_limit']        = 'The total amount is reached the min/max limit.';
 $_['consumer_empty_first_name']         = 'The first name is mandatory.';

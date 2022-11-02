@@ -19,20 +19,22 @@ use TMS\Symfony\Component\Process\Process;
  *
  * @author Fabien Potencier <fabien@symfony.com>
  *
- * @final
+ * @final since Symfony 4.2
  */
 class ProcessHelper extends \TMS\Symfony\Component\Console\Helper\Helper
 {
     /**
      * Runs an external process.
      *
-     * @param array|Process $cmd      An instance of Process or an array of the command and arguments
-     * @param callable|null $callback A PHP callback to run whenever there is some
-     *                                output available on STDOUT or STDERR
+     * @param array|Process $cmd       An instance of Process or an array of the command and arguments
+     * @param string|null   $error     An error message that must be displayed if something went wrong
+     * @param callable|null $callback  A PHP callback to run whenever there is some
+     *                                 output available on STDOUT or STDERR
+     * @param int           $verbosity The threshold for verbosity
      *
      * @return Process The process that ran
      */
-    public function run(\TMS\Symfony\Component\Console\Output\OutputInterface $output, $cmd, string $error = null, callable $callback = null, int $verbosity = \TMS\Symfony\Component\Console\Output\OutputInterface::VERBOSITY_VERY_VERBOSE) : \TMS\Symfony\Component\Process\Process
+    public function run(\TMS\Symfony\Component\Console\Output\OutputInterface $output, $cmd, $error = null, callable $callback = null, $verbosity = \TMS\Symfony\Component\Console\Output\OutputInterface::VERBOSITY_VERY_VERBOSE)
     {
         if (!\class_exists(\TMS\Symfony\Component\Process\Process::class)) {
             throw new \LogicException('The ProcessHelper cannot be run as the Process component is not installed. Try running "compose require symfony/process".');
@@ -45,7 +47,8 @@ class ProcessHelper extends \TMS\Symfony\Component\Console\Helper\Helper
             $cmd = [$cmd];
         }
         if (!\is_array($cmd)) {
-            throw new \TypeError(\sprintf('The "command" argument of "%s()" must be an array or a "%s" instance, "%s" given.', __METHOD__, \TMS\Symfony\Component\Process\Process::class, get_debug_type($cmd)));
+            @\trigger_error(\sprintf('Passing a command as a string to "%s()" is deprecated since Symfony 4.2, pass it the command as an array of arguments instead.', __METHOD__), \E_USER_DEPRECATED);
+            $cmd = [\method_exists(\TMS\Symfony\Component\Process\Process::class, 'fromShellCommandline') ? \TMS\Symfony\Component\Process\Process::fromShellCommandline($cmd) : new \TMS\Symfony\Component\Process\Process($cmd)];
         }
         if (\is_string($cmd[0] ?? null)) {
             $process = new \TMS\Symfony\Component\Process\Process($cmd);
@@ -78,9 +81,10 @@ class ProcessHelper extends \TMS\Symfony\Component\Console\Helper\Helper
      * This is identical to run() except that an exception is thrown if the process
      * exits with a non-zero exit code.
      *
-     * @param string|Process $cmd      An instance of Process or a command to run
-     * @param callable|null  $callback A PHP callback to run whenever there is some
-     *                                 output available on STDOUT or STDERR
+     * @param array|Process $cmd      An instance of Process or a command to run
+     * @param string|null   $error    An error message that must be displayed if something went wrong
+     * @param callable|null $callback A PHP callback to run whenever there is some
+     *                                output available on STDOUT or STDERR
      *
      * @return Process The process that ran
      *
@@ -88,7 +92,7 @@ class ProcessHelper extends \TMS\Symfony\Component\Console\Helper\Helper
      *
      * @see run()
      */
-    public function mustRun(\TMS\Symfony\Component\Console\Output\OutputInterface $output, $cmd, string $error = null, callable $callback = null) : \TMS\Symfony\Component\Process\Process
+    public function mustRun(\TMS\Symfony\Component\Console\Output\OutputInterface $output, $cmd, $error = null, callable $callback = null)
     {
         $process = $this->run($output, $cmd, $error, $callback);
         if (!$process->isSuccessful()) {
@@ -98,8 +102,10 @@ class ProcessHelper extends \TMS\Symfony\Component\Console\Helper\Helper
     }
     /**
      * Wraps a Process callback to add debugging output.
+     *
+     * @return callable
      */
-    public function wrapCallback(\TMS\Symfony\Component\Console\Output\OutputInterface $output, \TMS\Symfony\Component\Process\Process $process, callable $callback = null) : callable
+    public function wrapCallback(\TMS\Symfony\Component\Console\Output\OutputInterface $output, \TMS\Symfony\Component\Process\Process $process, callable $callback = null)
     {
         if ($output instanceof \TMS\Symfony\Component\Console\Output\ConsoleOutputInterface) {
             $output = $output->getErrorOutput();
@@ -119,7 +125,7 @@ class ProcessHelper extends \TMS\Symfony\Component\Console\Helper\Helper
     /**
      * {@inheritdoc}
      */
-    public function getName() : string
+    public function getName()
     {
         return 'process';
     }

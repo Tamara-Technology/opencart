@@ -10,7 +10,6 @@
  */
 namespace TMS\Symfony\Component\Console\Helper;
 
-use TMS\Symfony\Component\Console\Cursor;
 use TMS\Symfony\Component\Console\Exception\MissingInputException;
 use TMS\Symfony\Component\Console\Exception\RuntimeException;
 use TMS\Symfony\Component\Console\Formatter\OutputFormatter;
@@ -23,7 +22,6 @@ use TMS\Symfony\Component\Console\Output\OutputInterface;
 use TMS\Symfony\Component\Console\Question\ChoiceQuestion;
 use TMS\Symfony\Component\Console\Question\Question;
 use TMS\Symfony\Component\Console\Terminal;
-use function TMS\Symfony\Component\String\s;
 /**
  * The QuestionHelper class provides helpers to interact with the user.
  *
@@ -95,10 +93,6 @@ class QuestionHelper extends \TMS\Symfony\Component\Console\Helper\Helper
         $this->writePrompt($output, $question);
         $inputStream = $this->inputStream ?: \STDIN;
         $autocomplete = $question->getAutocompleterCallback();
-        if (\function_exists('TMS\\sapi_windows_cp_set')) {
-            // Codepage used by cmd.exe on Windows to allow special characters (éàüñ).
-            @sapi_windows_cp_set(1252);
-        }
         if (null === $autocomplete || !self::$stty || !\TMS\Symfony\Component\Console\Terminal::hasSttyAvailable()) {
             $ret = \false;
             if ($question->isHidden()) {
@@ -112,7 +106,9 @@ class QuestionHelper extends \TMS\Symfony\Component\Console\Helper\Helper
                 }
             }
             if (\false === $ret) {
-                $ret = $this->readInput($inputStream, $question);
+                $cp = $this->setIOCodepage();
+                $ret = \fgets($inputStream, 4096);
+                $ret = $this->resetIOCodepage($cp, $ret);
                 if (\false === $ret) {
                     throw new \TMS\Symfony\Component\Console\Exception\MissingInputException('Aborted.');
                 }
@@ -170,12 +166,14 @@ class QuestionHelper extends \TMS\Symfony\Component\Console\Helper\Helper
         $output->write($message);
     }
     /**
+     * @param string $tag
+     *
      * @return string[]
      */
-    protected function formatChoiceQuestionChoices(\TMS\Symfony\Component\Console\Question\ChoiceQuestion $question, string $tag)
+    protected function formatChoiceQuestionChoices(\TMS\Symfony\Component\Console\Question\ChoiceQuestion $question, $tag)
     {
         $messages = [];
-        $maxWidth = \max(\array_map('self::strlen', \array_keys($choices = $question->getChoices())));
+        $maxWidth = \max(\array_map([__CLASS__, 'strlen'], \array_keys($choices = $question->getChoices())));
         foreach ($choices as $key => $value) {
             $padding = \str_repeat(' ', $maxWidth - self::strlen($key));
             $messages[] = \sprintf("  [<{$tag}>%s{$padding}</{$tag}>] %s", $key, $value);
@@ -201,7 +199,6 @@ class QuestionHelper extends \TMS\Symfony\Component\Console\Helper\Helper
      */
     private function autocomplete(\TMS\Symfony\Component\Console\Output\OutputInterface $output, \TMS\Symfony\Component\Console\Question\Question $question, $inputStream, callable $autocomplete) : string
     {
-        $cursor = new \TMS\Symfony\Component\Console\Cursor($output, $inputStream);
         $fullChoice = '';
         $ret = '';
         $i = 0;
@@ -224,8 +221,9 @@ class QuestionHelper extends \TMS\Symfony\Component\Console\Helper\Helper
                 // Backspace Character
                 if (0 === $numMatches && 0 !== $i) {
                     --$i;
-                    $cursor->moveLeft(\TMS\Symfony\Component\String\s($fullChoice)->slice(-1)->width(\false));
                     $fullChoice = self::substr($fullChoice, 0, $i);
+                    // Move cursor backwards
+                    $output->write("\x1b[1D");
                 }
                 if (0 === $i) {
                     $ofs = -1;
@@ -260,7 +258,7 @@ class QuestionHelper extends \TMS\Symfony\Component\Console\Helper\Helper
                         $fullChoice .= $remainingCharacters;
                         $i = \false === ($encoding = \mb_detect_encoding($fullChoice, null, \true)) ? \strlen($fullChoice) : \mb_strlen($fullChoice, $encoding);
                         $matches = \array_filter($autocomplete($ret), function ($match) use($ret) {
-                            return '' === $ret || 0 === \strpos($match, $ret);
+                            return '' === $ret || str_starts_with($match, $ret);
                         });
                         $numMatches = \count($matches);
                         $ofs = -1;
@@ -288,18 +286,21 @@ class QuestionHelper extends \TMS\Symfony\Component\Console\Helper\Helper
                 $ofs = 0;
                 foreach ($autocomplete($ret) as $value) {
                     // If typed characters match the beginning chunk of value (e.g. [AcmeDe]moBundle)
-                    if (0 === \strpos($value, $tempRet)) {
+                    if (str_starts_with($value, $tempRet)) {
                         $matches[$numMatches++] = $value;
                     }
                 }
             }
-            $cursor->clearLineAfter();
+            // Erase characters from cursor to end of line
+            $output->write("\x1b[K");
             if ($numMatches > 0 && -1 !== $ofs) {
-                $cursor->savePosition();
+                // Save cursor position
+                $output->write("\x1b7");
                 // Write highlighted text, complete the partially entered response
                 $charactersEntered = \strlen(\trim($this->mostRecentlyEnteredValue($fullChoice)));
                 $output->write('<hl>' . \TMS\Symfony\Component\Console\Formatter\OutputFormatter::escapeTrailingBackslash(\substr($matches[$ofs], $charactersEntered)) . '</hl>');
-                $cursor->restorePosition();
+                // Restore cursor position
+                $output->write("\x1b8");
             }
         }
         // Reset stty so it behaves normally again
@@ -309,11 +310,11 @@ class QuestionHelper extends \TMS\Symfony\Component\Console\Helper\Helper
     private function mostRecentlyEnteredValue(string $entered) : string
     {
         // Determine the most recent value that the user entered
-        if (\false === \strpos($entered, ',')) {
+        if (!str_contains($entered, ',')) {
             return $entered;
         }
         $choices = \explode(',', $entered);
-        if (\strlen($lastChoice = \trim($choices[\count($choices) - 1])) > 0) {
+        if ('' !== ($lastChoice = \trim($choices[\count($choices) - 1]))) {
             return $lastChoice;
         }
         return $entered;
@@ -398,10 +399,10 @@ class QuestionHelper extends \TMS\Symfony\Component\Console\Helper\Helper
             return self::$stdinIsInteractive;
         }
         if (\function_exists('stream_isatty')) {
-            return self::$stdinIsInteractive = \stream_isatty(\fopen('php://stdin', 'r'));
+            return self::$stdinIsInteractive = @\stream_isatty(\fopen('php://stdin', 'r'));
         }
         if (\function_exists('posix_isatty')) {
-            return self::$stdinIsInteractive = \posix_isatty(\fopen('php://stdin', 'r'));
+            return self::$stdinIsInteractive = @\posix_isatty(\fopen('php://stdin', 'r'));
         }
         if (!\function_exists('exec')) {
             return self::$stdinIsInteractive = \true;
@@ -410,58 +411,34 @@ class QuestionHelper extends \TMS\Symfony\Component\Console\Helper\Helper
         return self::$stdinIsInteractive = 1 !== $status;
     }
     /**
-     * Reads one or more lines of input and returns what is read.
+     * Sets console I/O to the host code page.
      *
-     * @param resource $inputStream The handler resource
-     * @param Question $question    The question being asked
-     *
-     * @return string|bool The input received, false in case input could not be read
+     * @return int Previous code page in IBM/EBCDIC format
      */
-    private function readInput($inputStream, \TMS\Symfony\Component\Console\Question\Question $question)
+    private function setIOCodepage() : int
     {
-        if (!$question->isMultiline()) {
-            return \fgets($inputStream, 4096);
+        if (\function_exists('TMS\\sapi_windows_cp_set')) {
+            $cp = sapi_windows_cp_get();
+            sapi_windows_cp_set(sapi_windows_cp_get('oem'));
+            return $cp;
         }
-        $multiLineStreamReader = $this->cloneInputStream($inputStream);
-        if (null === $multiLineStreamReader) {
-            return \false;
-        }
-        $ret = '';
-        while (\false !== ($char = \fgetc($multiLineStreamReader))) {
-            if (\PHP_EOL === "{$ret}{$char}") {
-                break;
-            }
-            $ret .= $char;
-        }
-        return $ret;
+        return 0;
     }
     /**
-     * Clones an input stream in order to act on one instance of the same
-     * stream without affecting the other instance.
+     * Sets console I/O to the specified code page and converts the user input.
      *
-     * @param resource $inputStream The handler resource
+     * @param string|false $input
      *
-     * @return resource|null The cloned resource, null in case it could not be cloned
+     * @return string|false
      */
-    private function cloneInputStream($inputStream)
+    private function resetIOCodepage(int $cp, $input)
     {
-        $streamMetaData = \stream_get_meta_data($inputStream);
-        $seekable = $streamMetaData['seekable'] ?? \false;
-        $mode = $streamMetaData['mode'] ?? 'rb';
-        $uri = $streamMetaData['uri'] ?? null;
-        if (null === $uri) {
-            return null;
+        if (0 !== $cp) {
+            sapi_windows_cp_set($cp);
+            if (\false !== $input && '' !== $input) {
+                $input = sapi_windows_cp_conv(sapi_windows_cp_get('oem'), $cp, $input);
+            }
         }
-        $cloneStream = \fopen($uri, $mode);
-        // For seekable and writable streams, add all the same data to the
-        // cloned stream and then seek to the same offset.
-        if (\true === $seekable && !\in_array($mode, ['r', 'rb', 'rt'])) {
-            $offset = \ftell($inputStream);
-            \rewind($inputStream);
-            \stream_copy_to_stream($inputStream, $cloneStream);
-            \fseek($inputStream, $offset);
-            \fseek($cloneStream, $offset);
-        }
-        return $cloneStream;
+        return $input;
     }
 }

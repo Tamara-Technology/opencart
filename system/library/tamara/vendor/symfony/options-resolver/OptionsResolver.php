@@ -25,7 +25,6 @@ use TMS\Symfony\Component\OptionsResolver\Exception\UndefinedOptionsException;
  */
 class OptionsResolver implements \TMS\Symfony\Component\OptionsResolver\Options
 {
-    private const VALIDATION_FUNCTIONS = ['bool' => 'is_bool', 'boolean' => 'is_bool', 'int' => 'is_int', 'integer' => 'is_int', 'long' => 'is_int', 'float' => 'is_float', 'double' => 'is_float', 'real' => 'is_float', 'numeric' => 'is_numeric', 'string' => 'is_string', 'scalar' => 'is_scalar', 'array' => 'is_array', 'iterable' => 'is_iterable', 'countable' => 'is_countable', 'callable' => 'is_callable', 'object' => 'is_object', 'resource' => 'is_resource'];
     /**
      * The names of all defined options.
      */
@@ -63,10 +62,6 @@ class OptionsResolver implements \TMS\Symfony\Component\OptionsResolver\Options
      */
     private $allowedTypes = [];
     /**
-     * A list of info messages for each option.
-     */
-    private $info = [];
-    /**
      * A list of closures for evaluating lazy options.
      */
     private $lazy = [];
@@ -94,6 +89,7 @@ class OptionsResolver implements \TMS\Symfony\Component\OptionsResolver\Options
      */
     private $locked = \false;
     private $parentsOptions = [];
+    private const TYPE_ALIASES = ['boolean' => 'bool', 'integer' => 'int', 'double' => 'float'];
     /**
      * Sets the default value of a given option.
      *
@@ -148,7 +144,7 @@ class OptionsResolver implements \TMS\Symfony\Component\OptionsResolver\Options
      *
      * @throws AccessException If called from a lazy option or normalizer
      */
-    public function setDefault(string $option, $value)
+    public function setDefault($option, $value)
     {
         // Setting is not possible once resolving starts, because then lazy
         // options could manipulate the state of the object, leading to
@@ -201,10 +197,6 @@ class OptionsResolver implements \TMS\Symfony\Component\OptionsResolver\Options
         return $this;
     }
     /**
-     * Sets a list of default values.
-     *
-     * @param array $defaults The default values to set
-     *
      * @return $this
      *
      * @throws AccessException If called from a lazy option or normalizer
@@ -226,7 +218,7 @@ class OptionsResolver implements \TMS\Symfony\Component\OptionsResolver\Options
      *
      * @return bool Whether a default value is set
      */
-    public function hasDefault(string $option)
+    public function hasDefault($option)
     {
         return \array_key_exists($option, $this->defaults);
     }
@@ -259,7 +251,7 @@ class OptionsResolver implements \TMS\Symfony\Component\OptionsResolver\Options
      *
      * @return bool Whether the option is required
      */
-    public function isRequired(string $option)
+    public function isRequired($option)
     {
         return isset($this->required[$option]);
     }
@@ -285,7 +277,7 @@ class OptionsResolver implements \TMS\Symfony\Component\OptionsResolver\Options
      *
      * @return bool Whether the option is missing
      */
-    public function isMissing(string $option)
+    public function isMissing($option)
     {
         return isset($this->required[$option]) && !\array_key_exists($option, $this->defaults);
     }
@@ -333,7 +325,7 @@ class OptionsResolver implements \TMS\Symfony\Component\OptionsResolver\Options
      *
      * @return bool Whether the option is defined
      */
-    public function isDefined(string $option)
+    public function isDefined($option)
     {
         return isset($this->defined[$option]);
     }
@@ -369,11 +361,9 @@ class OptionsResolver implements \TMS\Symfony\Component\OptionsResolver\Options
      * passed to the closure is the value of the option after validating it
      * and before normalizing it.
      *
-     * @param string          $package The name of the composer package that is triggering the deprecation
-     * @param string          $version The version of the package that introduced the deprecation
-     * @param string|\Closure $message The deprecation message to use
+     * @param string|\Closure $deprecationMessage
      */
-    public function setDeprecated(string $option) : self
+    public function setDeprecated(string $option, $deprecationMessage = 'The option "%name%" is deprecated.') : self
     {
         if ($this->locked) {
             throw new \TMS\Symfony\Component\OptionsResolver\Exception\AccessException('Options cannot be deprecated from a lazy option or normalizer.');
@@ -381,24 +371,14 @@ class OptionsResolver implements \TMS\Symfony\Component\OptionsResolver\Options
         if (!isset($this->defined[$option])) {
             throw new \TMS\Symfony\Component\OptionsResolver\Exception\UndefinedOptionsException(\sprintf('The option "%s" does not exist, defined options are: "%s".', $this->formatOptions([$option]), \implode('", "', \array_keys($this->defined))));
         }
-        $args = \func_get_args();
-        if (\func_num_args() < 3) {
-            trigger_deprecation('symfony/options-resolver', '5.1', 'The signature of method "%s()" requires 2 new arguments: "string $package, string $version", not defining them is deprecated.', __METHOD__);
-            $message = $args[1] ?? 'The option "%name%" is deprecated.';
-            $package = $version = '';
-        } else {
-            $package = $args[1];
-            $version = $args[2];
-            $message = $args[3] ?? 'The option "%name%" is deprecated.';
-        }
-        if (!\is_string($message) && !$message instanceof \Closure) {
-            throw new \TMS\Symfony\Component\OptionsResolver\Exception\InvalidArgumentException(\sprintf('Invalid type for deprecation message argument, expected string or \\Closure, but got "%s".', get_debug_type($message)));
+        if (!\is_string($deprecationMessage) && !$deprecationMessage instanceof \Closure) {
+            throw new \TMS\Symfony\Component\OptionsResolver\Exception\InvalidArgumentException(\sprintf('Invalid type for deprecation message argument, expected string or \\Closure, but got "%s".', \gettype($deprecationMessage)));
         }
         // ignore if empty string
-        if ('' === $message) {
+        if ('' === $deprecationMessage) {
             return $this;
         }
-        $this->deprecated[$option] = ['package' => $package, 'version' => $version, 'message' => $message];
+        $this->deprecated[$option] = $deprecationMessage;
         // Make sure the option is processed
         unset($this->resolved[$option]);
         return $this;
@@ -425,15 +405,14 @@ class OptionsResolver implements \TMS\Symfony\Component\OptionsResolver\Options
      *
      * The resolved option value is set to the return value of the closure.
      *
-     * @param string   $option     The option name
-     * @param \Closure $normalizer The normalizer
+     * @param string $option The option name
      *
      * @return $this
      *
      * @throws UndefinedOptionsException If the option is undefined
      * @throws AccessException           If called from a lazy option or normalizer
      */
-    public function setNormalizer(string $option, \Closure $normalizer)
+    public function setNormalizer($option, \Closure $normalizer)
     {
         if ($this->locked) {
             throw new \TMS\Symfony\Component\OptionsResolver\Exception\AccessException('Normalizers cannot be set from a lazy option or normalizer.');
@@ -463,10 +442,6 @@ class OptionsResolver implements \TMS\Symfony\Component\OptionsResolver\Options
      * the option.
      *
      * The resolved option value is set to the return value of the closure.
-     *
-     * @param string   $option       The option name
-     * @param \Closure $normalizer   The normalizer
-     * @param bool     $forcePrepend If set to true, prepend instead of appending
      *
      * @return $this
      *
@@ -512,7 +487,7 @@ class OptionsResolver implements \TMS\Symfony\Component\OptionsResolver\Options
      * @throws UndefinedOptionsException If the option is undefined
      * @throws AccessException           If called from a lazy option or normalizer
      */
-    public function setAllowedValues(string $option, $allowedValues)
+    public function setAllowedValues($option, $allowedValues)
     {
         if ($this->locked) {
             throw new \TMS\Symfony\Component\OptionsResolver\Exception\AccessException('Allowed values cannot be set from a lazy option or normalizer.');
@@ -548,7 +523,7 @@ class OptionsResolver implements \TMS\Symfony\Component\OptionsResolver\Options
      * @throws UndefinedOptionsException If the option is undefined
      * @throws AccessException           If called from a lazy option or normalizer
      */
-    public function addAllowedValues(string $option, $allowedValues)
+    public function addAllowedValues($option, $allowedValues)
     {
         if ($this->locked) {
             throw new \TMS\Symfony\Component\OptionsResolver\Exception\AccessException('Allowed values cannot be added from a lazy option or normalizer.');
@@ -583,7 +558,7 @@ class OptionsResolver implements \TMS\Symfony\Component\OptionsResolver\Options
      * @throws UndefinedOptionsException If the option is undefined
      * @throws AccessException           If called from a lazy option or normalizer
      */
-    public function setAllowedTypes(string $option, $allowedTypes)
+    public function setAllowedTypes($option, $allowedTypes)
     {
         if ($this->locked) {
             throw new \TMS\Symfony\Component\OptionsResolver\Exception\AccessException('Allowed types cannot be set from a lazy option or normalizer.');
@@ -613,7 +588,7 @@ class OptionsResolver implements \TMS\Symfony\Component\OptionsResolver\Options
      * @throws UndefinedOptionsException If the option is undefined
      * @throws AccessException           If called from a lazy option or normalizer
      */
-    public function addAllowedTypes(string $option, $allowedTypes)
+    public function addAllowedTypes($option, $allowedTypes)
     {
         if ($this->locked) {
             throw new \TMS\Symfony\Component\OptionsResolver\Exception\AccessException('Allowed types cannot be added from a lazy option or normalizer.');
@@ -629,45 +604,6 @@ class OptionsResolver implements \TMS\Symfony\Component\OptionsResolver\Options
         // Make sure the option is processed
         unset($this->resolved[$option]);
         return $this;
-    }
-    /**
-     * Defines an option configurator with the given name.
-     */
-    public function define(string $option) : \TMS\Symfony\Component\OptionsResolver\OptionConfigurator
-    {
-        if (isset($this->defined[$option])) {
-            throw new \TMS\Symfony\Component\OptionsResolver\Exception\OptionDefinitionException(\sprintf('The option "%s" is already defined.', $option));
-        }
-        return new \TMS\Symfony\Component\OptionsResolver\OptionConfigurator($option, $this);
-    }
-    /**
-     * Sets an info message for an option.
-     *
-     * @return $this
-     *
-     * @throws UndefinedOptionsException If the option is undefined
-     * @throws AccessException           If called from a lazy option or normalizer
-     */
-    public function setInfo(string $option, string $info) : self
-    {
-        if ($this->locked) {
-            throw new \TMS\Symfony\Component\OptionsResolver\Exception\AccessException('The Info message cannot be set from a lazy option or normalizer.');
-        }
-        if (!isset($this->defined[$option])) {
-            throw new \TMS\Symfony\Component\OptionsResolver\Exception\UndefinedOptionsException(\sprintf('The option "%s" does not exist. Defined options are: "%s".', $this->formatOptions([$option]), \implode('", "', \array_keys($this->defined))));
-        }
-        $this->info[$option] = $info;
-        return $this;
-    }
-    /**
-     * Gets the info message for an option.
-     */
-    public function getInfo(string $option) : ?string
-    {
-        if (!isset($this->defined[$option])) {
-            throw new \TMS\Symfony\Component\OptionsResolver\Exception\UndefinedOptionsException(\sprintf('The option "%s" does not exist. Defined options are: "%s".', $this->formatOptions([$option]), \implode('", "', \array_keys($this->defined))));
-        }
-        return $this->info[$option] ?? null;
     }
     /**
      * Removes the option with the given name.
@@ -687,7 +623,7 @@ class OptionsResolver implements \TMS\Symfony\Component\OptionsResolver\Options
         }
         foreach ((array) $optionNames as $option) {
             unset($this->defined[$option], $this->defaults[$option], $this->required[$option], $this->resolved[$option]);
-            unset($this->lazy[$option], $this->normalizers[$option], $this->allowedTypes[$option], $this->allowedValues[$option], $this->info[$option]);
+            unset($this->lazy[$option], $this->normalizers[$option], $this->allowedTypes[$option], $this->allowedValues[$option]);
         }
         return $this;
     }
@@ -713,7 +649,6 @@ class OptionsResolver implements \TMS\Symfony\Component\OptionsResolver\Options
         $this->allowedTypes = [];
         $this->allowedValues = [];
         $this->deprecated = [];
-        $this->info = [];
         return $this;
     }
     /**
@@ -726,8 +661,6 @@ class OptionsResolver implements \TMS\Symfony\Component\OptionsResolver\Options
      *  - Required options are missing;
      *  - Options have invalid types;
      *  - Options have invalid values.
-     *
-     * @param array $options A map of option names to values
      *
      * @return array The merged and validated options
      *
@@ -791,15 +724,17 @@ class OptionsResolver implements \TMS\Symfony\Component\OptionsResolver\Options
      * @throws OptionDefinitionException If there is a cyclic dependency between
      *                                   lazy options and/or normalizers
      */
-    public function offsetGet($option, bool $triggerDeprecation = \true)
+    #[\ReturnTypeWillChange]
+    public function offsetGet($option)
     {
         if (!$this->locked) {
             throw new \TMS\Symfony\Component\OptionsResolver\Exception\AccessException('Array access is only supported within closures of lazy options and normalizers.');
         }
+        $triggerDeprecation = 1 === \func_num_args() || \func_get_arg(1);
         // Shortcut for resolved options
         if (isset($this->resolved[$option]) || \array_key_exists($option, $this->resolved)) {
-            if ($triggerDeprecation && isset($this->deprecated[$option]) && (isset($this->given[$option]) || $this->calling) && \is_string($this->deprecated[$option]['message'])) {
-                trigger_deprecation($this->deprecated[$option]['package'], $this->deprecated[$option]['version'], \strtr($this->deprecated[$option]['message'], ['%name%' => $option]));
+            if ($triggerDeprecation && isset($this->deprecated[$option]) && (isset($this->given[$option]) || $this->calling) && \is_string($this->deprecated[$option])) {
+                @\trigger_error(\strtr($this->deprecated[$option], ['%name%' => $option]), \E_USER_DEPRECATED);
             }
             return $this->resolved[$option];
         }
@@ -818,7 +753,7 @@ class OptionsResolver implements \TMS\Symfony\Component\OptionsResolver\Options
                 throw new \TMS\Symfony\Component\OptionsResolver\Exception\OptionDefinitionException(\sprintf('The options "%s" have a cyclic dependency.', $this->formatOptions(\array_keys($this->calling))));
             }
             if (!\is_array($value)) {
-                throw new \TMS\Symfony\Component\OptionsResolver\Exception\InvalidOptionsException(\sprintf('The nested option "%s" with value %s is expected to be of type array, but is of type "%s".', $this->formatOptions([$option]), $this->formatValue($value), get_debug_type($value)));
+                throw new \TMS\Symfony\Component\OptionsResolver\Exception\InvalidOptionsException(\sprintf('The nested option "%s" with value %s is expected to be of type array, but is of type "%s".', $this->formatOptions([$option]), $this->formatValue($value), $this->formatTypeOf($value)));
             }
             // The following section must be protected from cyclic calls.
             $this->calling[$option] = \true;
@@ -860,6 +795,7 @@ class OptionsResolver implements \TMS\Symfony\Component\OptionsResolver\Options
             $valid = \true;
             $invalidTypes = [];
             foreach ($this->allowedTypes[$option] as $type) {
+                $type = self::TYPE_ALIASES[$type] ?? $type;
                 if ($valid = $this->verifyTypes($type, $value, $invalidTypes)) {
                     break;
                 }
@@ -869,7 +805,7 @@ class OptionsResolver implements \TMS\Symfony\Component\OptionsResolver\Options
                 $fmtAllowedTypes = \implode('" or "', $this->allowedTypes[$option]);
                 $fmtProvidedTypes = \implode('|', \array_keys($invalidTypes));
                 $allowedContainsArrayType = \count(\array_filter($this->allowedTypes[$option], static function ($item) {
-                    return '[]' === \substr($item, -2);
+                    return str_ends_with(self::TYPE_ALIASES[$item] ?? $item, '[]');
                 })) > 0;
                 if (\is_array($value) && $allowedContainsArrayType) {
                     throw new \TMS\Symfony\Component\OptionsResolver\Exception\InvalidOptionsException(\sprintf('The option "%s" with value %s is expected to be of type "%s", but one of the elements is of type "%s".', $this->formatOptions([$option]), $fmtActualValue, $fmtAllowedTypes, $fmtProvidedTypes));
@@ -901,33 +837,29 @@ class OptionsResolver implements \TMS\Symfony\Component\OptionsResolver\Options
                 if (\count($printableAllowedValues) > 0) {
                     $message .= \sprintf(' Accepted values are: %s.', $this->formatValues($printableAllowedValues));
                 }
-                if (isset($this->info[$option])) {
-                    $message .= \sprintf(' Info: %s.', $this->info[$option]);
-                }
                 throw new \TMS\Symfony\Component\OptionsResolver\Exception\InvalidOptionsException($message);
             }
         }
         // Check whether the option is deprecated
         // and it is provided by the user or is being called from a lazy evaluation
-        if ($triggerDeprecation && isset($this->deprecated[$option]) && (isset($this->given[$option]) || $this->calling && \is_string($this->deprecated[$option]['message']))) {
-            $deprecation = $this->deprecated[$option];
-            $message = $this->deprecated[$option]['message'];
-            if ($message instanceof \Closure) {
+        if ($triggerDeprecation && isset($this->deprecated[$option]) && (isset($this->given[$option]) || $this->calling && \is_string($this->deprecated[$option]))) {
+            $deprecationMessage = $this->deprecated[$option];
+            if ($deprecationMessage instanceof \Closure) {
                 // If the closure is already being called, we have a cyclic dependency
                 if (isset($this->calling[$option])) {
                     throw new \TMS\Symfony\Component\OptionsResolver\Exception\OptionDefinitionException(\sprintf('The options "%s" have a cyclic dependency.', $this->formatOptions(\array_keys($this->calling))));
                 }
                 $this->calling[$option] = \true;
                 try {
-                    if (!\is_string($message = $message($this, $value))) {
-                        throw new \TMS\Symfony\Component\OptionsResolver\Exception\InvalidOptionsException(\sprintf('Invalid type for deprecation message, expected string but got "%s", return an empty string to ignore.', get_debug_type($message)));
+                    if (!\is_string($deprecationMessage = $deprecationMessage($this, $value))) {
+                        throw new \TMS\Symfony\Component\OptionsResolver\Exception\InvalidOptionsException(\sprintf('Invalid type for deprecation message, expected string but got "%s", return an empty string to ignore.', \gettype($deprecationMessage)));
                     }
                 } finally {
                     unset($this->calling[$option]);
                 }
             }
-            if ('' !== $message) {
-                trigger_deprecation($deprecation['package'], $deprecation['version'], \strtr($message, ['%name%' => $option]));
+            if ('' !== $deprecationMessage) {
+                @\trigger_error(\strtr($deprecationMessage, ['%name%' => $option]), \E_USER_DEPRECATED);
             }
         }
         // Normalize the validated option
@@ -967,11 +899,11 @@ class OptionsResolver implements \TMS\Symfony\Component\OptionsResolver\Options
             }
             return $valid;
         }
-        if ('null' === $type && null === $value || (isset(self::VALIDATION_FUNCTIONS[$type]) ? self::VALIDATION_FUNCTIONS[$type]($value) : $value instanceof $type)) {
+        if ('null' === $type && null === $value || \function_exists($func = 'is_' . $type) && $func($value) || $value instanceof $type) {
             return \true;
         }
         if (!$invalidTypes || $level > 0) {
-            $invalidTypes[get_debug_type($value)] = \true;
+            $invalidTypes[$this->formatTypeOf($value)] = \true;
         }
         return \false;
     }
@@ -986,6 +918,7 @@ class OptionsResolver implements \TMS\Symfony\Component\OptionsResolver\Options
      *
      * @see \ArrayAccess::offsetExists()
      */
+    #[\ReturnTypeWillChange]
     public function offsetExists($option)
     {
         if (!$this->locked) {
@@ -996,8 +929,11 @@ class OptionsResolver implements \TMS\Symfony\Component\OptionsResolver\Options
     /**
      * Not supported.
      *
+     * @return void
+     *
      * @throws AccessException
      */
+    #[\ReturnTypeWillChange]
     public function offsetSet($option, $value)
     {
         throw new \TMS\Symfony\Component\OptionsResolver\Exception\AccessException('Setting options via array access is not supported. Use setDefault() instead.');
@@ -1005,8 +941,11 @@ class OptionsResolver implements \TMS\Symfony\Component\OptionsResolver\Options
     /**
      * Not supported.
      *
+     * @return void
+     *
      * @throws AccessException
      */
+    #[\ReturnTypeWillChange]
     public function offsetUnset($option)
     {
         throw new \TMS\Symfony\Component\OptionsResolver\Exception\AccessException('Removing options via array access is not supported. Use remove() instead.');
@@ -1022,12 +961,24 @@ class OptionsResolver implements \TMS\Symfony\Component\OptionsResolver\Options
      *
      * @see \Countable::count()
      */
+    #[\ReturnTypeWillChange]
     public function count()
     {
         if (!$this->locked) {
             throw new \TMS\Symfony\Component\OptionsResolver\Exception\AccessException('Counting is only supported within closures of lazy options and normalizers.');
         }
         return \count($this->defaults);
+    }
+    /**
+     * Returns a string representation of the type of the value.
+     *
+     * @param mixed $value The value to return the type of
+     *
+     * @return string The type of the value
+     */
+    private function formatTypeOf($value) : string
+    {
+        return \is_object($value) ? \get_class($value) : \gettype($value);
     }
     /**
      * Returns a string representation of the value.

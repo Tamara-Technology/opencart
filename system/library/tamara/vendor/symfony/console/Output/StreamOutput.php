@@ -59,7 +59,7 @@ class StreamOutput extends \TMS\Symfony\Component\Console\Output\Output
     /**
      * {@inheritdoc}
      */
-    protected function doWrite(string $message, bool $newline)
+    protected function doWrite($message, $newline)
     {
         if ($newline) {
             $message .= \PHP_EOL;
@@ -92,6 +92,14 @@ class StreamOutput extends \TMS\Symfony\Component\Console\Output\Output
         if (\DIRECTORY_SEPARATOR === '\\') {
             return \function_exists('sapi_windows_vt100_support') && @\sapi_windows_vt100_support($this->stream) || \false !== \getenv('ANSICON') || 'ON' === \getenv('ConEmuANSI') || 'xterm' === \getenv('TERM');
         }
-        return \stream_isatty($this->stream);
+        if (\function_exists('stream_isatty')) {
+            return @\stream_isatty($this->stream);
+        }
+        if (\function_exists('posix_isatty')) {
+            return @\posix_isatty($this->stream);
+        }
+        $stat = @\fstat($this->stream);
+        // Check if formatted mode is S_IFCHR
+        return $stat ? 020000 === ($stat['mode'] & 0170000) : \false;
     }
 }

@@ -96,6 +96,7 @@ if (!\function_exists('mb_parse_str')) {
     function mb_parse_str($string, &$result = [])
     {
         \parse_str($string, $result);
+        return (bool) $result;
     }
 }
 if (!\function_exists('mb_strlen')) {
@@ -218,19 +219,19 @@ if (!\function_exists('mb_convert_variables')) {
         return \TMS\Symfony\Polyfill\Mbstring\Mbstring::mb_convert_variables($to_encoding, $from_encoding, ...$vars);
     }
 }
-if (!\function_exists('mb_ord')) {
+if (!\function_exists('TMS\\mb_ord')) {
     function mb_ord($string, $encoding = null)
     {
         return \TMS\Symfony\Polyfill\Mbstring\Mbstring::mb_ord($string, $encoding);
     }
 }
-if (!\function_exists('mb_chr')) {
+if (!\function_exists('TMS\\mb_chr')) {
     function mb_chr($codepoint, $encoding = null)
     {
         return \TMS\Symfony\Polyfill\Mbstring\Mbstring::mb_chr($codepoint, $encoding);
     }
 }
-if (!\function_exists('mb_scrub')) {
+if (!\function_exists('TMS\\mb_scrub')) {
     function mb_scrub($string, $encoding = null)
     {
         $encoding = null === $encoding ? \mb_internal_encoding() : $encoding;

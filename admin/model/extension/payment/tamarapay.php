@@ -9,14 +9,12 @@ class ModelExtensionPaymentTamarapay extends Model
     /**
      * Define version of extension
      */
-    public const VERSION = '1.8.2';
+    public const VERSION = '1.8.4';
 
     /**
      * Define schema version
      */
-    public const SCHEMA_VERSION = '1.6.0';
-
-    protected $paymentTypes;
+    public const SCHEMA_VERSION = '1.8.0';
 
     private const TAMARA_EVENT_ORDER_STATUS_CHANGE_CODE = 'tamara_order_status_change';
     private const TAMARA_EVENT_ADD_PROMO_WIDGET_CODE = 'tamara_promo_wg';
@@ -27,8 +25,9 @@ class ModelExtensionPaymentTamarapay extends Model
     const SANDBOX_API_ENVIRONMENT = "1";
     const PRODUCTION_API_URL = "https://api.tamara.co";
     const PRODUCTION_API_ENVIRONMENT = "2";
-    const SINGLE_CHECKOUT_ENABLED = 'single_checkout_enabled';
-    const PAYMENT_TYPES_CACHED_TIME = 1800;
+    const API_REQUEST_TIMEOUT = 30; //in seconds
+
+    const IS_SINGLE_CHECKOUT_VERSION = false;
 
     /**
      * Get extension version
@@ -55,9 +54,13 @@ class ModelExtensionPaymentTamarapay extends Model
 
     public function createClient($credentials)
     {
+        if (!isset($credentials['timeout'])) {
+            $credentials['timeout'] = self::API_REQUEST_TIMEOUT;
+        }
         $configuration = Configuration::create(
             $credentials['url'],
-            $credentials['token']
+            $credentials['token'],
+            $credentials['timeout']
         );
 
         return Client::create($configuration);
@@ -85,18 +88,10 @@ class ModelExtensionPaymentTamarapay extends Model
      * @return string
      */
     public function getCurrentVersionInDb() {
-        $version = $this->getTamaraConfig('version');
-        return $version['value'];
-    }
-
-    /**
-     * Get Tamara config by key
-     * @param $key
-     * @return array
-     */
-    public function getTamaraConfig($key) {
-        $query = $this->db->query("SELECT * FROM ". DB_PREFIX . "tamara_config WHERE `key`='{$key}' LIMIT 1");
-        return $query->row;
+        if (!empty($schemaVersion = $this->getTamaraConfigValue('version'))) {
+            return $schemaVersion;
+        }
+        return self::SCHEMA_VERSION;
     }
 
     public function updateTamaraConfig($key, $value) {
@@ -208,8 +203,8 @@ class ModelExtensionPaymentTamarapay extends Model
 
     private function addEvents() {
         $this->load->model('setting/event');
-        $this->model_setting_event->addEvent(self::TAMARA_EVENT_ORDER_STATUS_CHANGE_CODE, 'catalog/model/checkout/order/addOrderHistory/after', 'extension/payment/tamarapay/handleOrderStatusChange');
-        $this->model_setting_event->addEvent(self::TAMARA_EVENT_ADD_PROMO_WIDGET_CODE, 'catalog/view/product/product/after', 'extension/payment/tamarapay/addPromoWidgetForProduct');
+        $this->model_setting_event->addEvent(self::TAMARA_EVENT_ORDER_STATUS_CHANGE_CODE, 'catalog/model/checkout/order/addOrderHistory/after', 'extension/payment/tamarapay/handleOrderStatusChange', 1);
+        $this->model_setting_event->addEvent(self::TAMARA_EVENT_ADD_PROMO_WIDGET_CODE, 'catalog/view/product/product/after', 'extension/payment/tamarapay/addPromoWidgetForProduct', 1, 999);
     }
 
     public function uninstall()
@@ -362,41 +357,41 @@ class ModelExtensionPaymentTamarapay extends Model
         $this->db->query("UPDATE `" . DB_PREFIX . "tamara_config` SET `value` = '' WHERE `key`='single_checkout_enabled'");
     }
 
-    public function isEnabledSingleCheckout() {
-        return false;
-    }
-
-    public function getCachedSingleCheckoutValue() {
-        $tamaraConfig = $this->getSingleCheckoutEnabledFromDb();
-        if (empty($tamaraConfig['cached_time'])) {
-            return null;
-        }
-        if ((time() - intval($tamaraConfig['cached_time'])) > self::PAYMENT_TYPES_CACHED_TIME) {
-            return null;
-        }
-        return boolval($tamaraConfig['value']);
-    }
-
-    private function getSingleCheckoutEnabledFromDb() {
-        return $this->getTamaraCacheConfigFromDb(self::SINGLE_CHECKOUT_ENABLED);
-    }
-
-    private function saveCacheSingleCheckoutEnabled($str) {
-        $this->saveTamaraConfig(self::SINGLE_CHECKOUT_ENABLED, $str);
-    }
-
-    public function getTamaraCacheConfigFromDb($key) {
+    /**
+     * @param $key
+     * @return array|null
+     */
+    public function getTamaraConfig($key) {
         $query = "SELECT * FROM `" . DB_PREFIX . "tamara_config` WHERE `key`='{$key}' LIMIT 1";
         $result = $this->db->query($query);
         if ($result->num_rows > 0) {
-            $value = $result->row['value'];
-            if (empty($value)) {
-                return [];
-            }
-            return json_decode($value, true);
-        } else {
-            return [];
+            return $result->row;
         }
+        return null;
+    }
+
+    /**
+     * @param $key
+     * @return string|null
+     */
+    public function getTamaraConfigValue($key) {
+        $data = $this->getTamaraConfig($key);
+        if ($data !== null) {
+            return $data['value'];
+        }
+        return null;
+    }
+
+    /**
+     * @param $key
+     * @return array
+     */
+    public function getTamaraCacheConfigFromDb($key) {
+        $value = $this->getTamaraConfigValue($key);
+        if (!empty($value)) {
+            return json_decode($value, true);
+        }
+        return [];
     }
 
     public function saveTamaraConfig($key, $value) {
@@ -407,5 +402,9 @@ class ModelExtensionPaymentTamarapay extends Model
         } else {
             $this->db->query("INSERT INTO `" . DB_PREFIX . "tamara_config`(id, `key`, value, created_at, updated_at) VALUES(NULL, '{$key}', '{$value}', NOW(), NOW())");
         }
+    }
+
+    public function isSingleCheckoutVersion() {
+        return self::IS_SINGLE_CHECKOUT_VERSION;
     }
 }

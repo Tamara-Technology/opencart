@@ -13,18 +13,18 @@ namespace TMS\Symfony\Component\Console\Event;
 use TMS\Symfony\Component\Console\Command\Command;
 use TMS\Symfony\Component\Console\Input\InputInterface;
 use TMS\Symfony\Component\Console\Output\OutputInterface;
-use TMS\Symfony\Contracts\EventDispatcher\Event;
+use TMS\Symfony\Component\EventDispatcher\Event;
 /**
  * Allows to inspect input and output of a command.
  *
  * @author Francesco Levorato <git@flevour.net>
  */
-class ConsoleEvent extends \TMS\Symfony\Contracts\EventDispatcher\Event
+class ConsoleEvent extends \TMS\Symfony\Component\EventDispatcher\Event
 {
     protected $command;
     private $input;
     private $output;
-    public function __construct(\TMS\Symfony\Component\Console\Command\Command $command = null, \TMS\Symfony\Component\Console\Input\InputInterface $input, \TMS\Symfony\Component\Console\Output\OutputInterface $output)
+    public function __construct(?\TMS\Symfony\Component\Console\Command\Command $command, \TMS\Symfony\Component\Console\Input\InputInterface $input, \TMS\Symfony\Component\Console\Output\OutputInterface $output)
     {
         $this->command = $command;
         $this->input = $input;

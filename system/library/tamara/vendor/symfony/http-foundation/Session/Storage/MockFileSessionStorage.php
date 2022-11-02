@@ -12,7 +12,8 @@ namespace TMS\Symfony\Component\HttpFoundation\Session\Storage;
 
 /**
  * MockFileSessionStorage is used to mock sessions for
- * functional testing when done in a single PHP process.
+ * functional testing where you may need to persist session data
+ * across separate PHP processes.
  *
  * No PHP session is actually started since a session can be initialized
  * and shutdown only once per PHP execution cycle and this class does
@@ -26,6 +27,7 @@ class MockFileSessionStorage extends \TMS\Symfony\Component\HttpFoundation\Sessi
     private $savePath;
     /**
      * @param string $savePath Path of directory to save session files
+     * @param string $name     Session name
      */
     public function __construct(string $savePath = null, string $name = 'MOCKSESSID', \TMS\Symfony\Component\HttpFoundation\Session\Storage\MetadataBag $metaBag = null)
     {
@@ -56,7 +58,7 @@ class MockFileSessionStorage extends \TMS\Symfony\Component\HttpFoundation\Sessi
     /**
      * {@inheritdoc}
      */
-    public function regenerate(bool $destroy = \false, int $lifetime = null)
+    public function regenerate($destroy = \false, $lifetime = null)
     {
         if (!$this->started) {
             $this->start();

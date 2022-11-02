@@ -20,20 +20,15 @@ final class SessionBagProxy implements \TMS\Symfony\Component\HttpFoundation\Ses
     private $bag;
     private $data;
     private $usageIndex;
-    private $usageReporter;
-    public function __construct(\TMS\Symfony\Component\HttpFoundation\Session\SessionBagInterface $bag, array &$data, ?int &$usageIndex, ?callable $usageReporter)
+    public function __construct(\TMS\Symfony\Component\HttpFoundation\Session\SessionBagInterface $bag, array &$data, ?int &$usageIndex)
     {
         $this->bag = $bag;
         $this->data =& $data;
         $this->usageIndex =& $usageIndex;
-        $this->usageReporter = $usageReporter;
     }
     public function getBag() : \TMS\Symfony\Component\HttpFoundation\Session\SessionBagInterface
     {
         ++$this->usageIndex;
-        if ($this->usageReporter && 0 <= $this->usageIndex) {
-            ($this->usageReporter)();
-        }
         return $this->bag;
     }
     public function isEmpty() : bool
@@ -42,9 +37,6 @@ final class SessionBagProxy implements \TMS\Symfony\Component\HttpFoundation\Ses
             return \true;
         }
         ++$this->usageIndex;
-        if ($this->usageReporter && 0 <= $this->usageIndex) {
-            ($this->usageReporter)();
-        }
         return empty($this->data[$this->bag->getStorageKey()]);
     }
     /**
@@ -60,9 +52,6 @@ final class SessionBagProxy implements \TMS\Symfony\Component\HttpFoundation\Ses
     public function initialize(array &$array) : void
     {
         ++$this->usageIndex;
-        if ($this->usageReporter && 0 <= $this->usageIndex) {
-            ($this->usageReporter)();
-        }
         $this->data[$this->bag->getStorageKey()] =& $array;
         $this->bag->initialize($array);
     }

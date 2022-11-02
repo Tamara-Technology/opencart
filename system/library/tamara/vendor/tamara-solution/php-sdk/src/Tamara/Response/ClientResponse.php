@@ -29,7 +29,7 @@ abstract class ClientResponse
         $this->message = $responseBody['message'] ?? null;
         $this->errors = $responseBody['errors'] ?? null;
         if ($this->isSuccess()) {
-            $this->parse($responseBody);
+            $this->parse($responseBody ?? []);
         }
     }
     public function getStatusCode() : int

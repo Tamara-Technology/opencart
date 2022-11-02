@@ -86,13 +86,14 @@ if (!\function_exists('mb_detect_encoding')) {
 if (!\function_exists('mb_detect_order')) {
     function mb_detect_order(array|string|null $encoding = null) : array|bool
     {
-        return \TMS\Symfony\Polyfill\Mbstring\Mbstring::mb_detect_order((string) $encoding);
+        return \TMS\Symfony\Polyfill\Mbstring\Mbstring::mb_detect_order($encoding);
     }
 }
 if (!\function_exists('mb_parse_str')) {
     function mb_parse_str(?string $string, &$result = []) : bool
     {
         \parse_str((string) $string, $result);
+        return (bool) $result;
     }
 }
 if (!\function_exists('mb_strlen')) {
@@ -146,7 +147,7 @@ if (!\function_exists('mb_stristr')) {
 if (!\function_exists('mb_strrchr')) {
     function mb_strrchr(?string $haystack, ?string $needle, ?bool $before_needle = \false, ?string $encoding = null) : string|false
     {
-        return \TMS\Symfony\Polyfill\Mbstring\Mbstring::mb_strrchr((string) $haystack, (string) $needle, $before_needle, (bool) $encoding);
+        return \TMS\Symfony\Polyfill\Mbstring\Mbstring::mb_strrchr((string) $haystack, (string) $needle, (bool) $before_needle, $encoding);
     }
 }
 if (!\function_exists('mb_strrichr')) {
@@ -215,19 +216,19 @@ if (!\function_exists('mb_convert_variables')) {
         return \TMS\Symfony\Polyfill\Mbstring\Mbstring::mb_convert_variables((string) $to_encoding, $from_encoding ?? '', $var, ...$vars);
     }
 }
-if (!\function_exists('mb_ord')) {
+if (!\function_exists('TMS\\mb_ord')) {
     function mb_ord(?string $string, ?string $encoding = null) : int|false
     {
         return \TMS\Symfony\Polyfill\Mbstring\Mbstring::mb_ord((string) $string, $encoding);
     }
 }
-if (!\function_exists('mb_chr')) {
+if (!\function_exists('TMS\\mb_chr')) {
     function mb_chr(?int $codepoint, ?string $encoding = null) : string|false
     {
         return \TMS\Symfony\Polyfill\Mbstring\Mbstring::mb_chr((int) $codepoint, $encoding);
     }
 }
-if (!\function_exists('mb_scrub')) {
+if (!\function_exists('TMS\\mb_scrub')) {
     function mb_scrub(?string $string, ?string $encoding = null) : string
     {
         $encoding ??= \mb_internal_encoding();

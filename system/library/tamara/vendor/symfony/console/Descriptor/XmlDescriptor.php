@@ -42,6 +42,7 @@ class XmlDescriptor extends \TMS\Symfony\Component\Console\Descriptor\Descriptor
     {
         $dom = new \DOMDocument('1.0', 'UTF-8');
         $dom->appendChild($commandXML = $dom->createElement('command'));
+        $command->getSynopsis();
         $command->mergeApplicationDefinition(\false);
         $commandXML->setAttribute('id', $command->getName());
         $commandXML->setAttribute('name', $command->getName());
@@ -54,7 +55,7 @@ class XmlDescriptor extends \TMS\Symfony\Component\Console\Descriptor\Descriptor
         $descriptionXML->appendChild($dom->createTextNode(\str_replace("\n", "\n ", $command->getDescription())));
         $commandXML->appendChild($helpXML = $dom->createElement('help'));
         $helpXML->appendChild($dom->createTextNode(\str_replace("\n", "\n ", $command->getProcessedHelp())));
-        $definitionXML = $this->getInputDefinitionDocument($command->getDefinition());
+        $definitionXML = $this->getInputDefinitionDocument($command->getNativeDefinition());
         $this->appendDocument($commandXML, $definitionXML->getElementsByTagName('definition')->item(0));
         return $dom;
     }
@@ -163,7 +164,7 @@ class XmlDescriptor extends \TMS\Symfony\Component\Console\Descriptor\Descriptor
         $dom = new \DOMDocument('1.0', 'UTF-8');
         $dom->appendChild($objectXML = $dom->createElement('option'));
         $objectXML->setAttribute('name', '--' . $option->getName());
-        $pos = \strpos($option->getShortcut(), '|');
+        $pos = \strpos($option->getShortcut() ?? '', '|');
         if (\false !== $pos) {
             $objectXML->setAttribute('shortcut', '-' . \substr($option->getShortcut(), 0, $pos));
             $objectXML->setAttribute('shortcuts', '-' . \str_replace('|', '|-', $option->getShortcut()));

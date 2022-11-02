@@ -14,13 +14,13 @@ use TMS\Symfony\Polyfill\Php73 as p;
 if (\PHP_VERSION_ID >= 70300) {
     return;
 }
-if (!\function_exists('is_countable')) {
+if (!\function_exists('TMS\\is_countable')) {
     function is_countable($value)
     {
         return \is_array($value) || $value instanceof \Countable || $value instanceof \ResourceBundle || $value instanceof \SimpleXmlElement;
     }
 }
-if (!\function_exists('hrtime')) {
+if (!\function_exists('TMS\\hrtime')) {
     require_once __DIR__ . '/Php73.php';
     \TMS\Symfony\Polyfill\Php73\Php73::$startAt = (int) \microtime(\true);
     function hrtime($as_number = \false)
@@ -28,7 +28,7 @@ if (!\function_exists('hrtime')) {
         return \TMS\Symfony\Polyfill\Php73\Php73::hrtime($as_number);
     }
 }
-if (!\function_exists('array_key_first')) {
+if (!\function_exists('TMS\\array_key_first')) {
     function array_key_first(array $array)
     {
         foreach ($array as $key => $value) {
@@ -36,7 +36,7 @@ if (!\function_exists('array_key_first')) {
         }
     }
 }
-if (!\function_exists('array_key_last')) {
+if (!\function_exists('TMS\\array_key_last')) {
     function array_key_last(array $array)
     {
         return \key(\array_slice($array, -1, 1, \true));

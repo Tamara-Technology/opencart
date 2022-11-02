@@ -57,10 +57,15 @@ class UploadedFile extends \TMS\Symfony\Component\HttpFoundation\File\File
      * @throws FileException         If file_uploads is disabled
      * @throws FileNotFoundException If the file does not exist
      */
-    public function __construct(string $path, string $originalName, string $mimeType = null, int $error = null, bool $test = \false)
+    public function __construct(string $path, string $originalName, string $mimeType = null, int $error = null, $test = \false)
     {
         $this->originalName = $this->getName($originalName);
         $this->mimeType = $mimeType ?: 'application/octet-stream';
+        if (4 < \func_num_args() ? !\is_bool($test) : null !== $error && @\filesize($path) === $error) {
+            @\trigger_error(\sprintf('Passing a size as 4th argument to the constructor of "%s" is deprecated since Symfony 4.1.', __CLASS__), \E_USER_DEPRECATED);
+            $error = $test;
+            $test = 5 < \func_num_args() ? \func_get_arg(5) : \false;
+        }
         $this->error = $error ?: \UPLOAD_ERR_OK;
         $this->test = $test;
         parent::__construct($path, \UPLOAD_ERR_OK === $this->error);
@@ -125,10 +130,22 @@ class UploadedFile extends \TMS\Symfony\Component\HttpFoundation\File\File
      */
     public function guessClientExtension()
     {
-        if (!\class_exists(\TMS\Symfony\Component\Mime\MimeTypes::class)) {
-            throw new \LogicException('You cannot guess the extension as the Mime component is not installed. Try running "composer require symfony/mime".');
-        }
         return \TMS\Symfony\Component\Mime\MimeTypes::getDefault()->getExtensions($this->getClientMimeType())[0] ?? null;
+    }
+    /**
+     * Returns the file size.
+     *
+     * It is extracted from the request from which the file has been uploaded.
+     * Then it should not be considered as a safe value.
+     *
+     * @deprecated since Symfony 4.1, use getSize() instead.
+     *
+     * @return int|null The file sizes
+     */
+    public function getClientSize()
+    {
+        @\trigger_error(\sprintf('The "%s()" method is deprecated since Symfony 4.1. Use getSize() instead.', __METHOD__), \E_USER_DEPRECATED);
+        return $this->getSize();
     }
     /**
      * Returns the upload error.
@@ -155,11 +172,14 @@ class UploadedFile extends \TMS\Symfony\Component\HttpFoundation\File\File
     /**
      * Moves the file to a new location.
      *
+     * @param string $directory The destination folder
+     * @param string $name      The new file name
+     *
      * @return File A File object representing the new file
      *
      * @throws FileException if, for any reason, the file could not have been moved
      */
-    public function move(string $directory, string $name = null)
+    public function move($directory, $name = null)
     {
         if ($this->isValid()) {
             if ($this->test) {
@@ -211,16 +231,16 @@ class UploadedFile extends \TMS\Symfony\Component\HttpFoundation\File\File
      *
      * @return int|float Returns float if size > PHP_INT_MAX
      */
-    private static function parseFilesize($size)
+    private static function parseFilesize(string $size)
     {
         if ('' === $size) {
             return 0;
         }
         $size = \strtolower($size);
         $max = \ltrim($size, '+');
-        if (0 === \strpos($max, '0x')) {
+        if (str_starts_with($max, '0x')) {
             $max = \intval($max, 16);
-        } elseif (0 === \strpos($max, '0')) {
+        } elseif (str_starts_with($max, '0')) {
             $max = \intval($max, 8);
         } else {
             $max = (int) $max;

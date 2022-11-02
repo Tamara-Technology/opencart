@@ -32,7 +32,7 @@ class AttributeBag implements \TMS\Symfony\Component\HttpFoundation\Session\Attr
     {
         return $this->name;
     }
-    public function setName(string $name)
+    public function setName($name)
     {
         $this->name = $name;
     }
@@ -53,21 +53,21 @@ class AttributeBag implements \TMS\Symfony\Component\HttpFoundation\Session\Attr
     /**
      * {@inheritdoc}
      */
-    public function has(string $name)
+    public function has($name)
     {
         return \array_key_exists($name, $this->attributes);
     }
     /**
      * {@inheritdoc}
      */
-    public function get(string $name, $default = null)
+    public function get($name, $default = null)
     {
         return \array_key_exists($name, $this->attributes) ? $this->attributes[$name] : $default;
     }
     /**
      * {@inheritdoc}
      */
-    public function set(string $name, $value)
+    public function set($name, $value)
     {
         $this->attributes[$name] = $value;
     }
@@ -91,7 +91,7 @@ class AttributeBag implements \TMS\Symfony\Component\HttpFoundation\Session\Attr
     /**
      * {@inheritdoc}
      */
-    public function remove(string $name)
+    public function remove($name)
     {
         $retval = null;
         if (\array_key_exists($name, $this->attributes)) {
@@ -114,6 +114,7 @@ class AttributeBag implements \TMS\Symfony\Component\HttpFoundation\Session\Attr
      *
      * @return \ArrayIterator An \ArrayIterator instance
      */
+    #[\ReturnTypeWillChange]
     public function getIterator()
     {
         return new \ArrayIterator($this->attributes);
@@ -123,6 +124,7 @@ class AttributeBag implements \TMS\Symfony\Component\HttpFoundation\Session\Attr
      *
      * @return int The number of attributes
      */
+    #[\ReturnTypeWillChange]
     public function count()
     {
         return \count($this->attributes);

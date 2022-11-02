@@ -51,13 +51,16 @@ abstract class Descriptor implements \TMS\Symfony\Component\Console\Descriptor\D
                 $this->describeApplication($object, $options);
                 break;
             default:
-                throw new \TMS\Symfony\Component\Console\Exception\InvalidArgumentException(\sprintf('Object of type "%s" is not describable.', get_debug_type($object)));
+                throw new \TMS\Symfony\Component\Console\Exception\InvalidArgumentException(\sprintf('Object of type "%s" is not describable.', \get_class($object)));
         }
     }
     /**
      * Writes content to output.
+     *
+     * @param string $content
+     * @param bool   $decorated
      */
-    protected function write(string $content, bool $decorated = \false)
+    protected function write($content, $decorated = \false)
     {
         $this->output->write($content, \false, $decorated ? \TMS\Symfony\Component\Console\Output\OutputInterface::OUTPUT_NORMAL : \TMS\Symfony\Component\Console\Output\OutputInterface::OUTPUT_RAW);
     }

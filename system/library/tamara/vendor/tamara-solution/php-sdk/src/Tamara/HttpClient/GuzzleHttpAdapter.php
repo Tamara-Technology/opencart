@@ -56,7 +56,7 @@ class GuzzleHttpAdapter implements \TMS\Tamara\HttpClient\ClientInterface
             if (null !== $this->logger) {
                 $this->logger->error($exception->getMessage(), $exception->getTrace());
             }
-            throw new \TMS\Tamara\Exception\RequestException($exception->getMessage(), $exception->getCode(), $request, $exception instanceof \TMS\GuzzleHttp\Exception\GuzzleException ? $exception->getResponse() : null, $exception->getPrevious());
+            throw new \TMS\Tamara\Exception\RequestException($exception->getMessage(), $exception->getCode(), $request, null, $exception->getPrevious());
         }
     }
 }

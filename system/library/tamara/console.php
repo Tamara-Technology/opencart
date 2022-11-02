@@ -1,16 +1,19 @@
 #!/usr/bin/env php
 <?php
 
+define('DIR_TAMARA_LIBRARY', dirname(__FILE__). DIRECTORY_SEPARATOR);
+
 // Configuration
-if (is_file('../config.php')) {
-    require_once('../config.php');
+$configFile = DIR_TAMARA_LIBRARY  .'..' . DIRECTORY_SEPARATOR . '..' . DIRECTORY_SEPARATOR . '..' . DIRECTORY_SEPARATOR. 'config.php';
+if (is_file($configFile)) {
+    require_once($configFile);
 }
 
 // Startup
-require_once(DIR_SYSTEM . 'startup.php');
+require_once(DIR_SYSTEM. 'startup.php');
 
 //Load needed components
-require_once('framework.php');
+require_once(DIR_TAMARA_LIBRARY. 'framework.php');
 
 use TMS\Symfony\Component\Console\Application;
 

@@ -93,6 +93,7 @@ class ControllerExtensionPaymentTamarapay extends Controller {
         $data['error_merchant_failure_url'] = $this->error['merchant_failure_url'] ?? '';
         $data['error_merchant_cancel_url'] = $this->error['merchant_cancel_url'] ?? '';
         $data['error_merchant_notification_url'] = $this->error['merchant_notification_url'] ?? '';
+        $data['error_merchant_public_key'] = $this->error['merchant_public_key'] ?? '';
     }
 
     protected function prepareVersionMessageForIndexPage(&$data) {
@@ -168,7 +169,11 @@ class ControllerExtensionPaymentTamarapay extends Controller {
         if (isset($this->request->post['payment_tamarapay_trigger_actions_enabled'])) {
             $data['payment_tamarapay_trigger_actions_enabled'] = $this->request->post['payment_tamarapay_trigger_actions_enabled'];
         } else {
-            $data['payment_tamarapay_trigger_actions_enabled'] = $this->config->get('payment_tamarapay_trigger_actions_enabled');
+            if ($this->config->get('payment_tamarapay_trigger_actions_enabled') === null) {
+                $data['payment_tamarapay_trigger_actions_enabled'] = 1;
+            } else {
+                $data['payment_tamarapay_trigger_actions_enabled'] = $this->config->get('payment_tamarapay_trigger_actions_enabled');
+            }
         }
 
         if (isset($this->request->post['payment_tamarapay_order_status_create_id'])) {
@@ -267,11 +272,14 @@ class ControllerExtensionPaymentTamarapay extends Controller {
     }
 
     protected function preparePaymentTypesDataForIndexPage(&$data) {
-        $data['single_checkout_enabled'] = $this->model_extension_payment_tamarapay->isEnabledSingleCheckout();
+        $data['single_checkout_enabled'] = $this->model_extension_payment_tamarapay->isSingleCheckoutVersion();
+        $data['notifications'] = [];
         $data['select_enable_payment_type_extra_attributes'] = "";
+        $data['payment_tamarapay_merchant_public_key_extra_class'] = '';
         if ($data['single_checkout_enabled']) {
-            $data['notifications'][] = "Single checkout has been enabled for your merchant account. You will not be able to enable/disable payment types from your side.";
+            $data['notifications'][] = "This is the single checkout version, you will not able to enable/disable some payment types";
             $data['select_enable_payment_type_extra_attributes'] = "disabled";
+            $data['payment_tamarapay_merchant_public_key_extra_class'] = ' required';
         }
 
         if (isset($this->request->post['payment_tamarapay_types_pay_next_month_enabled'])) {
@@ -437,6 +445,14 @@ class ControllerExtensionPaymentTamarapay extends Controller {
             $check_credentials = false;
         }
 
+        if ($this->model_extension_payment_tamarapay->isSingleCheckoutVersion()) {
+            if (!$this->request->post['payment_tamarapay_merchant_public_key']) {
+                $this->error['merchant_public_key'] = $this->language->get('error_field_is_required');
+
+                $check_credentials = false;
+            }
+        }
+
         $this->request->post['payment_tamarapay_token'] = preg_replace("/\s+/", "", $this->request->post['payment_tamarapay_token']);
         $this->request->post['payment_tamarapay_token_notification'] = preg_replace("/\s+/", "", $this->request->post['payment_tamarapay_token_notification']);
 
@@ -561,6 +577,11 @@ class ControllerExtensionPaymentTamarapay extends Controller {
         return true;
     }
 
+    private function addEventToShowPromoWidgetOnCartPage() {
+        $this->load->model('setting/event');
+        $this->model_setting_event->addEvent('tamara_promo_wg_cart', 'catalog/view/checkout/cart/after', 'extension/payment/tamarapay/addPromoWidgetForCartPage', 1, 999);
+    }
+
     public function deleteDir($dir) {
         $it = new RecursiveDirectoryIterator($dir, RecursiveDirectoryIterator::SKIP_DOTS);
         $files = new RecursiveIteratorIterator($it,
@@ -638,6 +659,10 @@ class ControllerExtensionPaymentTamarapay extends Controller {
             if (version_compare($this->contextSchemaVersion, '1.6.0', '<')) {
                 $this->removeLegacyAutoload();
                 $this->updateSchemaVersion("1.6.0");
+            }
+            if (version_compare($this->contextSchemaVersion, '1.8.0', '<')) {
+                $this->addEventToShowPromoWidgetOnCartPage();
+                $this->updateSchemaVersion("1.8.0");
             }
         }
         return;

@@ -65,7 +65,7 @@ class JWK
      *
      * @uses createPemFromModulusAndExponent
      */
-    private static function parseKey(array $jwk)
+    public static function parseKey(array $jwk)
     {
         if (empty($jwk)) {
             throw new \InvalidArgumentException('JWK must not be empty');
@@ -75,7 +75,7 @@ class JWK
         }
         switch ($jwk['kty']) {
             case 'RSA':
-                if (\array_key_exists('d', $jwk)) {
+                if (!empty($jwk['d'])) {
                     throw new \UnexpectedValueException('RSA private keys are not supported');
                 }
                 if (!isset($jwk['n']) || !isset($jwk['e'])) {

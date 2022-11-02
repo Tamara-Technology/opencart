@@ -30,21 +30,21 @@ if (!\function_exists('TMS\\preg_last_error_msg')) {
     }
 }
 if (!\function_exists('TMS\\str_contains')) {
-    function str_contains(string $haystack, string $needle) : bool
+    function str_contains(?string $haystack, ?string $needle) : bool
     {
-        return \TMS\Symfony\Polyfill\Php80\Php80::str_contains($haystack, $needle);
+        return \TMS\Symfony\Polyfill\Php80\Php80::str_contains($haystack ?? '', $needle ?? '');
     }
 }
 if (!\function_exists('TMS\\str_starts_with')) {
-    function str_starts_with(string $haystack, string $needle) : bool
+    function str_starts_with(?string $haystack, ?string $needle) : bool
     {
-        return \TMS\Symfony\Polyfill\Php80\Php80::str_starts_with($haystack, $needle);
+        return \TMS\Symfony\Polyfill\Php80\Php80::str_starts_with($haystack ?? '', $needle ?? '');
     }
 }
 if (!\function_exists('TMS\\str_ends_with')) {
-    function str_ends_with(string $haystack, string $needle) : bool
+    function str_ends_with(?string $haystack, ?string $needle) : bool
     {
-        return \TMS\Symfony\Polyfill\Php80\Php80::str_ends_with($haystack, $needle);
+        return \TMS\Symfony\Polyfill\Php80\Php80::str_ends_with($haystack ?? '', $needle ?? '');
     }
 }
 if (!\function_exists('TMS\\get_debug_type')) {

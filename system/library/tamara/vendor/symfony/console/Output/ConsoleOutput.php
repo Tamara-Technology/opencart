@@ -58,7 +58,7 @@ class ConsoleOutput extends \TMS\Symfony\Component\Console\Output\StreamOutput i
     /**
      * {@inheritdoc}
      */
-    public function setDecorated(bool $decorated)
+    public function setDecorated($decorated)
     {
         parent::setDecorated($decorated);
         $this->stderr->setDecorated($decorated);
@@ -74,7 +74,7 @@ class ConsoleOutput extends \TMS\Symfony\Component\Console\Output\StreamOutput i
     /**
      * {@inheritdoc}
      */
-    public function setVerbosity(int $level)
+    public function setVerbosity($level)
     {
         parent::setVerbosity($level);
         $this->stderr->setVerbosity($level);
@@ -130,13 +130,18 @@ class ConsoleOutput extends \TMS\Symfony\Component\Console\Output\StreamOutput i
         if (!$this->hasStdoutSupport()) {
             return \fopen('php://output', 'w');
         }
-        return @\fopen('php://stdout', 'w') ?: \fopen('php://output', 'w');
+        // Use STDOUT when possible to prevent from opening too many file descriptors
+        return \defined('STDOUT') ? \STDOUT : (@\fopen('php://stdout', 'w') ?: \fopen('php://output', 'w'));
     }
     /**
      * @return resource
      */
     private function openErrorStream()
     {
-        return \fopen($this->hasStderrSupport() ? 'php://stderr' : 'php://output', 'w');
+        if (!$this->hasStderrSupport()) {
+            return \fopen('php://output', 'w');
+        }
+        // Use STDERR when possible to prevent from opening too many file descriptors
+        return \defined('STDERR') ? \STDERR : (@\fopen('php://stderr', 'w') ?: \fopen('php://output', 'w'));
     }
 }

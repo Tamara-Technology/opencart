@@ -32,7 +32,7 @@ class ContainerCommandLoader implements \TMS\Symfony\Component\Console\CommandLo
     /**
      * {@inheritdoc}
      */
-    public function get(string $name)
+    public function get($name)
     {
         if (!$this->has($name)) {
             throw new \TMS\Symfony\Component\Console\Exception\CommandNotFoundException(\sprintf('Command "%s" does not exist.', $name));
@@ -42,7 +42,7 @@ class ContainerCommandLoader implements \TMS\Symfony\Component\Console\CommandLo
     /**
      * {@inheritdoc}
      */
-    public function has(string $name)
+    public function has($name)
     {
         return isset($this->commandMap[$name]) && $this->container->has($this->commandMap[$name]);
     }

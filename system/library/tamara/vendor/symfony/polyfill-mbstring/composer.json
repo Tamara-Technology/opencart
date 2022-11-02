@@ -24,6 +24,9 @@
     "require": {
         "php": ">=7.1"
     },
+    "provide": {
+        "ext-mbstring": "*"
+    },
     "autoload": {
         "psr-4": {
             "TMS\\Symfony\\Polyfill\\Mbstring\\": ""
@@ -38,7 +41,7 @@
     "minimum-stability": "dev",
     "extra": {
         "branch-alias": {
-            "dev-main": "1.22-dev"
+            "dev-main": "1.26-dev"
         },
         "thanks": {
             "name": "symfony\/polyfill",
