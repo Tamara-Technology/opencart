@@ -81,10 +81,10 @@ class HttpClient
      * @param string $path
      * @param array  $params
      *
-     * @return ResponseInterface
+     * @return null|ResponseInterface
      * @throws ClientExceptionInterface|RequestException
      */
-    private function request(string $method, string $path, array $params = []) : \TMS\Psr\Http\Message\ResponseInterface
+    private function request(string $method, string $path, array $params = []) : ?\TMS\Psr\Http\Message\ResponseInterface
     {
         if ('GET' === $method) {
             $path = $this->prepareQueryString($path, $params);
@@ -102,6 +102,7 @@ class HttpClient
                 return $exception->getResponse();
             }
         }
+        return null;
     }
     /**
      * @param string $path

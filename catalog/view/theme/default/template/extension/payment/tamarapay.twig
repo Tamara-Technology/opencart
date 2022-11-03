@@ -16,11 +16,23 @@
             {% if exists_pay_now == false %}
                 <div class="container-customize">
                     <form class="form-horizontal" id="payment">
-                    <div class="form-group form-submit col-sm-12 text-center">
-                        <input id="button-confirm" type="button" value="{{ button_confirm }}" class="btn btn-primary submit-form" />
-                    </div>
+                        <div class="form-group col-sm-12 text-center">
+                            <tamara-widget type="tamara-summary" inline-type="1"></tamara-widget>
+                        </div>
+                        <div class="form-group form-submit col-sm-12 text-center">
+                            <input id="button-confirm" type="button" value="{{ button_confirm }}" class="btn btn-primary submit-form" />
+                        </div>
                     </form>
                 </div>
+                <script charset="utf-8" src="{{ information_widget_v2_url }}?t={{ current_time }}"></script>
+                <script>
+                    var tamaraWidgetConfig = {
+                        lang: '{{ language_code }}',
+                        country: '{{ country_code }}',
+                        publicKey: '{{ merchant_public_key }}',
+                        css: '.tamara-summary-widget__container {display:block;}'
+                    }
+                </script>
             {% else %}
                 <div class="container-customize">
                     <form class="form-horizontal" id="payment">
