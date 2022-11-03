@@ -9,7 +9,7 @@ class ModelExtensionPaymentTamarapay extends Model
     /**
      * Define version of extension
      */
-    public const VERSION = '1.7.4';
+    public const VERSION = '1.7.5';
 
     /**
      * Define schema version
@@ -18,6 +18,7 @@ class ModelExtensionPaymentTamarapay extends Model
 
     private const TAMARA_EVENT_ORDER_STATUS_CHANGE_CODE = 'tamara_order_status_change';
     private const TAMARA_EVENT_ADD_PROMO_WIDGET_CODE = 'tamara_promo_wg';
+    private const TAMARA_EVENT_ADD_PROMO_WIDGET_CART_CODE = 'tamara_promo_wg_cart';
 
     const WEBHOOK_URL = 'index.php?route=extension/payment/tamarapay/webhook', ALLOWED_WEBHOOKS = ['order_expired', 'order_declined'];
 
@@ -226,6 +227,7 @@ class ModelExtensionPaymentTamarapay extends Model
         $this->load->model('extension/event');
         $this->model_extension_event->deleteEvent(self::TAMARA_EVENT_ORDER_STATUS_CHANGE_CODE);
         $this->model_extension_event->deleteEvent(self::TAMARA_EVENT_ADD_PROMO_WIDGET_CODE);
+        $this->model_extension_event->deleteEvent(self::TAMARA_EVENT_ADD_PROMO_WIDGET_CART_CODE);
     }
 
     /**
