@@ -1,6 +1,29 @@
+Version 1.4.5
+- Bug fixes:
+    - Fix vendor code
+    - Fix the checkout template for the single checkout version
+Version 1.4.4
+- New:
+    - Use widget v2
+    - Support Single checkout experience
+    - Add pay now
+    - Add new method pay next month
+    - Add new method pay in 2 installments
+    - Support public key for widgets
+    - Improve discount obj name in payload of checkout request
+    - Improve display of configuration on admin page
+    - Support sandbox for the widgets
+    - Add Tamara logo to method title
+    - Update new payment method title on checkout page
+    - Add the widget to cart page
+    - Add ocmod.zip file
+    - Update all features and bug fixes until Oct 2022
+Version 1.4.2
+- New
+    - Update all features and fix bugs until March 6, 2022
 Version 1.4.1
-- Bugs fixed:
-    - Fixed a minor bug related to redirect to cancel page
+- Bug fixes:
+    - Fix a minor bug related to redirect to cancel page
 - News:
     - Remove Iframe checkout
     - Introduce web hook function

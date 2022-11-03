@@ -1,6 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
 <modification>
     <name>Tamara payment</name>
-    <version>1.2.0</version>
+    <version>1.4.0</version>
     <link>https://tamara.co/en/index.html#how-it-works</link>
     <author>Tamara</author>
     <code>tamarapay</code>
@@ -10,59 +11,263 @@
             </search>
             <add position="after">
                 <![CDATA[
-                $this->load->model('payment/tamarapay');
-                $finalPrice = 0.00;
-                if ((float)$product_info['special']) {
-                    $finalPrice = $this->tax->calculate($product_info['special'], $product_info['tax_class_id'], $this->config->get('config_tax'));
+            //Tamara - display product widget
+            $widgetHtml = '';
+            if (!$this->config->get("tamarapay_status")) {
+                goto end_pdp_widget;
+            }
+            $this->load->model('payment/tamarapay');
+            $productId = $this->request->get['product_id'];
+            if (empty($productId)) {
+                goto end_pdp_widget;
+            }
+            $excludeProductIds = explode(",",strval($this->config->get('tamarapay_pdp_wg_exclude_product_ids')));
+            if (in_array($productId, $excludeProductIds)) {
+                goto end_pdp_widget;
+            }
+            $excludeCategoryIds = explode(",",strval($this->config->get('tamarapay_pdp_wg_exclude_category_ids')));
+            $productCategories = [];
+            if (isset($this->request->get['path'])) {
+                $productCategories = explode("_", $this->request->get['path']);
+            }
+
+            if (!empty(array_intersect($productCategories, $excludeCategoryIds))) {
+                goto end_pdp_widget;
+            }
+            $finalPrice = 0.00;
+            if ((float)$product_info['special']) {
+                $finalPrice = $this->tax->calculate($product_info['special'], $product_info['tax_class_id'], $this->config->get('config_tax'));
+            } else {
+                if ($this->customer->isLogged() || !$this->config->get('config_customer_price')) {
+                    $finalPrice = $this->tax->calculate($product_info['price'], $product_info['tax_class_id'], $this->config->get('config_tax'));
+                }
+            }
+            $widgetHtml = $this->getWidgetHtml($finalPrice);
+            end_pdp_widget:
+            $data['widgetHtml'] = $widgetHtml;
+            //End Tamara
+				]]></add>
+        </operation>
+        <operation>
+            <search><![CDATA[public function review()]]></search>
+            <add position="before">
+                <![CDATA[
+    //Tamara - Get widget html
+    public function getWidgetHtml($price) {
+        $result = '';
+        $this->load->model('payment/tamarapay');
+        $bestMethodForCustomer = $this->model_payment_tamarapay->getBestMethodForCustomer($price, $this->model_payment_tamarapay->getCurrencyCodeFromSession());
+        if (empty($bestMethodForCustomer)) {
+            return $result;
+        }
+
+        //list of the payment types which does not have the widget
+        if (in_array($bestMethodForCustomer['name'], ['pay_now'])) {
+            return $result;
+        }
+
+        $countryCode = $this->model_payment_tamarapay->getSupportedCountriesByCurrency($bestMethodForCustomer['currency'])[0];
+        $languageCode = $this->language->get('code');
+        if (empty($languageCode)) {
+            $languageCode = 'en';
+        }
+        $publicKey = $this->config->get('tamarapay_merchant_public_key');
+        $isUseWidgetV1 = empty($publicKey);
+        if ($isUseWidgetV1) {
+            $result = '<div id="tamara-product-widget" class="tamara-product-widget" data-lang="'. $languageCode .'" data-price="'. $price .'" data-currency="'. $bestMethodForCustomer['currency'] .'" data-country-code="'. $countryCode .'" data-installment-available-amount="'. $bestMethodForCustomer['min_limit'] .'"';
+            if ($this->model_payment_tamarapay->isInstallmentsPayment($bestMethodForCustomer['name'])) {
+                $result .= (' data-payment-type="installment" data-number-of-installments="'.$bestMethodForCustomer['number_of_instalments'].'" data-installment-minimum-amount="' .$bestMethodForCustomer['min_limit']. '" data-installment-maximum-amount="'.$bestMethodForCustomer['max_limit'].'" data-disable-paylater="true"></div>');
+            } else {
+                if ($bestMethodForCustomer['name'] == "pay_by_later") {
+                    $result .= (' data-payment-type="paylater" data-disable-paylater="false" data-disable-product-limit="true" data-disable-installment="true" data-pay-later-max-amount="'. $bestMethodForCustomer['max_limit'] .'"></div>');
                 } else {
-                    if ($this->customer->isLogged() || !$this->config->get('config_customer_price')) {
-                        $finalPrice = $this->tax->calculate($product_info['price'], $product_info['tax_class_id'], $this->config->get('config_tax'));
+                    if ($bestMethodForCustomer['name'] == "pay_next_month") {
+                        $result .= (' data-payment-type="pay-next-month" data-disable-paylater="true" data-disable-installment="false"></div>');
                     }
                 }
-                $availableMethods = $this->model_payment_tamarapay->getPaymentsMethodsAvailableForPrice($finalPrice);
-                $data['tamara_available_methods'] = $availableMethods;
-                $data['final_price'] = $finalPrice;
-                $data['language_code'] = $this->language->get('code');
-				]]></add>
+            }
+
+            $productWidgetUrl = "https://cdn.tamara.co/widget/product-widget.min.js";
+            if ($this->model_payment_tamarapay->isSandboxMode()) {
+                $productWidgetUrl = "https://cdn-sandbox.tamara.co/widget/product-widget.min.js";
+            }
+            $result .= '
+            <script type="text/javascript">
+                window.tamara = [];
+                window.langCode = "'.$languageCode.'";
+                window.tamara.currencyCode = "'.$bestMethodForCustomer["currency"].'";
+                window.checkTamaraProductWidgetCount = 0;
+                window.tamara.widgetPublicKey = "'.$this->config->get("tamarapay_merchant_public_key").'";
+                document.getElementById("tamara-product-widget").setAttribute("data-lang", window.langCode);
+                var existTamaraProductWidget = setInterval(function () {
+                    if (window.TamaraProductWidget) {
+                        window.TamaraProductWidget.init({ lang: window.tamara.langCode, currency: window.tamara.currencyCode});
+                        window.TamaraProductWidget.render();
+                        clearInterval(existTamaraProductWidget);
+                    }
+                    window.checkTamaraProductWidgetCount += 1;
+                    if (window.checkTamaraProductWidgetCount > 33) {
+                        clearInterval(existTamaraProductWidget);
+                    }
+                }, 300);
+            </script>
+            <script charset="utf-8" defer src="'. $productWidgetUrl .'?t='.time().'"></script>
+            ';
+        } else {
+            if ($this->model_payment_tamarapay->isSandboxMode()) {
+                $widgetUrl = "https://cdn-sandbox.tamara.co/widget-v2/tamara-widget.js";
+            } else {
+                $widgetUrl = "https://cdn.tamara.co/widget-v2/tamara-widget.js";
+            }
+            $result = '<tamara-widget id="tamara_promo_widget" type="tamara-summary" amount="' . $price . '" inline-type="2"></tamara-widget>';
+            $result .= ('<script>
+                    var tamaraWidgetConfig = {
+                        lang: "'. $languageCode .'",
+                        country: "'. $countryCode .'",
+                        publicKey: "'. $publicKey .'"
+                    }
+                    </script>
+                    <script charset="utf-8" defer src="'. $widgetUrl .'?t='.time().'"></script>'
+            );
+        }
+        return ('<div class="tamara-promo" style="margin-bottom: 10px;">' . $result . '</div>');
+    }
+]]>
+            </add>
         </operation>
     </file>
     <file path="catalog/view/theme/*/template/product/product.tpl">
         <operation>
-            <search><![CDATA[<div id="product">]]>
-            </search>
+            <search><![CDATA[<div id="product">]]></search>
             <add position="before">
                 <![CDATA[
-				<?php if (!empty($tamara_available_methods)): ?>
-                  <?php foreach($tamara_available_methods as $method): ?>
-                    <?php if ($method['checked'] == true): ?>
-                      <?php if($method['name'] == "PAY_BY_INSTALMENTS"): ?>
-                        <a href="javascript:void(0)" id="tamara-product-widget" data-disable-paylater="true" class="tamara-product-widget" data-lang="" data-price="<?php echo $final_price ?>" data-currency="<?php echo $method['currency'] ?>" data-payment-type="installment" data-installment-minimum-amount="<?php echo $method['min_limit'] ?>" ></a>
-                      <?php else: ?>
-                        <a href="javascript:void(0)" id="tamara-product-widget" data-payment-type="paylater" data-disable-installment="true" class="tamara-product-widget" data-lang="" data-inject-template="true"></a>
-                      <?php endif; ?>
-                      <?php break; ?>
-                    <?php endif; ?>
-                  <?php endforeach; ?>
+                    <?php echo $widgetHtml; ?>
+				]]></add>
+        </operation>
+    </file>
+    <file path="catalog/controller/checkout/cart.php">
+        <operation>
+            <search><![CDATA[public function add()]]></search>
+            <add position="before"><![CDATA[
+    //Tamara - Get widget html
+    public function getWidgetHtml($price) {
+        $result = '';
+        $this->load->model('payment/tamarapay');
+        $bestMethodForCustomer = $this->model_payment_tamarapay->getBestMethodForCustomer($price, $this->model_payment_tamarapay->getCurrencyCodeFromSession());
+        if (empty($bestMethodForCustomer)) {
+            return $result;
+        }
 
-                  <script charset="utf-8" src="https://cdn.tamara.co/widget/product-widget.min.js"></script>
-                  <script type="text/javascript">
-                    let siteLocale = '<?php echo $language_code ?>';
-                    let langCode = siteLocale.split('-')[0];
-                    window.checkTamaraProductWidgetCount = 0;
-                    document.getElementById('tamara-product-widget').setAttribute("data-lang", langCode);
-                    var existTamaraProductWidget = setInterval(function() {
-                      if (window.TamaraProductWidget) {
-                        window.TamaraProductWidget.init({ lang: window.langCode });
+        //list of the payment types which does not have the widget
+        if (in_array($bestMethodForCustomer['name'], ['pay_now'])) {
+            return $result;
+        }
+
+        $countryCode = $this->model_payment_tamarapay->getSupportedCountriesByCurrency($bestMethodForCustomer['currency'])[0];
+        $languageCode = $this->language->get('code');
+        if (empty($languageCode)) {
+            $languageCode = 'en';
+        }
+        $publicKey = $this->config->get('tamarapay_merchant_public_key');
+        $isUseWidgetV1 = empty($publicKey);
+        if ($isUseWidgetV1) {
+            $result = '<div id="tamara-product-widget" class="tamara-product-widget" data-lang="'. $languageCode .'" data-price="'. $price .'" data-currency="'. $bestMethodForCustomer['currency'] .'" data-country-code="'. $countryCode .'" data-installment-available-amount="'. $bestMethodForCustomer['min_limit'] .'"';
+            if ($this->model_payment_tamarapay->isInstallmentsPayment($bestMethodForCustomer['name'])) {
+                $result .= (' data-payment-type="installment" data-number-of-installments="'.$bestMethodForCustomer['number_of_instalments'].'" data-installment-minimum-amount="' .$bestMethodForCustomer['min_limit']. '" data-installment-maximum-amount="'.$bestMethodForCustomer['max_limit'].'" data-disable-paylater="true"></div>');
+            } else {
+                if ($bestMethodForCustomer['name'] == "pay_by_later") {
+                    $result .= (' data-payment-type="paylater" data-disable-paylater="false" data-disable-product-limit="true" data-disable-installment="true" data-pay-later-max-amount="'. $bestMethodForCustomer['max_limit'] .'"></div>');
+                } else {
+                    if ($bestMethodForCustomer['name'] == "pay_next_month") {
+                        $result .= (' data-payment-type="pay-next-month" data-disable-paylater="true" data-disable-installment="false"></div>');
+                    }
+                }
+            }
+
+            $productWidgetUrl = "https://cdn.tamara.co/widget/product-widget.min.js";
+            if ($this->model_payment_tamarapay->isSandboxMode()) {
+                $productWidgetUrl = "https://cdn-sandbox.tamara.co/widget/product-widget.min.js";
+            }
+            $result .= '
+            <script type="text/javascript">
+                window.tamara = [];
+                window.langCode = "'.$languageCode.'";
+                window.tamara.currencyCode = "'.$bestMethodForCustomer["currency"].'";
+                window.checkTamaraProductWidgetCount = 0;
+                window.tamara.widgetPublicKey = "'.$this->config->get("tamarapay_merchant_public_key").'";
+                document.getElementById("tamara-product-widget").setAttribute("data-lang", window.langCode);
+                var existTamaraProductWidget = setInterval(function () {
+                    if (window.TamaraProductWidget) {
+                        window.TamaraProductWidget.init({ lang: window.tamara.langCode, currency: window.tamara.currencyCode});
                         window.TamaraProductWidget.render();
                         clearInterval(existTamaraProductWidget);
-                      }
-                      window.checkTamaraProductWidgetCount += 1;
-                      if (window.checkTamaraProductWidgetCount > 15) {
+                    }
+                    window.checkTamaraProductWidgetCount += 1;
+                    if (window.checkTamaraProductWidgetCount > 33) {
                         clearInterval(existTamaraProductWidget);
-                      }
-                    }, 300);
-                  </script>
-                <?php endif; ?>
+                    }
+                }, 300);
+            </script>
+            <script charset="utf-8" defer src="'. $productWidgetUrl .'?t='.time().'"></script>
+            ';
+        } else {
+            if ($this->model_payment_tamarapay->isSandboxMode()) {
+                $widgetUrl = "https://cdn-sandbox.tamara.co/widget-v2/tamara-widget.js";
+            } else {
+                $widgetUrl = "https://cdn.tamara.co/widget-v2/tamara-widget.js";
+            }
+            $result = '<tamara-widget id="tamara_promo_widget" type="tamara-summary" amount="' . $price . '" inline-type="2"></tamara-widget>';
+            $result .= ('<script>
+                    var tamaraWidgetConfig = {
+                        lang: "'. $languageCode .'",
+                        country: "'. $countryCode .'",
+                        publicKey: "'. $publicKey .'"
+                    }
+                    </script>
+                    <script charset="utf-8" defer src="'. $widgetUrl .'?t='.time().'"></script>'
+            );
+        }
+        return ('<div class="tamara-promo" style="margin-bottom: 10px;">' . $result . '</div>');
+    }
+]]></add>
+        </operation>
+        <operation>
+            <search><![CDATA[$data['checkout_buttons'] = array();]]></search>
+            <add position="after">
+                <![CDATA[
+            //Tamara - cart widget
+            $widgetHtml = '';
+            if (!$this->config->get("tamarapay_status")) {
+                goto end_cart_widget;
+            }
+            $excludeProductIds = explode(",",strval($this->config->get('tamarapay_pdp_wg_exclude_product_ids')));
+            $products = $this->cart->getProducts();
+            foreach ($products as $product) {
+                if (in_array($product['product_id'], $excludeProductIds)) {
+                    goto end_cart_widget;
+                }
+            }
+            $this->load->model('payment/helper/tamara_opencart');
+            $cartValue = $this->model_payment_helper_tamara_opencart->getTotalAmountInCurrency();
+            if (empty($cartValue)) {
+                goto end_cart_widget;
+            }
+            $widgetHtml = $this->getWidgetHtml($cartValue);
+            if (!empty($widgetHtml)) {
+                $widgetHtml .= '<style>#tamara_promo_widget {text-align: right;}</style>';
+            }
+            end_cart_widget:
+            $data['widgetHtml'] = $widgetHtml;
+            //End Tamara
+				]]></add>
+        </operation>
+    </file>
+    <file path="catalog/view/theme/*/template/checkout/cart.tpl">
+        <operation>
+            <search><![CDATA[<div class="buttons">]]></search>
+            <add position="before">
+                <![CDATA[
+            <?php echo $widgetHtml; ?>
 				]]></add>
         </operation>
     </file>

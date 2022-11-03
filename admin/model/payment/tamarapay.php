@@ -6,29 +6,28 @@ use TMS\Tamara\Configuration;
 
 class ModelPaymentTamarapay extends Model
 {
-
     /**
      * Define version of extension
      */
-    public const VERSION = '1.4.1';
-
-    public const COUNTRY_ISO = 'SA';
+    public const VERSION = '1.4.5';
 
     /**
      * Define schema version
      */
-    public const SCHEMA_VERSION = '1.1.0';
-
-    protected $paymentTypes;
+    public const SCHEMA_VERSION = '1.8.0';
 
     private const TAMARA_EVENT_ORDER_STATUS_CHANGE_CODE = 'tamara_order_status_change';
+    private const TAMARA_EVENT_ADD_PROMO_WIDGET_CODE = 'tamara_promo_wg';
 
     const WEBHOOK_URL = 'index.php?route=payment/tamarapay/webhook', ALLOWED_WEBHOOKS = ['order_expired', 'order_declined'];
 
-    public function __construct($registry)
-    {
-        parent::__construct($registry);
-    }
+    const SANDBOX_API_URL = "https://api-sandbox.tamara.co";
+    const SANDBOX_API_ENVIRONMENT = "1";
+    const PRODUCTION_API_URL = "https://api.tamara.co";
+    const PRODUCTION_API_ENVIRONMENT = "2";
+    const API_REQUEST_TIMEOUT = 30; //in seconds
+
+    const IS_SINGLE_CHECKOUT_VERSION = false;
 
     /**
      * Get extension version
@@ -41,6 +40,11 @@ class ModelPaymentTamarapay extends Model
         return self::SCHEMA_VERSION;
     }
 
+    public function __construct($registry)
+    {
+        parent::__construct($registry);
+    }
+
     public function getTamaraOrder($order_id)
     {
         $queryString = sprintf("SELECT * FROM `%s` WHERE `order_id` = %d LIMIT 1", DB_PREFIX . "tamara_orders",
@@ -50,9 +54,13 @@ class ModelPaymentTamarapay extends Model
 
     public function createClient($credentials)
     {
+        if (!isset($credentials['timeout'])) {
+            $credentials['timeout'] = self::API_REQUEST_TIMEOUT;
+        }
         $configuration = Configuration::create(
             $credentials['url'],
-            $credentials['token']
+            $credentials['token'],
+            $credentials['timeout']
         );
 
         return Client::create($configuration);
@@ -80,18 +88,10 @@ class ModelPaymentTamarapay extends Model
      * @return string
      */
     public function getCurrentVersionInDb() {
-        $version = $this->getTamaraConfig('version');
-        return $version['value'];
-    }
-
-    /**
-     * Get Tamara config by key
-     * @param $key
-     * @return array
-     */
-    public function getTamaraConfig($key) {
-        $query = $this->db->query("SELECT * FROM ". DB_PREFIX . "tamara_config WHERE `key`='{$key}' LIMIT 1");
-        return $query->row;
+        if (!empty($schemaVersion = $this->getTamaraConfigValue('version'))) {
+            return $schemaVersion;
+        }
+        return self::SCHEMA_VERSION;
     }
 
     public function updateTamaraConfig($key, $value) {
@@ -227,45 +227,21 @@ class ModelPaymentTamarapay extends Model
     }
 
     /**
-     * Get Tamara payment types
-     * @param $url
-     * @param $token
-     * @param bool $forceReload force reload without cache
-     * @return array
-     * @throws Exception
+     * @param $client \TMS\Tamara\Client
+     * @return mixed
+     * @throws \TMS\Tamara\Exception\RequestDispatcherException
      */
-    public function getPaymentTypes($url, $token, $forceReload = false)
-    {
-        try {
-
-            if ($forceReload || !$this->paymentTypes) {
-
-                $client = $this->createClient(['url' => $url, 'token' => $token]);
-                $paymentTypes = [];
-
-                $response = $this->getPaymentTypesOfClient($client);
-
-                if (!$response->isSuccess()) {
-                    throw new Exception($response->getMessage());
-                }
-
-                foreach ($response->getPaymentTypes() as $paymentType) {
-                    $paymentTypes[] = $paymentType->toArray();
-                }
-
-                $this->paymentTypes = $paymentTypes;
-            }
-
-            return $this->paymentTypes;
-        } catch (Exception $exception) {
-            $this->log($exception->getMessage());
-            throw $exception;
-        }
-        return [];
+    public function getPaymentTypesOfClient($client) {
+        return $client->getPaymentTypes($this->getStoreCountryCode());
     }
 
-    public function getPaymentTypesOfClient($client) {
-        return $client->getPaymentTypes(self::COUNTRY_ISO);
+    public function getStoreCountry() {
+        $this->load->model('localisation/country');
+        return $this->model_localisation_country->getCountry($this->config->get('config_country_id'));
+    }
+
+    public function getStoreCountryCode() {
+        return strtoupper($this->getStoreCountry()['iso_code_2']);
     }
 
     public function getCatalogBaseUrl()
@@ -315,14 +291,13 @@ class ModelPaymentTamarapay extends Model
         return true;
     }
 
-
     public function insertConfig($key, $value, $serialized = false, $storeId = 0) {
-        if (empty($serialized)) {
+        if (!$serialized) {
             $serialized = 0;
         } else {
             $serialized = 1;
         }
-        $this->db->query("INSERT INTO `" . DB_PREFIX . "setting`(`setting_id`,`store_id`,`code`,`key`,`value`, `serialized`) VALUES (null,'{$storeId}','payment_tamarapay','{$key}','{$value}', '{$serialized}')");
+        $this->db->query("INSERT INTO `" . DB_PREFIX . "setting`(`setting_id`,`store_id`,`code`,`key`,`value`, `serialized`) VALUES (null,'{$storeId}','tamarapay','{$key}','{$value}', '{$serialized}')");
     }
 
     public function deleteConfig($key, $storeId = 0) {
@@ -330,7 +305,7 @@ class ModelPaymentTamarapay extends Model
     }
 
     public function saveConfig($key, $value, $serialized = false, $storeId = 0) {
-        if (empty($serialized)) {
+        if (!$serialized) {
             $serialized = 0;
         } else {
             $serialized = 1;
@@ -340,8 +315,94 @@ class ModelPaymentTamarapay extends Model
     }
 
     public function getTamaraClient() {
-        $url = $this->config->get('tamarapay_url');
+        $url = $this->getApiUrl();
         $token = $this->config->get('tamarapay_token');
         return $this->createClient(['url' => $url, 'token' => $token]);
+    }
+
+    public function getProductionApiUrl() {
+        return self::PRODUCTION_API_URL;
+    }
+
+    public function getProductionApiEnvironment() {
+        return self::PRODUCTION_API_ENVIRONMENT;
+    }
+
+    public function getSandboxApiUrl() {
+        return self::SANDBOX_API_URL;
+    }
+
+    public function getSandboxApiEnvironment() {
+        return self::SANDBOX_API_ENVIRONMENT;
+    }
+
+    public function getApiUrl($environment = null) {
+        if ($environment !== null && $environment != self::PRODUCTION_API_ENVIRONMENT && $environment != self::SANDBOX_API_ENVIRONMENT) {
+            throw new \Exception("API environment incorrect!");
+        }
+        if ($environment === null) {
+            $environment = $this->config->get('tamarapay_api_environment');
+        }
+        if ($environment == self::PRODUCTION_API_ENVIRONMENT) {
+            return $this->getProductionApiUrl();
+        } else {
+            return $this->getSandboxApiUrl();
+        }
+    }
+
+    public function removePaymentTypesCache() {
+        $this->db->query("UPDATE `" . DB_PREFIX . "tamara_config` SET `value` = '' WHERE `key`='payment_types'");
+        $this->db->query("UPDATE `" . DB_PREFIX . "tamara_config` SET `value` = '' WHERE `key`='single_checkout_enabled'");
+    }
+
+    /**
+     * @param $key
+     * @return array|null
+     */
+    public function getTamaraConfig($key) {
+        $query = "SELECT * FROM `" . DB_PREFIX . "tamara_config` WHERE `key`='{$key}' LIMIT 1";
+        $result = $this->db->query($query);
+        if ($result->num_rows > 0) {
+            return $result->row;
+        }
+        return null;
+    }
+
+    /**
+     * @param $key
+     * @return string|null
+     */
+    public function getTamaraConfigValue($key) {
+        $data = $this->getTamaraConfig($key);
+        if ($data !== null) {
+            return $data['value'];
+        }
+        return null;
+    }
+
+    /**
+     * @param $key
+     * @return array
+     */
+    public function getTamaraCacheConfigFromDb($key) {
+        $value = $this->getTamaraConfigValue($key);
+        if (!empty($value)) {
+            return json_decode($value, true);
+        }
+        return [];
+    }
+
+    public function saveTamaraConfig($key, $value) {
+        $query = "SELECT * FROM `" . DB_PREFIX . "tamara_config` WHERE `key`='{$key}' LIMIT 1";
+        $result = $this->db->query($query);
+        if ($result->num_rows > 0) {
+            $this->db->query("UPDATE `" . DB_PREFIX . "tamara_config` SET `value` = '{$value}' WHERE `key` = '{$key}'");
+        } else {
+            $this->db->query("INSERT INTO `" . DB_PREFIX . "tamara_config`(id, `key`, value, created_at, updated_at) VALUES(NULL, '{$key}', '{$value}', NOW(), NOW())");
+        }
+    }
+
+    public function isSingleCheckoutVersion() {
+        return self::IS_SINGLE_CHECKOUT_VERSION;
     }
 }

@@ -13,6 +13,17 @@ class ModelPaymentTamarapayConsoleScan extends Model {
      */
     public function scan($startTime = '-10 days', $endTime = 'now')
     {
+        $dateTimePattern = '/[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[1-2][0-9]|3[0-1]) (2[0-3]|[01][0-9]):[0-5][0-9]:[0-5][0-9]/';
+        if (!preg_match($dateTimePattern, $startTime)) {
+            $timeDiff = $this->db->query("SELECT TIMEDIFF(NOW(), UTC_TIMESTAMP) as time_diff")->rows[0]['time_diff'];
+            $parts = explode(":", $timeDiff);
+            if (intval($parts[0]) < 0) {
+                $additionTime = " {$parts[0]} hours -{$parts[1]} minutes -{$parts[2]} seconds";
+            } else {
+                $additionTime = " +{$parts[0]} hours +{$parts[1]} minutes +{$parts[2]} seconds";
+            }
+            $startTime = $startTime . $additionTime;
+        }
         $this->load->model('payment/tamarapay');
         $this->model_payment_tamarapay->log(["Start scan orders"]);
 
@@ -30,7 +41,7 @@ class ModelPaymentTamarapayConsoleScan extends Model {
 
         $sql = "select oto.tamara_id , oto.tamara_order_id, oto.captured_from_console, oto.canceled_from_console, oo.* FROM `".DB_PREFIX."tamara_orders` oto INNER JOIN oc_order oo 
                 ON oto.order_id  = oo.order_id 
-                WHERE oto.is_active = 1 AND oto.created_at >= '{$startTime}' AND oto.created_at <= '{$endTime}'";
+                WHERE oto.is_active = 1 AND oto.created_at >= '{$startTime}' AND oto.created_at <= {$endTime}";
 
         $tamaraOrders = $this->db->query($sql)->rows;
         if (!empty($tamaraOrders)) {
@@ -52,9 +63,10 @@ class ModelPaymentTamarapayConsoleScan extends Model {
             $cancelOrders = $this->getOrdersFiltered($tamaraOrders, $cancelStatusId,'canceled_from_console');
             $this->doAction(array_keys($cancelOrders), 'cancel');
             $this->updateTamaraOrdersAfterScan($cancelOrders, 'canceled_from_console');
+
+            $this->model_payment_tamarapay->log(["Total order processed: " . $this->totalOrderProcessed]);
+            $this->model_payment_tamarapay->log(["End scan orders"]);
         }
-        $this->model_payment_tamarapay->log(["Total order processed: " . $this->totalOrderProcessed]);
-        $this->model_payment_tamarapay->log(["End scan orders"]);
     }
 
     private function doAction(array $tamaraOrderIds, $action) {
@@ -72,6 +84,7 @@ class ModelPaymentTamarapayConsoleScan extends Model {
      */
     private function execute($action, $tamaraOrderId)
     {
+        $this->load->model('payment/tamarapay');
         $method = $action . "Order";
         if (method_exists($this, $method)) {
             try {
@@ -102,28 +115,31 @@ class ModelPaymentTamarapayConsoleScan extends Model {
     }
 
     public function captureOrder($tamaraOrderId) {
+        $this->load->model('payment/tamarapay');
+        $this->model_payment_tamarapay->log(["Console: capture order, order id: " . $tamaraOrderId]);
         $this->model_payment_tamarapay->captureOrder($tamaraOrderId);
     }
 
     public function cancelOrder($tamaraOrderId) {
+        $this->load->model('payment/tamarapay');
+        $this->model_payment_tamarapay->log(["Console: capture order, order id: " . $tamaraOrderId]);
         $this->model_payment_tamarapay->cancelOrder($tamaraOrderId);
     }
 
     public function authoriseOrder($tamaraOrderId) {
+        $this->load->model('payment/tamarapay');
         $tamaraOrder = $this->model_payment_tamarapay->getTamaraOrderByTamaraOrderId($tamaraOrderId);
-        if ($this->model_payment_tamarapay->getTamaraOrderFromRemote($tamaraOrder['order_id'])->getStatus() == self::ORDER_STATUS_APPROVED) {
+        $currentRemoteStatus = $this->model_payment_tamarapay->getTamaraOrderFromRemoteByTamaraOrderId($tamaraOrder['tamara_order_id'])->getStatus();
+        if ($currentRemoteStatus == self::ORDER_STATUS_APPROVED) {
+            $this->model_payment_tamarapay->log(["Console: authorise order, order id: " . $tamaraOrderId]);
             $this->model_payment_tamarapay->authoriseOrder($tamaraOrderId);
+        } else {
+            $this->model_payment_tamarapay->log(["Console: Order was not approve by Tamara, order id: " . $tamaraOrderId . ", current status: " . $currentRemoteStatus]);
         }
     }
 
     private function updateTamaraOrdersAfterScan($orders, $fieldToUpdate) {
-        if (!empty($orders)) {
-            $tamaraIds = [];
-            foreach ($orders as $order) {
-                $tamaraIds[] = $order['tamara_id'];
-            }
-            $sql = "UPDATE `".DB_PREFIX."tamara_orders` SET `{$fieldToUpdate}` = 1 WHERE `tamara_id` IN (".implode(",", $tamaraIds).")";
-            $this->db->query($sql);
-        }
+        $this->load->model('payment/tamarapay');
+        $this->model_payment_tamarapay->updateTamaraOrders($orders, $fieldToUpdate, 1);
     }
 }
