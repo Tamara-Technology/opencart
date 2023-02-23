@@ -12,36 +12,59 @@ class PaymentOptionsAvailability
         PHONE_NUMBER = 'phone_number',
         IS_VIP = 'is_vip';
 
+    /**
+     * @var string
+     */
     private $country;
+
+    /**
+     * @var \TMS\Tamara\Model\Money
+     */
     private $orderValue;
+
+    /**
+     * @var string
+     */
     private $phoneNumber;
+
+    /**
+     * @var bool
+     */
     private $isVip;
 
-    public function setIsVip($isVip)
+    /**
+     * @param string $country
+     * @param \TMS\Tamara\Model\Money $orderValue
+     * @param string $phoneNumber
+     * @param bool $isVip
+     */
+    public function __construct(string $country, \TMS\Tamara\Model\Money $orderValue, string $phoneNumber, bool $isVip = true)
     {
+        $this->country = $country;
+        $this->orderValue = $orderValue;
+        $this->phoneNumber = $phoneNumber;
         $this->isVip = $isVip;
-        return $this;
     }
 
+    /**
+     * @return array
+     */
     public function toArray()
     {
         return [
-            self::COUNTRY => $this->getCountry(),
-            self::ORDER_VALUE => $this->getOrderValue()->toArray(),
+            self::COUNTRY      => $this->getCountry(),
+            self::ORDER_VALUE  => $this->getOrderValue()->toArray(),
             self::PHONE_NUMBER => $this->getPhoneNumber(),
-            self::IS_VIP => $this->isVip()
+            self::IS_VIP       => $this->isVip()
         ];
     }
 
+    /**
+     * @return string
+     */
     public function getCountry()
     {
         return $this->country;
-    }
-
-    public function setCountry(string $country)
-    {
-        $this->country = $country;
-        return $this;
     }
 
     /**
@@ -52,23 +75,17 @@ class PaymentOptionsAvailability
         return $this->orderValue;
     }
 
-    public function setOrderValue(\TMS\Tamara\Model\Money $orderValue)
-    {
-        $this->orderValue = $orderValue;
-        return $this;
-    }
-
+    /**
+     * @return string
+     */
     public function getPhoneNumber()
     {
         return $this->phoneNumber;
     }
 
-    public function setPhoneNumber(string $phoneNumber)
-    {
-        $this->phoneNumber = $phoneNumber;
-        return $this;
-    }
-
+    /**
+     * @return bool
+     */
     public function isVip()
     {
         return $this->isVip;
