@@ -61,7 +61,7 @@ abstract class TamaraAbstractCommand extends SymfonyCommand
 
     public function log($data, $class_step = 6, $function_step = 6)
     {
-        if ($this->config->get('payment_tamarapay_debug')) {
+        if ($this->config->get('tamarapay_debug')) {
             if ($this->output) {
                 $consoleMessage = "";
                 if (is_string($data)) {

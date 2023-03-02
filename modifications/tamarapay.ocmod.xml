@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <modification>
     <name>Tamara payment</name>
-    <version>1.4.0</version>
+    <version>1.4.6</version>
     <link>https://tamara.co/en/index.html#how-it-works</link>
     <author>Tamara</author>
     <code>tamarapay</code>
@@ -13,7 +13,11 @@
                 <![CDATA[
             //Tamara - display product widget
             $widgetHtml = '';
-            if (!$this->config->get("tamarapay_status")) {
+            $this->load->model('payment/tamarapay');
+            if (!$this->model_payment_tamarapay->isTamaraEnabled()) {
+                goto end_pdp_widget;
+            }
+            if ($this->model_payment_tamarapay->getDisableTamara()) {
                 goto end_pdp_widget;
             }
             $this->load->model('payment/tamarapay');
@@ -26,9 +30,16 @@
                 goto end_pdp_widget;
             }
             $excludeCategoryIds = explode(",",strval($this->config->get('tamarapay_pdp_wg_exclude_category_ids')));
+            $this->load->model('catalog/product');
+            $rows = $this->model_catalog_product->getCategories($productId);
             $productCategories = [];
-            if (isset($this->request->get['path'])) {
-                $productCategories = explode("_", $this->request->get['path']);
+            if (!empty($rows)) {
+                foreach ($rows as $row) {
+                    $productCategories[] = $row['category_id'];
+                }
+                if (!empty(array_intersect($productCategories, $excludeCategoryIds))) {
+                    goto end_pdp_widget;
+                }
             }
 
             if (!empty(array_intersect($productCategories, $excludeCategoryIds))) {
@@ -237,15 +248,15 @@
                 <![CDATA[
             //Tamara - cart widget
             $widgetHtml = '';
-            if (!$this->config->get("tamarapay_status")) {
+            $this->load->model('payment/tamarapay');
+            if (!$this->model_payment_tamarapay->isTamaraEnabled()) {
                 goto end_cart_widget;
             }
-            $excludeProductIds = explode(",",strval($this->config->get('tamarapay_pdp_wg_exclude_product_ids')));
-            $products = $this->cart->getProducts();
-            foreach ($products as $product) {
-                if (in_array($product['product_id'], $excludeProductIds)) {
-                    goto end_cart_widget;
-                }
+            if ($this->model_payment_tamarapay->getDisableTamara()) {
+                goto end_cart_widget;
+            }
+            if (!$this->model_payment_tamarapay->validateCartItems()) {
+                goto end_cart_widget;
             }
             $this->load->model('payment/helper/tamara_opencart');
             $cartValue = $this->model_payment_helper_tamara_opencart->getTotalAmountInCurrency();

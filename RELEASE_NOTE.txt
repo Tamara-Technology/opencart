@@ -1,3 +1,10 @@
+Version 1.4.6
+- New:
+    - Update the template for the payment method on the checkout page
+    - Remove the payment types section in the extension configuration
+    - Use credit-pre-check on the checkout page
+    - Switch to use widget v2
+    - Add Oman country
 Version 1.4.5
 - Bug fixes:
     - Fix vendor code
