@@ -17,9 +17,9 @@ class GetDetailsInfoResponse extends ClientResponse
     /**
      * @return Merchant|null
      */
-    public function getDetailsInfo(): ?Merchant
+    public function getMerchant(): ?Merchant
     {
-        return $this->isSuccess() ? $this->merchant : null;
+        return $this->merchant;
     }
 
     protected function parse(array $responseData): void

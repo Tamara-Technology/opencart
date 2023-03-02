@@ -9,7 +9,7 @@ class ModelExtensionPaymentTamarapay extends Model
     /**
      * Define version of extension
      */
-    public const VERSION = '1.7.5';
+    public const VERSION = '1.7.6';
 
     /**
      * Define schema version
@@ -82,6 +82,7 @@ class ModelExtensionPaymentTamarapay extends Model
         $this->addDbSchema();
         $this->addEvents();
         $this->initData();
+        $this->copyTemplates();
     }
 
     /**
@@ -314,8 +315,14 @@ class ModelExtensionPaymentTamarapay extends Model
         } else {
             $serialized = 1;
         }
-        $this->deleteConfig($key, $storeId);
-        $this->insertConfig($key, $value, $serialized, $storeId);
+        $query ="SELECT `setting_id` FROM `" . DB_PREFIX . "setting` WHERE `code`='tamarapay' AND `key`='{$key}' AND `store_id`='$storeId' LIMIT 1";
+        $result = $this->db->query($query);
+        if ($result->num_rows > 0) {
+            $settingId = $result->row['setting_id'];
+            $this->db->query("UPDATE `" . DB_PREFIX . "setting` SET `value` = '{$value}' WHERE `setting_id` = '{$settingId}'");
+        } else {
+            $this->db->query("INSERT INTO `" . DB_PREFIX . "setting`(`setting_id`,`store_id`,`code`,`key`,`value`, `serialized`) VALUES (null,'{$storeId}','tamarapay','{$key}','{$value}', '{$serialized}')");
+        }
     }
 
     public function getTamaraClient() {
@@ -354,7 +361,7 @@ class ModelExtensionPaymentTamarapay extends Model
         }
     }
 
-    public function removePaymentTypesCache() {
+    public function removeTamaraCache() {
         $this->db->query("UPDATE `" . DB_PREFIX . "tamara_config` SET `value` = '' WHERE `key`='payment_types'");
         $this->db->query("UPDATE `" . DB_PREFIX . "tamara_config` SET `value` = '' WHERE `key`='single_checkout_enabled'");
     }
@@ -408,5 +415,34 @@ class ModelExtensionPaymentTamarapay extends Model
 
     public function isSingleCheckoutVersion() {
         return self::IS_SINGLE_CHECKOUT_VERSION;
+    }
+
+    public function endsWith( $haystack, $needle ) {
+        $length = strlen( $needle );
+        if( !$length ) {
+            return true;
+        }
+        return substr( $haystack, -$length ) === $needle;
+    }
+
+    private function copyTemplates() {
+        $themeDir = sprintf("%sview%stheme%s", DIR_CATALOG, DIRECTORY_SEPARATOR, DIRECTORY_SEPARATOR);
+        $themes = glob($themeDir . '*' , GLOB_ONLYDIR);
+        $defaultThemePaymentDir = $themeDir . sprintf("default%stemplate%sextension%spayment%s", DIRECTORY_SEPARATOR, DIRECTORY_SEPARATOR, DIRECTORY_SEPARATOR, DIRECTORY_SEPARATOR);
+        $needToCopies = ["tamarapay.tpl", "tamarapay_success.tpl"];
+        foreach ($themes as $theme) {
+            if ($this->endsWith($theme, "default")) {
+                continue;
+            }
+            $themePaymentDir = $theme . sprintf("%stemplate%sextension%spayment%s", DIRECTORY_SEPARATOR, DIRECTORY_SEPARATOR, DIRECTORY_SEPARATOR, DIRECTORY_SEPARATOR);
+            if (!file_exists($themePaymentDir)) {
+                mkdir($themePaymentDir, 0755, true);
+            }
+            foreach ($needToCopies as $file) {
+                $source = $defaultThemePaymentDir . $file;
+                $dest = $themePaymentDir . $file;
+                copy($source, $dest);
+            }
+        }
     }
 }
