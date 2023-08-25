@@ -1,3 +1,8 @@
+Version 1.8.7
+- New:
+    - Add pay in full widget on the checkout page
+- Bug fixes:
+    - Fix errors with webhook id when saving the plugin configuration
 Version 1.8.6
 - New:
     - Update the template for the payment method on the checkout page

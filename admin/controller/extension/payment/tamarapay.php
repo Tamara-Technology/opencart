@@ -49,7 +49,6 @@ class ControllerExtensionPaymentTamarapay extends Controller {
         $this->prepareTextDataForIndexPage($data);
         $this->prepareExtensionConfigDataForIndexPage($data);
         $this->preparePaymentTypesDataForIndexPage($data);
-        $this->prepareWebhookDataForIndexPage($data);
         $this->prepareGeneralConfigDataForIndexPage($data);
         return $data;
     }
@@ -276,29 +275,6 @@ class ControllerExtensionPaymentTamarapay extends Controller {
         $data['payment_tamarapay_merchant_public_key_extra_class'] = ' required';
     }
 
-    protected function prepareWebhookDataForIndexPage(&$data) {
-        if (isset($this->request->post['payment_tamarapay_webhook_enabled'])) {
-            $webHookEnabled = $this->request->post['payment_tamarapay_webhook_enabled'];
-        } else {
-            $webHookEnabled = $this->config->get('payment_tamarapay_webhook_enabled');
-            if ($webHookEnabled === null) {
-                $webHookEnabled = 1;
-            }
-        }
-        $webHookEnabled = intval($webHookEnabled);
-        $data['payment_tamarapay_webhook_enabled'] = $webHookEnabled;
-
-        if ($webHookEnabled) {
-            if (!empty($this->config->get('payment_tamarapay_webhook_id'))) {
-                $data['payment_tamarapay_webhook_id'] = $this->config->get('payment_tamarapay_webhook_id');
-            } else {
-                $data['payment_tamarapay_webhook_id'] = $this->language->get('text_save_config_get_webhook_id');
-            }
-        } else {
-            $data['payment_tamarapay_webhook_id'] = $this->language->get("text_none_webhook_id");
-        }
-    }
-
     protected function prepareGeneralConfigDataForIndexPage(&$data) {
         $data['order_statuses'] = $this->model_localisation_order_status->getOrderStatuses();
 
@@ -384,55 +360,11 @@ class ControllerExtensionPaymentTamarapay extends Controller {
             }
         }
 
-        $this->validateWebhook();
-
         if ($this->error && !isset($this->error['warning'])) {
             $this->error['warning'] = $this->language->get('error_warning');
         }
 
         return !$this->error;
-    }
-
-    /**
-     * @return bool
-     */
-    private function validateWebhook() {
-        if ($this->request->post['payment_tamarapay_webhook_id'] == $this->language->get('text_none_webhook_id')
-            || $this->request->post['payment_tamarapay_webhook_id'] == $this->language->get('text_save_config_get_webhook_id')) {
-            $this->request->post['payment_tamarapay_webhook_id'] = "";
-        }
-        if (!$this->isChangedConfig('payment_tamarapay_webhook_enabled')) {
-            return true;
-        }
-        $result = true;
-        $webhookEnabled = $this->request->post['payment_tamarapay_webhook_enabled'];
-        $webhookId = $this->config->get("payment_tamarapay_webhook_id");
-        if (!empty($webhookEnabled)) {
-            if (empty($webhookId)) {
-                try {
-                    $webhookId = $this->model_extension_payment_tamarapay->registerWebhook($this->model_extension_payment_tamarapay->getApiUrl($this->request->post['payment_tamarapay_api_environment']),
-                        $this->request->post['payment_tamarapay_token']);
-                } catch (\Exception $exception) {
-                    $this->model_extension_payment_tamarapay->log($exception->getMessage());
-                    $webhookEnabled = 0;
-                    $this->error['warning'] = $exception->getMessage();
-                    $result = false;
-                }
-            }
-        } else {
-            if (!empty($webhookId)) {
-                try {
-                    $this->model_extension_payment_tamarapay->removeWebhook();
-                } catch (\Exception $exception) {
-                    $this->model_extension_payment_tamarapay->log("Error when remove webhook: " . $exception->getMessage());
-                }
-                $webhookId = "";
-                $result = true;
-            }
-        }
-        $this->request->post['payment_tamarapay_webhook_enabled'] = $webhookEnabled;
-        $this->request->post['payment_tamarapay_webhook_id'] = $webhookId;
-        return $result;
     }
 
     /**

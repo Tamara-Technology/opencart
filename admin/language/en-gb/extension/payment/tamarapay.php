@@ -30,8 +30,8 @@ $_['column_description']	= 'Description';
 // Entry
 $_['entry_total']			            = 'Total';
 $_['entry_order_status_create']	    = 'Order status when order is created';
-$_['entry_order_status_success']	    = 'Order status when checkout is success (after redirect)';
-$_['entry_order_status_failure']	    = 'Order status when checkout is failure';
+$_['entry_order_status_success']	    = 'Order status when checkout is successful (after redirect)';
+$_['entry_order_status_failure']	    = 'Order status when checkout is failed';
 $_['entry_order_status_canceled']	    = 'Order status when checkout is cancelled';
 $_['entry_order_status_authorised']	    = 'Order status when order is authorised';
 $_['entry_geo_zone']		            = 'Geo Zone';

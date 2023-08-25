@@ -24,7 +24,7 @@ class ModelExtensionPaymentTamarapay extends Model
     /**
      * Define version of extension
      */
-    public const VERSION = '1.8.6';
+    public const VERSION = '1.8.7';
 
     public const
         MAX_LIMIT = 'max_limit',
@@ -2165,6 +2165,7 @@ class ModelExtensionPaymentTamarapay extends Model
         }
         $publicKey = $this->getTamaraConfigValue('payment_tamarapay_merchant_public_key');
         if ($publicKey !== null) {
+            $this->saveConfig('payment_tamarapay_merchant_public_key', $publicKey);
             return $publicKey;
         }
         if ($this->getDisableTamara()) {
