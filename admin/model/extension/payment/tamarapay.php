@@ -9,7 +9,7 @@ class ModelExtensionPaymentTamarapay extends Model
     /**
      * Define version of extension
      */
-    public const VERSION = '1.8.7';
+    public const VERSION = '1.8.8';
 
     /**
      * Define schema version

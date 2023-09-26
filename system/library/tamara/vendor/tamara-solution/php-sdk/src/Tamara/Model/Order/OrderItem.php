@@ -6,7 +6,7 @@ namespace TMS\Tamara\Model\Order;
 use TMS\Tamara\Model\Money;
 class OrderItem
 {
-    public const REFERENCE_ID = 'reference_id', TYPE = 'type', NAME = 'name', SKU = 'sku', QUANTITY = 'quantity', TAX_AMOUNT = 'tax_amount', TOTAL_AMOUNT = 'total_amount', UNIT_PRICE = 'unit_price', DISCOUNT_AMOUNT = 'discount_amount', IMAGE_URL = 'image_url';
+    public const REFERENCE_ID = 'reference_id', TYPE = 'type', NAME = 'name', SKU = 'sku', QUANTITY = 'quantity', TAX_AMOUNT = 'tax_amount', TOTAL_AMOUNT = 'total_amount', UNIT_PRICE = 'unit_price', DISCOUNT_AMOUNT = 'discount_amount', IMAGE_URL = 'image_url', ITEM_URL = 'item_url';
     /**
      * @var string
      */
@@ -47,6 +47,10 @@ class OrderItem
      * @var string
      */
     private $imageUrl;
+    /**
+     * @var string
+     */
+    private $itemUrl;
     public static function fromArray(array $data) : \TMS\Tamara\Model\Order\OrderItem
     {
         $self = new self();
@@ -60,6 +64,7 @@ class OrderItem
         $self->setTaxAmount(\TMS\Tamara\Model\Money::fromArray($data[self::TAX_AMOUNT]));
         $self->setDiscountAmount(\TMS\Tamara\Model\Money::fromArray($data[self::DISCOUNT_AMOUNT]));
         $self->setImageUrl($data[self::IMAGE_URL] ?? '');
+        $self->setItemUrl($data[self::ITEM_URL] ?? '');
         return $self;
     }
     public function getReferenceId() : string
@@ -158,8 +163,24 @@ class OrderItem
     {
         return $this->imageUrl ?? '';
     }
+    /**
+     * @param string $itemUrl
+     * @return $this
+     */
+    public function setItemUrl(string $itemUrl) {
+        $this->itemUrl = $itemUrl;
+        return $this;
+    }
+
+    /**
+     * @return string
+     */
+    public function getItemUrl(): string
+    {
+        return $this->itemUrl ?? '';
+    }
     public function toArray() : array
     {
-        return [self::REFERENCE_ID => $this->getReferenceId(), self::TYPE => $this->getType(), self::NAME => $this->getName(), self::SKU => $this->getSku(), self::QUANTITY => $this->getQuantity(), self::TAX_AMOUNT => $this->getTaxAmount()->toArray(), self::TOTAL_AMOUNT => $this->getTotalAmount()->toArray(), self::UNIT_PRICE => $this->getUnitPrice() ? $this->getUnitPrice()->toArray() : null, self::DISCOUNT_AMOUNT => $this->getDiscountAmount() ? $this->getDiscountAmount()->toArray() : null, self::IMAGE_URL => $this->getImageUrl()];
+        return [self::REFERENCE_ID => $this->getReferenceId(), self::TYPE => $this->getType(), self::NAME => $this->getName(), self::SKU => $this->getSku(), self::QUANTITY => $this->getQuantity(), self::TAX_AMOUNT => $this->getTaxAmount()->toArray(), self::TOTAL_AMOUNT => $this->getTotalAmount()->toArray(), self::UNIT_PRICE => $this->getUnitPrice() ? $this->getUnitPrice()->toArray() : null, self::DISCOUNT_AMOUNT => $this->getDiscountAmount() ? $this->getDiscountAmount()->toArray() : null, self::IMAGE_URL => $this->getImageUrl(), self::ITEM_URL => $this->getItemUrl()];
     }
 }

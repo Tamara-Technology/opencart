@@ -24,7 +24,7 @@ class ModelExtensionPaymentTamarapay extends Model
     /**
      * Define version of extension
      */
-    public const VERSION = '1.8.7';
+    public const VERSION = '1.8.8';
 
     public const
         MAX_LIMIT = 'max_limit',
@@ -49,11 +49,18 @@ class ModelExtensionPaymentTamarapay extends Model
     const SANDBOX_API_ENVIRONMENT = "1";
     const PRODUCTION_API_URL = "https://api.tamara.co";
     const PRODUCTION_API_ENVIRONMENT = "2";
+    const ORDER_FAILED_STATUSES = [
+        'Canceled', 'Denied', 'Canceled Reversal', 'Failed', 'Refunded', 'Reversed', 'Chargeback', 'Pending', 'Voided', 'Expired',
+        'ملغي', 'مرفوض', 'إلغاء عكس الطلب', 'فشل', 'مردود', 'تم عكس الطلب', 'إعادة المبلغ', 'معلق', 'الطلب باطل', 'انتهاء الوقت'
+    ];
+    const ORDER_DELIVERED_STATUSES = [
+        'Shipped', 'Complete', 'تم شحن الطلب', 'مكتمل'
+    ];
 
-    private const SUPPORTED_CURRENCIES = [
+    const SUPPORTED_CURRENCIES = [
         'SAR', 'AED', 'KWD', 'BHD', 'QAR', 'OMR'
     ];
-    private const SUPPORTED_COUNTRIES = [
+    const SUPPORTED_COUNTRIES = [
         'SA', 'AE', 'KW', 'BH', 'QA', 'OM'
     ];
 
@@ -446,8 +453,94 @@ class ModelExtensionPaymentTamarapay extends Model
         $order->setShippingAmount($this->formatMoney($this->getShippingAmount($orderTotals), $orderData['currency_code'], $orderData['currency_value']));
         $order->setTaxAmount($this->formatMoney($this->getOrderTaxAmount($orderTotals), $orderData['currency_code'], $orderData['currency_value']));
         $order->setDiscount($this->getOrderDiscount($orderTotals));
-
+        $order->setRiskAssessment(
+            new \TMS\Tamara\Model\Order\RiskAssessment(
+                $this->getRiskAssessmentData($orderData)
+            )
+        );
         return $order;
+    }
+
+    public function getRiskAssessmentData($orderData) {
+        $riskAssessmentData = [
+            'account_creation_date' => null,
+            'has_delivered_order' => false,
+            'total_order_count' => 0,
+            'date_of_first_transaction' => null,
+            'is_existing_customer' => false,
+            'order_amount_last3months' => 0.0,
+            'order_count_last3months' => 0
+        ];
+        try {
+            $timezoneStr = empty($this->config->get('date_timezone')) ? 'UTC' : $this->config->get('date_timezone');
+            $timezone = new DateTimeZone($timezoneStr);
+            $date3monthsAgo = new DateTime('now', $timezone);
+            $date3monthsAgo->modify('-3 month');
+            if ($this->customer->isLogged()) {
+                $this->load->model('account/customer');
+                $customerData = $this->model_account_customer->getCustomer($this->customer->getId());
+                if (!empty($customerData['date_added'])) {
+                    if (\DateTime::createFromFormat('Y-m-d H:i:s', $customerData['date_added'], $timezone) != false) {
+                        $riskAssessmentData['account_creation_date'] = \DateTime::createFromFormat('Y-m-d H:i:s', $customerData['date_added'], $timezone)
+                            ->format('d-m-Y');
+                    }
+                    if (\DateTime::createFromFormat('Y-m-d H:i:s', $orderData['date_added'], $timezone) != false) {
+                        $orderCreationDate = \DateTime::createFromFormat('Y-m-d H:i:s', $orderData['date_added'], $timezone)
+                            ->format('d-m-Y');
+                        if ($riskAssessmentData['account_creation_date'] != null && $riskAssessmentData['account_creation_date'] != $orderCreationDate) {
+                            $riskAssessmentData['is_existing_customer'] = true;
+                        }
+                    }
+                }
+            }
+            $deliveredStatuses = [];
+            $failedStatuses = [];
+            $orderStatuses = $this->db->query("SELECT * FROM `" . DB_PREFIX . "order_status`;")->rows;
+            if (!empty($orderStatuses)) {
+                foreach ($orderStatuses as $orderStatus) {
+                    if (in_array($orderStatus['name'], self::ORDER_DELIVERED_STATUSES)) {
+                        $deliveredStatuses[] = $orderStatus['order_status_id'];
+                    }
+                    if (in_array($orderStatus['name'], self::ORDER_FAILED_STATUSES)) {
+                        $failedStatuses[] = $orderStatus['order_status_id'];
+                    }
+                }
+                $deliveredStatuses = array_unique($deliveredStatuses);
+                $failedStatuses = array_unique($failedStatuses);
+            }
+            $consumerEmailAddress = preg_replace("/\s+/", "", $orderData['email']);
+            $consumerOrdersSql = "SELECT order_id, store_id, customer_id, email, telephone, payment_code, total, order_status_id, currency_id, currency_code, currency_value, date_added, date_modified  FROM `". DB_PREFIX ."order` oo WHERE  (telephone = '" . preg_replace("/\s+/", "", $orderData['telephone']) . "' OR email = '". $consumerEmailAddress ."');";
+            $consumerOrders = $this->db->query($consumerOrdersSql)->rows;
+            if (!empty($consumerOrders)) {
+                foreach ($consumerOrders as $consumerOrder) {
+                    if ($riskAssessmentData['date_of_first_transaction'] === null) {
+                        if (\DateTime::createFromFormat('Y-m-d H:i:s',$consumerOrder['date_added'] , $timezone) != false) {
+                            $riskAssessmentData['date_of_first_transaction'] = \DateTime::createFromFormat('Y-m-d H:i:s',$consumerOrder['date_added'] , $timezone)
+                                ->format('d-m-Y');
+                        }
+                    }
+                    if (in_array($consumerOrder['order_status_id'], $deliveredStatuses)) {
+                        $riskAssessmentData['has_delivered_order'] = true;
+                    }
+                    if ($consumerOrder['payment_code'] == 'tamarapay') {
+                        continue;
+                    }
+                    if (!empty($consumerOrder['order_status_id']) && !in_array($consumerOrder['order_status_id'], $failedStatuses)) {
+                        $riskAssessmentData['total_order_count']++;
+                        $consumerOrderCreationDate = \DateTime::createFromFormat('Y-m-d H:i:s', $consumerOrder['date_added'], $timezone);
+                        if ($consumerOrderCreationDate != false) {
+                            if ($consumerOrderCreationDate > $date3monthsAgo) {
+                                $riskAssessmentData['order_count_last3months']++;
+                                $riskAssessmentData['order_amount_last3months'] += $this->getValueInCurrency($consumerOrder['total'], $consumerOrder['currency_code'], $consumerOrder['currency_value']);
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (\Exception $exception) {
+            //pass
+        }
+        return $riskAssessmentData;
     }
 
     public function getOrderCountryCode($orderData) {
@@ -534,7 +627,8 @@ class ModelExtensionPaymentTamarapay extends Model
                 'quantity' => $orderProduct['quantity'],
                 'image_url' => strval($this->getProductImageUrl($productData['image'])),
                 'currency' => $currency,
-                'currency_value' => $currencyValue
+                'currency_value' => $currencyValue,
+                'item_url' => $this->url->link('product/product', 'product_id=' . $orderProduct['product_id'])
             ];
         }
 
@@ -621,6 +715,7 @@ class ModelExtensionPaymentTamarapay extends Model
         $orderItem->setDiscountAmount($this->formatMoney($item['discount_amount'] ?? 0, $item['currency'], $item['currency_value']));
         $orderItem->setQuantity($item['quantity']);
         $orderItem->setImageUrl($item['image_url'] ?? '');
+        $orderItem->setItemUrl($item['item_url'] ?? '');
 
         return $orderItem;
     }

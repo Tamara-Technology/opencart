@@ -1,3 +1,8 @@
+Version 1.8.8
+- New:
+    - Add risk assessment data to the order
+    - Add product widget modification
+    - Add item_url to order data when creating a checkout session
 Version 1.8.7
 - New:
     - Add pay in full widget on the checkout page
@@ -10,6 +15,7 @@ Version 1.8.6
     - Use credit-pre-check on the checkout page
     - Switch to use widget v2
     - Add Oman country
+    - Remove webhook in extension configuration page
 Version 1.8.5
 - Bug fixes:
     - Fix vendor code

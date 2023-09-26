@@ -641,6 +641,7 @@ class ControllerExtensionPaymentTamarapay extends Controller
                 $data['only_pay_now'] = true;
             }
         } else {
+            $data['exists_pay_now'] = false;
             $data['only_pay_now'] = false;
         }
         $data['use_widget_version'] = 'mixed';

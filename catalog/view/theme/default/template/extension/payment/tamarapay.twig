@@ -2,6 +2,9 @@
     img.payment-icon {
         max-height: 25px;
     }
+    #tamara-installment-plan, .tamara_promo, .tamara-v2, .tamara-v1 {
+        margin-bottom: 10px;
+    }
 </style>
 {% if error_get_payment %}
     <div id="error-area" class="alert alert-danger"><i class="fa fa-ban"></i> {{ error_get_payment }}</div>
@@ -21,7 +24,7 @@
                             <div class="col-sm-12">
                                 <div class="form-check">
                                     <input type="radio" name="payment_type" class="form-check-input" id="{{ first_method.name }}" value="{{ first_method.name }}" checked="true" style="display: none" />
-                                    <div class="tamara_promo" style="margin-bottom: 10px; text-align: center;">
+                                    <div class="tamara_promo" style="text-align: center;">
                                         <tamara-widget amount="{{ order_data.total_in_currency }}" inline-type="3"></tamara-widget>
                                     </div>
                                 </div>
@@ -61,20 +64,18 @@
                                             </label>
                                         {% else %}
                                             {% if method.name == 'pay_next_month' %}
-                                                <label for="{{ method.name }}">
-                                                    <a href="javascript:void(0)" class="tamara-product-widget tamara-v1" data-lang="{{ language_code }}" data-currency="{{ method.currency }}" data-country-code="{{ country_code }}" data-price="{{ order_data.total_in_currency }}" data-payment-type="pay-next-month" data-disable-paylater="true" data-disable-installment="false" data-inject-template="false" data-installment-available-amount="{{ method.min_limit }}">{{ text_more_details }}</a>
-                                                </label>
+                                                <div class="tamara-product-widget tamara-v1" data-lang="{{ language_code }}" data-currency="{{ method.currency }}" data-country-code="{{ country_code }}" data-price="{{ order_data.total_in_currency }}" data-payment-type="pay-next-month" data-disable-paylater="true" data-disable-installment="false" data-installment-available-amount="{{ method.min_limit }}"></div>
                                             {% else %}
                                                 {% if method.name == 'pay_now' %}
-                                                    <div class="tamara_promo tamara-v2" style="margin-bottom: 10px;">
-                                                        <tamara-widget type="tamara-card-snippet" lang="en" country="SA"></tamara-widget>
+                                                    <div class="tamara_promo tamara-v2">
+                                                        <tamara-widget type="tamara-card-snippet" lang="{{ language_code }}" country="{{ country_code }}"></tamara-widget>
                                                     </div>
                                                 {% else %}
                                                     {% if total_installments_types > 1 %}
-                                                        <div id="tamara-installment-plan" style="margin-bottom: 10px;" class="tamara-installment-plan-widget tamara-v1" data-lang="{{ language_code }}" data-country-code="{{ country_code }}" data-price="{{ order_data.total_in_currency }}" data-currency="{{ method.currency }}" data-installment-minimum-amount="{{ method.min_limit }}" data-installment-maximum-amount="{{ method.max_limit }}" data-number-of-installments="{{ method.number_of_instalments }}" data-installment-available-amount="{{ method.min_limit }}"
+                                                        <div id="tamara-installment-plan" class="tamara-installment-plan-widget tamara-v1" data-lang="{{ language_code }}" data-country-code="{{ country_code }}" data-price="{{ order_data.total_in_currency }}" data-currency="{{ method.currency }}" data-installment-minimum-amount="{{ method.min_limit }}" data-installment-maximum-amount="{{ method.max_limit }}" data-number-of-installments="{{ method.number_of_instalments }}" data-installment-available-amount="{{ method.min_limit }}"
                                                         ></div>
                                                     {% else %}
-                                                        <div class="tamara_promo tamara-v2" style="margin-bottom: 10px;">
+                                                        <div class="tamara_promo tamara-v2">
                                                             <tamara-widget amount="{{ order_data.total_in_currency }}" inline-type="3"></tamara-widget>
                                                         </div>
                                                     {% endif %}
