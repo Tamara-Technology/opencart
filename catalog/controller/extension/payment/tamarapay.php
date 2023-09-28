@@ -33,7 +33,6 @@ class ControllerExtensionPaymentTamarapay extends Controller
         }
         $data['methods'] = $methods;
         $data['merchant_public_key'] = $this->model_extension_payment_tamarapay->getMerchantPublicKey();
-        $data['is_use_widget_v1'] = empty($data['merchant_public_key']);
         $this->addExtraDataForCommonVersion($methods, $data);
         $data['is_sandbox_mode'] = $this->model_extension_payment_tamarapay->isSandboxMode();
         $data['tamara_widget_url'] = 'https://cdn.tamara.co/widget/tamara-widget.min.js';
@@ -592,6 +591,7 @@ class ControllerExtensionPaymentTamarapay extends Controller
         $existsPayNow = false;
         $minLimitAllMethods = null;
         $totalTypeAvailableForWidget = 0;
+        $totalInstallmentTypes = 0;
         foreach ($methods as $method) {
             if ($method['is_in_limit']) {
                 $totalTypeAvailable++;
@@ -603,6 +603,7 @@ class ControllerExtensionPaymentTamarapay extends Controller
                     }
                 }
                 if ($method['is_installment']) {
+                    $totalInstallmentTypes++;
                     $totalTypeAvailableForWidget++;
                     $methodsNameInWidget[] = "installment";
                     $numberOfInstallments[] = $method['number_of_instalments'];
@@ -637,16 +638,26 @@ class ControllerExtensionPaymentTamarapay extends Controller
         $data['exists_pay_in_x'] = $existsPayInX;
         $data['exists_pay_by_installments'] = $existsPayByInstallments;
         $data['min_limit_all_methods'] = $minLimitAllMethods;
+        $data['total_installments_types'] = $totalInstallmentTypes;
         if ($existsPayNow) {
             $data['exists_pay_now'] = true;
             if ($totalTypeAvailable == 1) {
                 $data['only_pay_now'] = true;
             }
         } else {
+            $data['exists_pay_now'] = false;
             $data['only_pay_now'] = false;
         }
-        if ($totalTypeAvailableForWidget > 1) {
-            $data['is_use_widget_v1'] = true;
+        $data['use_widget_version'] = 'mixed';
+        if (empty($data['merchant_public_key'])) {
+            $data['use_widget_version'] = 'v1';
+        } else {
+            if ($data['single_checkout_enabled']) {
+                $data['use_widget_version'] = 'v2';
+            }
+            if ($totalTypeAvailable < 2) {
+                $data['use_widget_version'] = 'v2';
+            }
         }
     }
 }

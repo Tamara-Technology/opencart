@@ -2,6 +2,9 @@
     img.payment-icon {
         max-height: 25px;
     }
+    #tamara-installment-plan, .tamara_promo, .tamara-v2, .tamara-v1 {
+        margin-bottom: 10px;
+    }
 </style>
 <?php if ($error_get_payment): ?>
     <div id="error-area" class="alert alert-danger"><i class="fa fa-ban"></i> <?php echo $error_get_payment ?></div>
@@ -19,17 +22,10 @@
                         <div class="payment-type-content">
                             <div class="col-sm-12">
                                 <div class="form-check">
-                                    <input type="radio" name="payment_type" class="form-check-input" id="<?php echo $first_method['name']; ?>" value="<?php echo $first_method['name']; ?>" checked="true" style="display: none">
-                                    <br/>
-                                    <?php if ($first_method['is_installment']): ?>
-                                        <?php if ($is_use_widget_v1): ?>
-                                            <div id="tamara-installment-plan" style="margin-bottom: 10px;  text-align: center;" class="tamara-installment-plan-widget" data-lang="<?php echo $language_code; ?>" data-country-code="<?php echo $country_code; ?>" data-price="<?php echo $order_data['total_in_currency']; ?>" data-currency="<?php echo $first_method['currency']; ?>" data-installment-minimum-amount="<?php echo $first_method['min_limit']; ?>" data-installment-maximum-amount="<?php echo $first_method['max_limit']; ?>" data-number-of-installments="<?php echo $first_method['number_of_instalments']; ?>" data-installment-available-amount="<?php echo $first_method['min_limit']; ?>"></div>
-                                        <?php else: ?>
-                                            <div class="tamara_promo text-center" style="margin-bottom: 10px;">
-                                                <tamara-widget amount="<?php echo $order_data['total_in_currency'] ?>" inline-type="3"></tamara-widget>
-                                            </div>
-                                        <?php endif; ?>
-                                    <?php endif; ?>
+                                    <input type="radio" name="payment_type" class="form-check-input" id="<?php echo $first_method['name']; ?>" value="<?php echo $first_method['name']; ?>" checked="true" style="display: none" />
+                                    <div class="tamara_promo" style="text-align: center;">
+                                        <tamara-widget amount="<?php echo $order_data['total_in_currency'] ?>" inline-type="3"></tamara-widget>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -41,13 +37,9 @@
                             <?php if ($exists_pay_now == false): ?>
                             <div class="col-sm-12">
                                 <div class="col-sm-4"></div>
-                                <?php if ($is_use_widget_v1): ?>
+                                <?php if ($total_method_available): ?>
                                 <div class="col-sm-4 text-center">
-                                    <a href="javascript:void(0)" class="tamara-widget" data-lang="<?php echo $language_code; ?>" data-currency="<?php echo $order_data['currency_code']; ?>" data-country-code="<?php echo $country_code; ?>" data-payment-type="<?php echo $methods_name_in_widget; ?>" data-number-of-installments="<?php echo $number_of_installments; ?>" data-installment-available-amount="<?php echo $min_limit_all_methods; ?>"></a>
-                                </div>
-                                <?php else: ?>
-                                <div class="col-sm-4 text-center">
-                                    <tamara-widget amount="<?php echo $order_data['total_in_currency']; ?>" inline-type="1"></tamara-widget>
+                                    <tamara-widget amount="<?php echo $order_data['total_in_currency'] ?>" inline-type="1"></tamara-widget>
                                 </div>
                                 <?php endif; ?>
                                 <div class="col-sm-4"></div>
@@ -66,26 +58,24 @@
                                         <label for="<?php echo $method['name']; ?>" class="form-check-label"><img class="payment-icon" src="https://cdn.tamara.co/assets/svg/tamara-logo-badge-<?php echo $language_code; ?>.svg" alt="Tamara"><b>&nbsp;<?php echo $method['title']; ?></b></label>
                                         <br/>
                                         <?php if ($method['name'] == 'pay_by_later'): ?>
-                                            <?php if ($is_use_widget_v1): ?>
-                                                <label for="<?php echo $method['name']; ?>">
-                                                    <a href="javascript:void(0)" class="tamara-product-widget" data-lang="<?php echo $language_code; ?>" data-currency="<?php echo $method['currency']; ?>" data-country-code="<?php echo $country_code; ?>" data-price="<?php echo $order_data['total_in_currency']; ?>" data-payment-type="paylater" data-pay-later-max-amount="<?php echo $method['max_limit']; ?>" data-disable-paylater="false" data-disable-product-limit="true" data-disable-installment="true" data-inject-template="false" data-installment-available-amount="<?php echo $method['min_limit']; ?>"><?php echo $text_more_details; ?> </a>
-                                                </label>
-                                            <?php endif; ?>
+                                        <label for="<?php echo $method['name']; ?>">
+                                            <a href="javascript:void(0)" class="tamara-product-widget tamara-v1" data-lang="<?php echo $language_code; ?>" data-currency="<?php echo $method['currency']; ?>" data-country-code="<?php echo $country_code; ?>" data-price="<?php echo $order_data['total_in_currency']; ?>" data-payment-type="paylater" data-pay-later-max-amount="<?php echo $method['max_limit']; ?>" data-disable-paylater="false" data-disable-product-limit="true" data-disable-installment="true" data-inject-template="false" data-installment-available-amount="<?php echo $method['min_limit']; ?>"><?php echo $text_more_details; ?> </a>
+                                        </label>
                                         <?php else: ?>
                                             <?php if ($method['name'] == 'pay_next_month'): ?>
-                                                <?php if ($is_use_widget_v1): ?>
-                                                    <label for="<?php echo $method['name']; ?>">
-                                                        <a href="javascript:void(0)" class="tamara-product-widget" data-lang="<?php echo $language_code; ?>" data-currency="<?php echo $method['currency']; ?>" data-country-code="<?php echo $country_code; ?>" data-price="<?php echo $order_data['total_in_currency']; ?>" data-payment-type="pay-next-month" data-disable-paylater="true" data-disable-installment="false" data-inject-template="false" data-installment-available-amount="<?php echo $method['min_limit']; ?>"><?php echo $text_more_details; ?></a>
-                                                    </label>
-                                                <?php endif; ?>
+                                            <div class="tamara-product-widget tamara-v1" data-lang="<?php echo $language_code; ?>" data-currency="<?php echo $method['currency']; ?>" data-country-code="<?php echo $country_code; ?>" data-price="<?php echo $order_data['total_in_currency']; ?>" data-payment-type="pay-next-month" data-disable-paylater="true" data-disable-installment="false" data-installment-available-amount="<?php echo $method['min_limit']; ?>"></div>
                                             <?php else: ?>
-                                                <?php if ($method['name'] != 'pay_now'): ?>
-                                                    <?php if ($is_use_widget_v1): ?>
-                                                        <div id="tamara-installment-plan" style="margin-bottom: 10px;" class="tamara-installment-plan-widget" data-lang="<?php echo $language_code; ?>" data-country-code="<?php echo $country_code; ?>" data-price="<?php echo $order_data['total_in_currency']; ?>" data-currency="<?php echo $method['currency']; ?>" data-installment-minimum-amount="<?php echo $method['min_limit']; ?>" data-installment-maximum-amount="<?php echo $method['max_limit']; ?>" data-number-of-installments="<?php echo $method['number_of_instalments']; ?>" data-installment-available-amount="<?php echo $method['min_limit']; ?>"></div>
+                                                <?php if ($method['name'] == 'pay_now'): ?>
+                                                    <div class="tamara_promo tamara-v2">
+                                                        <tamara-widget type="tamara-card-snippet" lang="<?php echo $language_code; ?>" country="<?php echo $country_code; ?>"></tamara-widget>
+                                                    </div>
+                                                <?php else: ?>
+                                                    <?php if ($total_installments_types > 1): ?>
+                                                    <div id="tamara-installment-plan" class="tamara-installment-plan-widget tamara-v1" data-lang="<?php echo $language_code; ?>" data-country-code="<?php echo $country_code; ?>" data-price="<?php echo $order_data['total_in_currency']; ?>" data-currency="<?php echo $method['currency']; ?>" data-installment-minimum-amount="<?php echo $method['min_limit']; ?>" data-installment-maximum-amount="<?php echo $method['max_limit']; ?>" data-number-of-installments="<?php echo $method['number_of_instalments']; ?>" data-installment-available-amount="<?php echo $method['min_limit']; ?>"></div>
                                                     <?php else: ?>
-                                                        <div class="tamara_promo" style="margin-bottom: 10px">
-                                                            <tamara-widget amount="<?php echo $order_data['total_in_currency'] ?>" inline-type="3"></tamara-widget>
-                                                        </div>
+                                                    <div class="tamara_promo tamara-v2">
+                                                        <tamara-widget amount="<?php echo $order_data['total_in_currency'] ?>" inline-type="3"></tamara-widget>
+                                                    </div>
                                                     <?php endif; ?>
                                                 <?php endif; ?>
                                             <?php endif; ?>
@@ -101,7 +91,7 @@
                 </div>
             </form>
         </div>
-        <?php if ($is_use_widget_v1): ?>
+        <?php if ($use_widget_version == 'v1' || $use_widget_version == 'mixed'): ?>
             <?php if ($exists_pay_now == false): ?>
                 <script charset="utf-8" src="<?php echo $tamara_widget_url; ?>?t=<?php echo $current_time; ?>"></script>
                 <script type="text/javascript">
@@ -111,7 +101,7 @@
                             window.TamaraWidget.init({
                                 lang: '<?php echo $language_code; ?>',
                                 currency: '<?php echo $order_data["currency_code"]; ?>',
-                                publicKey: ''
+                                publicKey: '<?php echo $merchant_public_key; ?>'
                             });
                             window.TamaraWidget.render();
                             clearInterval(existTamaraWidget);
@@ -132,7 +122,7 @@
                             window.TamaraProductWidget.init({
                                 lang: '<?php echo $language_code; ?>',
                                 currency: '<?php echo $order_data["currency_code"]; ?>',
-                                publicKey: ''
+                                publicKey: '<?php echo $merchant_public_key; ?>'
                             });
                             window.TamaraProductWidget.render();
                             clearInterval(existTamaraProductWidget);
@@ -147,27 +137,28 @@
             <?php if ($exists_pay_by_installments || $exists_pay_in_x): ?>
                 <script charset="utf-8"
                         src="<?php echo $tamara_installments_plan_widget_url; ?>?t=<?php echo $current_time; ?>"></script>
-                <script type="text/javascript">
-                    var countExistTamaraInstallmentsPlan = 0;
-                    var existTamaraInstallmentsPlan = setInterval(function () {
-                        if ($('.tamara-installment-plan-widget').length) {
-                            if (window.TamaraInstallmentPlan) {
-                                window.TamaraInstallmentPlan.init({
-                                    lang: '<?php echo $language_code; ?>',
-                                    currency: '<?php echo $order_data["currency_code"]; ?>',
-                                    publicKey: ''
-                                });
-                                window.TamaraInstallmentPlan.render();
+                    <script type="text/javascript">
+                        var countExistTamaraInstallmentsPlan = 0;
+                        var existTamaraInstallmentsPlan = setInterval(function () {
+                            if ($('.tamara-installment-plan-widget').length) {
+                                if (window.TamaraInstallmentPlan) {
+                                    window.TamaraInstallmentPlan.init({
+                                        lang: '<?php echo $language_code; ?>',
+                                        currency: '<?php echo $order_data["currency_code"]; ?>',
+                                        publicKey: '<?php echo $merchant_public_key; ?>'
+                                    });
+                                    window.TamaraInstallmentPlan.render();
+                                    clearInterval(existTamaraInstallmentsPlan);
+                                }
+                            }
+                            if (++countExistTamaraInstallmentsPlan > 33) {
                                 clearInterval(existTamaraInstallmentsPlan);
                             }
-                        }
-                        if (++countExistTamaraInstallmentsPlan > 33) {
-                            clearInterval(existTamaraInstallmentsPlan);
-                        }
-                    }, 300);
-                </script>
+                        }, 300);
+                    </script>
             <?php endif; ?>
-        <?php else: ?>
+        <?php endif; ?>
+        <?php if ($use_widget_version == 'v2' || $use_widget_version == 'mixed'): ?>
             <script>
                 var tamaraWidgetConfig = {
                     lang: '<?php echo $language_code ?>',

@@ -175,28 +175,6 @@
                                             </div>
 
                                             <div class="form-group">
-                                                <label class="col-sm-2 control-label" for="input-webhook-enabled"><?php echo $entry_enable_webhook ?></label>
-                                                <div class="col-sm-10">
-                                                    <select name="tamarapay_webhook_enabled" id="input-webhook-enabled" class="form-control">
-                                                        <?php if ($tamarapay_webhook_enabled): ?>
-                                                        <option value="1" selected="selected"><?php echo $text_enabled ?></option>
-                                                        <option value="0"><?php echo $text_disabled ?></option>
-                                                        <?php else: ?>
-                                                        <option value="1"><?php echo $text_enabled ?></option>
-                                                        <option value="0" selected="selected"><?php echo $text_disabled ?></option>
-                                                        <?php endif ?>
-                                                    </select>
-                                                </div>
-                                            </div>
-
-                                            <div class="form-group">
-                                                <label class="col-sm-2 control-label" for="input-webhook-id"><?php echo $entry_webhook_id ?></label>
-                                                <div class="col-sm-10">
-                                                    <input id="input-webhook-id" name="tamarapay_webhook_id" value="<?php echo $tamarapay_webhook_id ?>" type="text" class="form-control" readonly />
-                                                </div>
-                                            </div>
-
-                                            <div class="form-group">
                                                 <div class="col-sm-12">
                                                     <button type="button" id="update-payment-config">Pull new changes from Tamara / Flush cache</button>
                                                     <span id="update-payment-config-message" style="display: none;"></span>
