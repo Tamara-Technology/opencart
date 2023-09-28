@@ -49,7 +49,7 @@ class ControllerPaymentTamarapay extends Controller {
         $this->prepareTextDataForIndexPage($data);
         $this->prepareExtensionConfigDataForIndexPage($data);
         $this->preparePaymentTypesDataForIndexPage($data);
-        $this->prepareWebhookDataForIndexPage($data);
+//        $this->prepareWebhookDataForIndexPage($data);
         $this->prepareGeneralConfigDataForIndexPage($data);
         return $data;
     }
@@ -430,7 +430,7 @@ class ControllerPaymentTamarapay extends Controller {
             }
         }
 
-        $this->validateWebhook();
+//        $this->validateWebhook();
 
         if ($this->error && !isset($this->error['warning'])) {
             $this->error['warning'] = $this->language->get('error_warning');

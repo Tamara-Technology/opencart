@@ -1,3 +1,11 @@
+Version 1.4.8
+- New:
+    - Add risk assessment data to the order
+    - Add item_url to order data when creating a checkout session
+    - Remove webhook in extension configuration page
+Version 1.4.7
+- New:
+    - Add pay in full widget on the checkout page
 Version 1.4.6
 - New:
     - Update the template for the payment method on the checkout page

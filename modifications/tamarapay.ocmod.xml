@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <modification>
-    <name>Tamara payment</name>
-    <version>1.4.6</version>
+    <name>Tamara payment - Widgets - OC 2.0.x - 2.2.x</name>
+    <version>1.4.8</version>
     <link>https://tamara.co/en/index.html#how-it-works</link>
     <author>Tamara</author>
     <code>tamarapay</code>
@@ -12,7 +12,7 @@
             <add position="after">
                 <![CDATA[
             //Tamara - display product widget
-            $widgetHtml = '';
+            $tamaraWidgetHtml = '';
             $this->load->model('payment/tamarapay');
             if (!$this->model_payment_tamarapay->isTamaraEnabled()) {
                 goto end_pdp_widget;
@@ -53,9 +53,9 @@
                     $finalPrice = $this->tax->calculate($product_info['price'], $product_info['tax_class_id'], $this->config->get('config_tax'));
                 }
             }
-            $widgetHtml = $this->getWidgetHtml($finalPrice);
+            $tamaraWidgetHtml = $this->getTamaraWidgetHtml($finalPrice);
             end_pdp_widget:
-            $data['widgetHtml'] = $widgetHtml;
+            $data['tamaraWidgetHtml'] = $tamaraWidgetHtml;
             //End Tamara
 				]]></add>
         </operation>
@@ -64,7 +64,7 @@
             <add position="before">
                 <![CDATA[
     //Tamara - Get widget html
-    public function getWidgetHtml($price) {
+    public function getTamaraWidgetHtml($price) {
         $result = '';
         $this->load->model('payment/tamarapay');
         $bestMethodForCustomer = $this->model_payment_tamarapay->getBestMethodForCustomer($price, $this->model_payment_tamarapay->getCurrencyCodeFromSession());
@@ -82,7 +82,7 @@
         if (empty($languageCode)) {
             $languageCode = 'en';
         }
-        $publicKey = $this->config->get('tamarapay_merchant_public_key');
+        $publicKey = $this->model_payment_tamarapay->getMerchantPublicKey();
         $isUseWidgetV1 = empty($publicKey);
         if ($isUseWidgetV1) {
             $result = '<div id="tamara-product-widget" class="tamara-product-widget" data-lang="'. $languageCode .'" data-price="'. $price .'" data-currency="'. $bestMethodForCustomer['currency'] .'" data-country-code="'. $countryCode .'" data-installment-available-amount="'. $bestMethodForCustomer['min_limit'] .'"';
@@ -152,7 +152,7 @@
             <search><![CDATA[<div id="product">]]></search>
             <add position="before">
                 <![CDATA[
-                    <?php echo $widgetHtml; ?>
+                    <?php echo $tamaraWidgetHtml; ?>
 				]]></add>
         </operation>
     </file>
@@ -161,7 +161,7 @@
             <search><![CDATA[public function add()]]></search>
             <add position="before"><![CDATA[
     //Tamara - Get widget html
-    public function getWidgetHtml($price) {
+    public function getTamaraWidgetHtml($price) {
         $result = '';
         $this->load->model('payment/tamarapay');
         $bestMethodForCustomer = $this->model_payment_tamarapay->getBestMethodForCustomer($price, $this->model_payment_tamarapay->getCurrencyCodeFromSession());
@@ -179,7 +179,7 @@
         if (empty($languageCode)) {
             $languageCode = 'en';
         }
-        $publicKey = $this->config->get('tamarapay_merchant_public_key');
+        $publicKey = $this->model_payment_tamarapay->getMerchantPublicKey();
         $isUseWidgetV1 = empty($publicKey);
         if ($isUseWidgetV1) {
             $result = '<div id="tamara-product-widget" class="tamara-product-widget" data-lang="'. $languageCode .'" data-price="'. $price .'" data-currency="'. $bestMethodForCustomer['currency'] .'" data-country-code="'. $countryCode .'" data-installment-available-amount="'. $bestMethodForCustomer['min_limit'] .'"';
@@ -247,7 +247,7 @@
             <add position="after">
                 <![CDATA[
             //Tamara - cart widget
-            $widgetHtml = '';
+            $tamaraWidgetHtml = '';
             $this->load->model('payment/tamarapay');
             if (!$this->model_payment_tamarapay->isTamaraEnabled()) {
                 goto end_cart_widget;
@@ -263,12 +263,12 @@
             if (empty($cartValue)) {
                 goto end_cart_widget;
             }
-            $widgetHtml = $this->getWidgetHtml($cartValue);
-            if (!empty($widgetHtml)) {
-                $widgetHtml .= '<style>#tamara_promo_widget {text-align: right;}</style>';
+            $tamaraWidgetHtml = $this->getTamaraWidgetHtml($cartValue);
+            if (!empty($tamaraWidgetHtml)) {
+                $tamaraWidgetHtml .= '<style>#tamara_promo_widget {text-align: right;}</style>';
             }
             end_cart_widget:
-            $data['widgetHtml'] = $widgetHtml;
+            $data['tamaraWidgetHtml'] = $tamaraWidgetHtml;
             //End Tamara
 				]]></add>
         </operation>
@@ -278,7 +278,7 @@
             <search><![CDATA[<div class="buttons">]]></search>
             <add position="before">
                 <![CDATA[
-            <?php echo $widgetHtml; ?>
+            <?php echo $tamaraWidgetHtml; ?>
 				]]></add>
         </operation>
     </file>
