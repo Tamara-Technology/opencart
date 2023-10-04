@@ -101,7 +101,7 @@ class TextDescriptor extends \TMS\Symfony\Component\Console\Descriptor\Descripto
             $laterOptions = [];
             $this->writeText('<comment>Options:</comment>', $options);
             foreach ($definition->getOptions() as $option) {
-                if (\strlen($option->getShortcut() ?? '') > 1) {
+                if (\strlen($option->getShortcut()) > 1) {
                     $laterOptions[] = $option;
                     continue;
                 }
@@ -119,8 +119,6 @@ class TextDescriptor extends \TMS\Symfony\Component\Console\Descriptor\Descripto
      */
     protected function describeCommand(\TMS\Symfony\Component\Console\Command\Command $command, array $options = [])
     {
-        $command->getSynopsis(\true);
-        $command->getSynopsis(\false);
         $command->mergeApplicationDefinition(\false);
         if ($description = $command->getDescription()) {
             $this->writeText('<comment>Description:</comment>', $options);
@@ -134,7 +132,7 @@ class TextDescriptor extends \TMS\Symfony\Component\Console\Descriptor\Descripto
             $this->writeText('  ' . \TMS\Symfony\Component\Console\Formatter\OutputFormatter::escape($usage), $options);
         }
         $this->writeText("\n");
-        $definition = $command->getNativeDefinition();
+        $definition = $command->getDefinition();
         if ($definition->getOptions() || $definition->getArguments()) {
             $this->writeText("\n");
             $this->describeInputDefinition($definition, $options);

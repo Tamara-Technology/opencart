@@ -44,6 +44,6 @@ final class ConsoleErrorEvent extends \TMS\Symfony\Component\Console\Event\Conso
     }
     public function getExitCode() : int
     {
-        return $this->exitCode ?? (\is_int($this->error->getCode()) && 0 !== $this->error->getCode() ? $this->error->getCode() : 1);
+        return null !== $this->exitCode ? $this->exitCode : (\is_int($this->error->getCode()) && 0 !== $this->error->getCode() ? $this->error->getCode() : 1);
     }
 }

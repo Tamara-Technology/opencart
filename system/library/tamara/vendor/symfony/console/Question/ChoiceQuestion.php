@@ -51,11 +51,9 @@ class ChoiceQuestion extends \TMS\Symfony\Component\Console\Question\Question
      *
      * When multiselect is set to true, multiple choices can be answered.
      *
-     * @param bool $multiselect
-     *
      * @return $this
      */
-    public function setMultiselect($multiselect)
+    public function setMultiselect(bool $multiselect)
     {
         $this->multiselect = $multiselect;
         $this->setValidator($this->getDefaultValidator());
@@ -82,11 +80,9 @@ class ChoiceQuestion extends \TMS\Symfony\Component\Console\Question\Question
     /**
      * Sets the prompt for choices.
      *
-     * @param string $prompt
-     *
      * @return $this
      */
-    public function setPrompt($prompt)
+    public function setPrompt(string $prompt)
     {
         $this->prompt = $prompt;
         return $this;
@@ -96,11 +92,9 @@ class ChoiceQuestion extends \TMS\Symfony\Component\Console\Question\Question
      *
      * The error message has a string placeholder (%s) for the invalid value.
      *
-     * @param string $errorMessage
-     *
      * @return $this
      */
-    public function setErrorMessage($errorMessage)
+    public function setErrorMessage(string $errorMessage)
     {
         $this->errorMessage = $errorMessage;
         $this->setValidator($this->getDefaultValidator());
@@ -115,16 +109,16 @@ class ChoiceQuestion extends \TMS\Symfony\Component\Console\Question\Question
         return function ($selected) use($choices, $errorMessage, $multiselect, $isAssoc) {
             if ($multiselect) {
                 // Check for a separated comma values
-                if (!\preg_match('/^[^,]+(?:,[^,]+)*$/', (string) $selected, $matches)) {
+                if (!\preg_match('/^[^,]+(?:,[^,]+)*$/', $selected, $matches)) {
                     throw new \TMS\Symfony\Component\Console\Exception\InvalidArgumentException(\sprintf($errorMessage, $selected));
                 }
-                $selectedChoices = \explode(',', (string) $selected);
+                $selectedChoices = \explode(',', $selected);
             } else {
                 $selectedChoices = [$selected];
             }
             if ($this->isTrimmable()) {
                 foreach ($selectedChoices as $k => $v) {
-                    $selectedChoices[$k] = \trim((string) $v);
+                    $selectedChoices[$k] = \trim($v);
                 }
             }
             $multiselectChoices = [];
@@ -151,7 +145,8 @@ class ChoiceQuestion extends \TMS\Symfony\Component\Console\Question\Question
                 if (\false === $result) {
                     throw new \TMS\Symfony\Component\Console\Exception\InvalidArgumentException(\sprintf($errorMessage, $value));
                 }
-                $multiselectChoices[] = (string) $result;
+                // For associative choices, consistently return the key as string:
+                $multiselectChoices[] = $isAssoc ? (string) $result : $result;
             }
             if ($multiselect) {
                 return $multiselectChoices;

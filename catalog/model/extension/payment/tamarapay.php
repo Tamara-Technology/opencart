@@ -24,7 +24,7 @@ class ModelExtensionPaymentTamarapay extends Model
     /**
      * Define version of extension
      */
-    public const VERSION = '1.8.8';
+    public const VERSION = '1.8.9';
 
     public const
         MAX_LIMIT = 'max_limit',
@@ -869,8 +869,14 @@ class ModelExtensionPaymentTamarapay extends Model
 
             if (!$response->isSuccess()) {
                 throw new Exception($response->getMessage());
+            } else {
+                if ($response->getOrderStatus() != "authorised") {
+                    throw new Exception("Order status doesn't accept authorization");
+                }
             }
 
+            $tamaraOrder = $this->getTamaraOrderByTamaraOrderId($tamaraOrderId);
+            $this->updatePaymentTypeAfterCheckout($tamaraOrder);
             $this->updateAuthoriseOrder($response->getOrderId());
             $orderTamara = $this->getTamaraOrderByTamaraOrderId($response->getOrderId());
             $this->model_checkout_order->addOrderHistory($orderTamara['order_id'], $this->config->get('payment_tamarapay_order_status_authorised_id'), 'Order was authorised by Tamara, order id: ' . $response->getOrderId(), false);
@@ -2158,7 +2164,7 @@ class ModelExtensionPaymentTamarapay extends Model
         if ($this->isInstallmentsPayment($paymentType)) {
             $comment .= (", number of installments: " . $numberOfInstallments);
         }
-        $this->addOrderComment($tamaraOrder['order_id'], $this->config->get("payment_tamarapay_order_status_authorised_id"), $comment);
+        $this->addOrderComment($tamaraOrder['order_id'], $this->config->get("payment_tamarapay_order_status_success_id"), $comment);
     }
 
     public function convertPaymentTypeFromTamaraToOpenCart($paymentType) {

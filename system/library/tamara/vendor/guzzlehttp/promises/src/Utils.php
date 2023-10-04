@@ -45,9 +45,7 @@ final class Utils
         $promise = new \TMS\GuzzleHttp\Promise\Promise([$queue, 'run']);
         $queue->add(function () use($task, $promise) {
             try {
-                if (\TMS\GuzzleHttp\Promise\Is::pending($promise)) {
-                    $promise->resolve($task());
-                }
+                $promise->resolve($task());
             } catch (\Throwable $e) {
                 $promise->reject($e);
             } catch (\Exception $e) {

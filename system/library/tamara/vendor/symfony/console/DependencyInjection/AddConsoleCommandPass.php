@@ -26,10 +26,14 @@ class AddConsoleCommandPass implements \TMS\Symfony\Component\DependencyInjectio
 {
     private $commandLoaderServiceId;
     private $commandTag;
-    public function __construct(string $commandLoaderServiceId = 'console.command_loader', string $commandTag = 'console.command')
+    private $noPreloadTag;
+    private $privateTagName;
+    public function __construct(string $commandLoaderServiceId = 'console.command_loader', string $commandTag = 'console.command', string $noPreloadTag = 'container.no_preload', string $privateTagName = 'container.private')
     {
         $this->commandLoaderServiceId = $commandLoaderServiceId;
         $this->commandTag = $commandTag;
+        $this->noPreloadTag = $noPreloadTag;
+        $this->privateTagName = $privateTagName;
     }
     public function process(\TMS\Symfony\Component\DependencyInjection\ContainerBuilder $container)
     {
@@ -39,6 +43,7 @@ class AddConsoleCommandPass implements \TMS\Symfony\Component\DependencyInjectio
         $serviceIds = [];
         foreach ($commandServices as $id => $tags) {
             $definition = $container->getDefinition($id);
+            $definition->addTag($this->noPreloadTag);
             $class = $container->getParameterBag()->resolveValue($definition->getClass());
             if (isset($tags[0]['command'])) {
                 $commandName = $tags[0]['command'];
@@ -49,10 +54,10 @@ class AddConsoleCommandPass implements \TMS\Symfony\Component\DependencyInjectio
                 if (!$r->isSubclassOf(\TMS\Symfony\Component\Console\Command\Command::class)) {
                     throw new \TMS\Symfony\Component\DependencyInjection\Exception\InvalidArgumentException(\sprintf('The service "%s" tagged "%s" must be a subclass of "%s".', $id, $this->commandTag, \TMS\Symfony\Component\Console\Command\Command::class));
                 }
-                $commandName = null !== $class::getDefaultName() ? \str_replace('%', '%%', $class::getDefaultName()) : null;
+                $commandName = $class::getDefaultName();
             }
             if (null === $commandName) {
-                if (!$definition->isPublic() || $definition->isPrivate()) {
+                if (!$definition->isPublic() || $definition->isPrivate() || $definition->hasTag($this->privateTagName)) {
                     $commandId = 'console.command.public_alias.' . $id;
                     $container->setAlias($commandId, $id)->setPublic(\true);
                     $id = $commandId;
@@ -75,7 +80,7 @@ class AddConsoleCommandPass implements \TMS\Symfony\Component\DependencyInjectio
                 $definition->addMethodCall('setAliases', [$aliases]);
             }
         }
-        $container->register($this->commandLoaderServiceId, \TMS\Symfony\Component\Console\CommandLoader\ContainerCommandLoader::class)->setPublic(\true)->setArguments([\TMS\Symfony\Component\DependencyInjection\Compiler\ServiceLocatorTagPass::register($container, $lazyCommandRefs), $lazyCommandMap]);
+        $container->register($this->commandLoaderServiceId, \TMS\Symfony\Component\Console\CommandLoader\ContainerCommandLoader::class)->setPublic(\true)->addTag($this->noPreloadTag)->setArguments([\TMS\Symfony\Component\DependencyInjection\Compiler\ServiceLocatorTagPass::register($container, $lazyCommandRefs), $lazyCommandMap]);
         $container->setParameter('console.command.ids', $serviceIds);
     }
 }

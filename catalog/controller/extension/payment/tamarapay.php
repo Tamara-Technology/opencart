@@ -148,14 +148,12 @@ class ControllerExtensionPaymentTamarapay extends Controller
         if (!$tamaraOrder['is_authorised']) {
 
             //set order status
-            $successStatusId = $this->config->get('payment_tamarapay_order_status_success_id');
-            $this->model_checkout_order->addOrderHistory($data['order_id'], $successStatusId, "Tamara - Pay success", false);
+            //$successStatusId = $this->config->get('payment_tamarapay_order_status_success_id');
+            //$this->model_checkout_order->addOrderHistory($data['order_id'], $successStatusId, "Tamara - Pay success", false);
 
             //call authorise
             $this->model_extension_payment_tamarapay->authoriseOrder($tamaraOrder['tamara_order_id']);
         }
-
-        $this->model_extension_payment_tamarapay->updatePaymentTypeAfterCheckout($tamaraOrder);
 
         if (!empty($successUrl = $this->config->get('payment_tamarapay_checkout_success_url'))) {
             return $this->response->redirect($successUrl);

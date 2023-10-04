@@ -28,7 +28,6 @@ abstract class AbstractSessionHandler implements \SessionHandlerInterface, \Sess
     /**
      * @return bool
      */
-    #[\ReturnTypeWillChange]
     public function open($savePath, $sessionName)
     {
         $this->sessionName = $sessionName;
@@ -38,28 +37,20 @@ abstract class AbstractSessionHandler implements \SessionHandlerInterface, \Sess
         return \true;
     }
     /**
-     * @param string $sessionId
-     *
      * @return string
      */
-    protected abstract function doRead($sessionId);
-    /**
-     * @param string $sessionId
-     * @param string $data
-     *
-     * @return bool
-     */
-    protected abstract function doWrite($sessionId, $data);
-    /**
-     * @param string $sessionId
-     *
-     * @return bool
-     */
-    protected abstract function doDestroy($sessionId);
+    protected abstract function doRead(string $sessionId);
     /**
      * @return bool
      */
-    #[\ReturnTypeWillChange]
+    protected abstract function doWrite(string $sessionId, string $data);
+    /**
+     * @return bool
+     */
+    protected abstract function doDestroy(string $sessionId);
+    /**
+     * @return bool
+     */
     public function validateId($sessionId)
     {
         $this->prefetchData = $this->read($sessionId);
@@ -77,7 +68,6 @@ abstract class AbstractSessionHandler implements \SessionHandlerInterface, \Sess
     /**
      * @return string
      */
-    #[\ReturnTypeWillChange]
     public function read($sessionId)
     {
         if (null !== $this->prefetchId) {
@@ -96,12 +86,11 @@ abstract class AbstractSessionHandler implements \SessionHandlerInterface, \Sess
     /**
      * @return bool
      */
-    #[\ReturnTypeWillChange]
     public function write($sessionId, $data)
     {
         if (null === $this->igbinaryEmptyData) {
             // see https://github.com/igbinary/igbinary/issues/146
-            $this->igbinaryEmptyData = \function_exists('TMS\\igbinary_serialize') ? igbinary_serialize([]) : '';
+            $this->igbinaryEmptyData = \function_exists('igbinary_serialize') ? \igbinary_serialize([]) : '';
         }
         if ('' === $data || $this->igbinaryEmptyData === $data) {
             return $this->destroy($sessionId);
@@ -112,7 +101,6 @@ abstract class AbstractSessionHandler implements \SessionHandlerInterface, \Sess
     /**
      * @return bool
      */
-    #[\ReturnTypeWillChange]
     public function destroy($sessionId)
     {
         if (!\headers_sent() && \filter_var(\ini_get('session.use_cookies'), \FILTER_VALIDATE_BOOLEAN)) {

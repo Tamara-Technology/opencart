@@ -13,14 +13,17 @@ namespace TMS\Symfony\Component\Console;
 use TMS\Symfony\Component\Console\Command\Command;
 use TMS\Symfony\Component\Console\Command\HelpCommand;
 use TMS\Symfony\Component\Console\Command\ListCommand;
+use TMS\Symfony\Component\Console\Command\SignalableCommandInterface;
 use TMS\Symfony\Component\Console\CommandLoader\CommandLoaderInterface;
 use TMS\Symfony\Component\Console\Event\ConsoleCommandEvent;
 use TMS\Symfony\Component\Console\Event\ConsoleErrorEvent;
+use TMS\Symfony\Component\Console\Event\ConsoleSignalEvent;
 use TMS\Symfony\Component\Console\Event\ConsoleTerminateEvent;
 use TMS\Symfony\Component\Console\Exception\CommandNotFoundException;
 use TMS\Symfony\Component\Console\Exception\ExceptionInterface;
 use TMS\Symfony\Component\Console\Exception\LogicException;
 use TMS\Symfony\Component\Console\Exception\NamespaceNotFoundException;
+use TMS\Symfony\Component\Console\Exception\RuntimeException;
 use TMS\Symfony\Component\Console\Formatter\OutputFormatter;
 use TMS\Symfony\Component\Console\Helper\DebugFormatterHelper;
 use TMS\Symfony\Component\Console\Helper\FormatterHelper;
@@ -38,12 +41,10 @@ use TMS\Symfony\Component\Console\Input\InputOption;
 use TMS\Symfony\Component\Console\Output\ConsoleOutput;
 use TMS\Symfony\Component\Console\Output\ConsoleOutputInterface;
 use TMS\Symfony\Component\Console\Output\OutputInterface;
+use TMS\Symfony\Component\Console\SignalRegistry\SignalRegistry;
 use TMS\Symfony\Component\Console\Style\SymfonyStyle;
-use TMS\Symfony\Component\Debug\ErrorHandler as LegacyErrorHandler;
-use TMS\Symfony\Component\Debug\Exception\FatalThrowableError;
 use TMS\Symfony\Component\ErrorHandler\ErrorHandler;
-use TMS\Symfony\Component\EventDispatcher\EventDispatcherInterface;
-use TMS\Symfony\Component\EventDispatcher\LegacyEventDispatcherProxy;
+use TMS\Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 use TMS\Symfony\Contracts\Service\ResetInterface;
 /**
  * An Application is the container for a collection of commands.
@@ -77,27 +78,40 @@ class Application implements \TMS\Symfony\Contracts\Service\ResetInterface
     private $defaultCommand;
     private $singleCommand = \false;
     private $initialized;
-    /**
-     * @param string $name    The name of the application
-     * @param string $version The version of the application
-     */
+    private $signalRegistry;
+    private $signalsToDispatchEvent = [];
     public function __construct(string $name = 'UNKNOWN', string $version = 'UNKNOWN')
     {
         $this->name = $name;
         $this->version = $version;
         $this->terminal = new \TMS\Symfony\Component\Console\Terminal();
         $this->defaultCommand = 'list';
+        if (\defined('SIGINT') && \TMS\Symfony\Component\Console\SignalRegistry\SignalRegistry::isSupported()) {
+            $this->signalRegistry = new \TMS\Symfony\Component\Console\SignalRegistry\SignalRegistry();
+            $this->signalsToDispatchEvent = [\SIGINT, \SIGTERM, \SIGUSR1, \SIGUSR2];
+        }
     }
     /**
-     * @final since Symfony 4.3, the type-hint will be updated to the interface from symfony/contracts in 5.0
+     * @final
      */
-    public function setDispatcher(\TMS\Symfony\Component\EventDispatcher\EventDispatcherInterface $dispatcher)
+    public function setDispatcher(\TMS\Symfony\Contracts\EventDispatcher\EventDispatcherInterface $dispatcher)
     {
-        $this->dispatcher = \TMS\Symfony\Component\EventDispatcher\LegacyEventDispatcherProxy::decorate($dispatcher);
+        $this->dispatcher = $dispatcher;
     }
     public function setCommandLoader(\TMS\Symfony\Component\Console\CommandLoader\CommandLoaderInterface $commandLoader)
     {
         $this->commandLoader = $commandLoader;
+    }
+    public function getSignalRegistry() : \TMS\Symfony\Component\Console\SignalRegistry\SignalRegistry
+    {
+        if (!$this->signalRegistry) {
+            throw new \TMS\Symfony\Component\Console\Exception\RuntimeException('Signals are not supported. Make sure that the `pcntl` extension is installed and that "pcntl_*" functions are not disabled by your php.ini\'s "disable_functions" directive.');
+        }
+        return $this->signalRegistry;
+    }
+    public function setSignalsToDispatchEvent(int ...$signalsToDispatchEvent)
+    {
+        $this->signalsToDispatchEvent = $signalsToDispatchEvent;
     }
     /**
      * Runs the current application.
@@ -127,7 +141,7 @@ class Application implements \TMS\Symfony\Contracts\Service\ResetInterface
         };
         if ($phpHandler = \set_exception_handler($renderException)) {
             \restore_exception_handler();
-            if (!\is_array($phpHandler) || !$phpHandler[0] instanceof \TMS\Symfony\Component\ErrorHandler\ErrorHandler && !$phpHandler[0] instanceof \TMS\Symfony\Component\Debug\ErrorHandler) {
+            if (!\is_array($phpHandler) || !$phpHandler[0] instanceof \TMS\Symfony\Component\ErrorHandler\ErrorHandler) {
                 $errorHandler = \true;
             } elseif ($errorHandler = $phpHandler[0]->setExceptionHandler($renderException)) {
                 $phpHandler[0]->setExceptionHandler($errorHandler);
@@ -144,7 +158,7 @@ class Application implements \TMS\Symfony\Contracts\Service\ResetInterface
             $exitCode = $e->getCode();
             if (\is_numeric($exitCode)) {
                 $exitCode = (int) $exitCode;
-                if ($exitCode <= 0) {
+                if (0 === $exitCode) {
                     $exitCode = 1;
                 }
             } else {
@@ -301,12 +315,10 @@ class Application implements \TMS\Symfony\Contracts\Service\ResetInterface
     }
     /**
      * Sets whether to catch exceptions or not during commands execution.
-     *
-     * @param bool $boolean Whether to catch exceptions or not during commands execution
      */
-    public function setCatchExceptions($boolean)
+    public function setCatchExceptions(bool $boolean)
     {
-        $this->catchExceptions = (bool) $boolean;
+        $this->catchExceptions = $boolean;
     }
     /**
      * Gets whether to automatically exit after a command execution or not.
@@ -319,12 +331,10 @@ class Application implements \TMS\Symfony\Contracts\Service\ResetInterface
     }
     /**
      * Sets whether to automatically exit after a command execution or not.
-     *
-     * @param bool $boolean Whether to automatically exit after a command execution or not
      */
-    public function setAutoExit($boolean)
+    public function setAutoExit(bool $boolean)
     {
-        $this->autoExit = (bool) $boolean;
+        $this->autoExit = $boolean;
     }
     /**
      * Gets the name of the application.
@@ -337,10 +347,8 @@ class Application implements \TMS\Symfony\Contracts\Service\ResetInterface
     }
     /**
      * Sets the application name.
-     *
-     * @param string $name The application name
-     */
-    public function setName($name)
+     **/
+    public function setName(string $name)
     {
         $this->name = $name;
     }
@@ -355,10 +363,8 @@ class Application implements \TMS\Symfony\Contracts\Service\ResetInterface
     }
     /**
      * Sets the application version.
-     *
-     * @param string $version The application version
      */
-    public function setVersion($version)
+    public function setVersion(string $version)
     {
         $this->version = $version;
     }
@@ -380,11 +386,9 @@ class Application implements \TMS\Symfony\Contracts\Service\ResetInterface
     /**
      * Registers a new command.
      *
-     * @param string $name The command name
-     *
      * @return Command The newly created command
      */
-    public function register($name)
+    public function register(string $name)
     {
         return $this->add(new \TMS\Symfony\Component\Console\Command\Command($name));
     }
@@ -420,7 +424,7 @@ class Application implements \TMS\Symfony\Contracts\Service\ResetInterface
         // Will throw if the command is not correctly initialized.
         $command->getDefinition();
         if (!$command->getName()) {
-            throw new \TMS\Symfony\Component\Console\Exception\LogicException(\sprintf('The command defined in "%s" cannot have an empty name.', \get_class($command)));
+            throw new \TMS\Symfony\Component\Console\Exception\LogicException(\sprintf('The command defined in "%s" cannot have an empty name.', get_debug_type($command)));
         }
         $this->commands[$command->getName()] = $command;
         foreach ($command->getAliases() as $alias) {
@@ -431,13 +435,11 @@ class Application implements \TMS\Symfony\Contracts\Service\ResetInterface
     /**
      * Returns a registered command by name or alias.
      *
-     * @param string $name The command name or alias
-     *
      * @return Command A Command object
      *
      * @throws CommandNotFoundException When given command name does not exist
      */
-    public function get($name)
+    public function get(string $name)
     {
         $this->init();
         if (!$this->has($name)) {
@@ -459,11 +461,9 @@ class Application implements \TMS\Symfony\Contracts\Service\ResetInterface
     /**
      * Returns true if the command exists, false otherwise.
      *
-     * @param string $name The command name or alias
-     *
      * @return bool true if the command exists, false otherwise
      */
-    public function has($name)
+    public function has(string $name)
     {
         $this->init();
         return isset($this->commands[$name]) || $this->commandLoader && $this->commandLoader->has($name) && $this->add($this->commandLoader->get($name));
@@ -492,13 +492,11 @@ class Application implements \TMS\Symfony\Contracts\Service\ResetInterface
     /**
      * Finds a registered namespace by a name or an abbreviation.
      *
-     * @param string $namespace A namespace or abbreviation to search for
-     *
      * @return string A registered namespace
      *
      * @throws NamespaceNotFoundException When namespace is incorrect or ambiguous
      */
-    public function findNamespace($namespace)
+    public function findNamespace(string $namespace)
     {
         $allNamespaces = $this->getNamespaces();
         $expr = \preg_replace_callback('{([^:]+|)}', function ($matches) {
@@ -529,13 +527,11 @@ class Application implements \TMS\Symfony\Contracts\Service\ResetInterface
      * Contrary to get, this command tries to find the best
      * match if you give it an abbreviation of a name or alias.
      *
-     * @param string $name A command name or a command alias
-     *
      * @return Command A Command instance
      *
      * @throws CommandNotFoundException When command name is incorrect or ambiguous
      */
-    public function find($name)
+    public function find(string $name)
     {
         $this->init();
         $aliases = [];
@@ -612,7 +608,7 @@ class Application implements \TMS\Symfony\Contracts\Service\ResetInterface
         }
         $command = $this->get(\reset($commands));
         if ($command->isHidden()) {
-            @\trigger_error(\sprintf('Command "%s" is hidden, finding it using an abbreviation is deprecated since Symfony 4.4, use its full name instead.', $command->getName()), \E_USER_DEPRECATED);
+            throw new \TMS\Symfony\Component\Console\Exception\CommandNotFoundException(\sprintf('The command "%s" does not exist.', $name));
         }
         return $command;
     }
@@ -621,11 +617,9 @@ class Application implements \TMS\Symfony\Contracts\Service\ResetInterface
      *
      * The array keys are the full names and the values the command instances.
      *
-     * @param string $namespace A namespace name
-     *
      * @return Command[] An array of Command instances
      */
-    public function all($namespace = null)
+    public function all(string $namespace = null)
     {
         $this->init();
         if (null === $namespace) {
@@ -658,11 +652,9 @@ class Application implements \TMS\Symfony\Contracts\Service\ResetInterface
     /**
      * Returns an array of possible abbreviations given a set of names.
      *
-     * @param array $names An array of names
-     *
-     * @return array An array of abbreviations
+     * @return string[][] An array of abbreviations
      */
-    public static function getAbbreviations($names)
+    public static function getAbbreviations(array $names)
     {
         $abbrevs = [];
         foreach ($names as $name) {
@@ -673,60 +665,16 @@ class Application implements \TMS\Symfony\Contracts\Service\ResetInterface
         }
         return $abbrevs;
     }
-    /**
-     * Renders a caught exception.
-     *
-     * @deprecated since Symfony 4.4, use "renderThrowable()" instead
-     */
-    public function renderException(\Exception $e, \TMS\Symfony\Component\Console\Output\OutputInterface $output)
-    {
-        @\trigger_error(\sprintf('The "%s::renderException()" method is deprecated since Symfony 4.4, use "renderThrowable()" instead.', __CLASS__), \E_USER_DEPRECATED);
-        $output->writeln('', \TMS\Symfony\Component\Console\Output\OutputInterface::VERBOSITY_QUIET);
-        $this->doRenderException($e, $output);
-        $this->finishRenderThrowableOrException($output);
-    }
     public function renderThrowable(\Throwable $e, \TMS\Symfony\Component\Console\Output\OutputInterface $output) : void
     {
-        if (__CLASS__ !== static::class && __CLASS__ === (new \ReflectionMethod($this, 'renderThrowable'))->getDeclaringClass()->getName() && __CLASS__ !== (new \ReflectionMethod($this, 'renderException'))->getDeclaringClass()->getName()) {
-            @\trigger_error(\sprintf('The "%s::renderException()" method is deprecated since Symfony 4.4, use "renderThrowable()" instead.', __CLASS__), \E_USER_DEPRECATED);
-            if (!$e instanceof \Exception) {
-                $e = \class_exists(\TMS\Symfony\Component\Debug\Exception\FatalThrowableError::class) ? new \TMS\Symfony\Component\Debug\Exception\FatalThrowableError($e) : new \ErrorException($e->getMessage(), $e->getCode(), \E_ERROR, $e->getFile(), $e->getLine());
-            }
-            $this->renderException($e, $output);
-            return;
-        }
         $output->writeln('', \TMS\Symfony\Component\Console\Output\OutputInterface::VERBOSITY_QUIET);
         $this->doRenderThrowable($e, $output);
-        $this->finishRenderThrowableOrException($output);
-    }
-    private function finishRenderThrowableOrException(\TMS\Symfony\Component\Console\Output\OutputInterface $output) : void
-    {
         if (null !== $this->runningCommand) {
-            $output->writeln(\sprintf('<info>%s</info>', \TMS\Symfony\Component\Console\Formatter\OutputFormatter::escape(\sprintf($this->runningCommand->getSynopsis(), $this->getName()))), \TMS\Symfony\Component\Console\Output\OutputInterface::VERBOSITY_QUIET);
+            $output->writeln(\sprintf('<info>%s</info>', \sprintf($this->runningCommand->getSynopsis(), $this->getName())), \TMS\Symfony\Component\Console\Output\OutputInterface::VERBOSITY_QUIET);
             $output->writeln('', \TMS\Symfony\Component\Console\Output\OutputInterface::VERBOSITY_QUIET);
         }
     }
-    /**
-     * @deprecated since Symfony 4.4, use "doRenderThrowable()" instead
-     */
-    protected function doRenderException(\Exception $e, \TMS\Symfony\Component\Console\Output\OutputInterface $output)
-    {
-        @\trigger_error(\sprintf('The "%s::doRenderException()" method is deprecated since Symfony 4.4, use "doRenderThrowable()" instead.', __CLASS__), \E_USER_DEPRECATED);
-        $this->doActuallyRenderThrowable($e, $output);
-    }
     protected function doRenderThrowable(\Throwable $e, \TMS\Symfony\Component\Console\Output\OutputInterface $output) : void
-    {
-        if (__CLASS__ !== static::class && __CLASS__ === (new \ReflectionMethod($this, 'doRenderThrowable'))->getDeclaringClass()->getName() && __CLASS__ !== (new \ReflectionMethod($this, 'doRenderException'))->getDeclaringClass()->getName()) {
-            @\trigger_error(\sprintf('The "%s::doRenderException()" method is deprecated since Symfony 4.4, use "doRenderThrowable()" instead.', __CLASS__), \E_USER_DEPRECATED);
-            if (!$e instanceof \Exception) {
-                $e = \class_exists(\TMS\Symfony\Component\Debug\Exception\FatalThrowableError::class) ? new \TMS\Symfony\Component\Debug\Exception\FatalThrowableError($e) : new \ErrorException($e->getMessage(), $e->getCode(), \E_ERROR, $e->getFile(), $e->getLine());
-            }
-            $this->doRenderException($e, $output);
-            return;
-        }
-        $this->doActuallyRenderThrowable($e, $output);
-    }
-    private function doActuallyRenderThrowable(\Throwable $e, \TMS\Symfony\Component\Console\Output\OutputInterface $output) : void
     {
         do {
             $message = \trim($e->getMessage());
@@ -737,7 +685,7 @@ class Application implements \TMS\Symfony\Contracts\Service\ResetInterface
             } else {
                 $len = 0;
             }
-            if (str_contains($message, "@anonymous\x00")) {
+            if (\false !== \strpos($message, "@anonymous\x00")) {
                 $message = \preg_replace_callback('/[a-zA-Z_\\x7f-\\xff][\\\\a-zA-Z0-9_\\x7f-\\xff]*+@anonymous\\x00.*?\\.php(?:0x?|:[0-9]++\\$)[0-9a-fA-F]++/', function ($m) {
                     return \class_exists($m[0], \false) ? ((\get_parent_class($m[0]) ?: \key(\class_implements($m[0]))) ?: 'class') . '@anonymous' : $m[0];
                 }, $message);
@@ -852,6 +800,28 @@ class Application implements \TMS\Symfony\Contracts\Service\ResetInterface
                 $helper->setInput($input);
             }
         }
+        if ($command instanceof \TMS\Symfony\Component\Console\Command\SignalableCommandInterface) {
+            if (!$this->signalRegistry) {
+                throw new \TMS\Symfony\Component\Console\Exception\RuntimeException('Unable to subscribe to signal events. Make sure that the `pcntl` extension is installed and that "pcntl_*" functions are not disabled by your php.ini\'s "disable_functions" directive.');
+            }
+            if ($this->dispatcher) {
+                foreach ($this->signalsToDispatchEvent as $signal) {
+                    $event = new \TMS\Symfony\Component\Console\Event\ConsoleSignalEvent($command, $input, $output, $signal);
+                    $this->signalRegistry->register($signal, function ($signal, $hasNext) use($event) {
+                        $this->dispatcher->dispatch($event, \TMS\Symfony\Component\Console\ConsoleEvents::SIGNAL);
+                        // No more handlers, we try to simulate PHP default behavior
+                        if (!$hasNext) {
+                            if (!\in_array($signal, [\SIGUSR1, \SIGUSR2], \true)) {
+                                exit(0);
+                            }
+                        }
+                    });
+                }
+            }
+            foreach ($command->getSubscribedSignals() as $signal) {
+                $this->signalRegistry->register($signal, [$command, 'handleSignal']);
+            }
+        }
         if (null === $this->dispatcher) {
             return $command->run($input, $output);
         }
@@ -902,7 +872,7 @@ class Application implements \TMS\Symfony\Contracts\Service\ResetInterface
      */
     protected function getDefaultInputDefinition()
     {
-        return new \TMS\Symfony\Component\Console\Input\InputDefinition([new \TMS\Symfony\Component\Console\Input\InputArgument('command', \TMS\Symfony\Component\Console\Input\InputArgument::REQUIRED, 'The command to execute'), new \TMS\Symfony\Component\Console\Input\InputOption('--help', '-h', \TMS\Symfony\Component\Console\Input\InputOption::VALUE_NONE, 'Display this help message'), new \TMS\Symfony\Component\Console\Input\InputOption('--quiet', '-q', \TMS\Symfony\Component\Console\Input\InputOption::VALUE_NONE, 'Do not output any message'), new \TMS\Symfony\Component\Console\Input\InputOption('--verbose', '-v|vv|vvv', \TMS\Symfony\Component\Console\Input\InputOption::VALUE_NONE, 'Increase the verbosity of messages: 1 for normal output, 2 for more verbose output and 3 for debug'), new \TMS\Symfony\Component\Console\Input\InputOption('--version', '-V', \TMS\Symfony\Component\Console\Input\InputOption::VALUE_NONE, 'Display this application version'), new \TMS\Symfony\Component\Console\Input\InputOption('--ansi', '', \TMS\Symfony\Component\Console\Input\InputOption::VALUE_NONE, 'Force ANSI output'), new \TMS\Symfony\Component\Console\Input\InputOption('--no-ansi', '', \TMS\Symfony\Component\Console\Input\InputOption::VALUE_NONE, 'Disable ANSI output'), new \TMS\Symfony\Component\Console\Input\InputOption('--no-interaction', '-n', \TMS\Symfony\Component\Console\Input\InputOption::VALUE_NONE, 'Do not ask any interactive question')]);
+        return new \TMS\Symfony\Component\Console\Input\InputDefinition([new \TMS\Symfony\Component\Console\Input\InputArgument('command', \TMS\Symfony\Component\Console\Input\InputArgument::REQUIRED, 'The command to execute'), new \TMS\Symfony\Component\Console\Input\InputOption('--help', '-h', \TMS\Symfony\Component\Console\Input\InputOption::VALUE_NONE, 'Display help for the given command. When no command is given display help for the <info>' . $this->defaultCommand . '</info> command'), new \TMS\Symfony\Component\Console\Input\InputOption('--quiet', '-q', \TMS\Symfony\Component\Console\Input\InputOption::VALUE_NONE, 'Do not output any message'), new \TMS\Symfony\Component\Console\Input\InputOption('--verbose', '-v|vv|vvv', \TMS\Symfony\Component\Console\Input\InputOption::VALUE_NONE, 'Increase the verbosity of messages: 1 for normal output, 2 for more verbose output and 3 for debug'), new \TMS\Symfony\Component\Console\Input\InputOption('--version', '-V', \TMS\Symfony\Component\Console\Input\InputOption::VALUE_NONE, 'Display this application version'), new \TMS\Symfony\Component\Console\Input\InputOption('--ansi', '', \TMS\Symfony\Component\Console\Input\InputOption::VALUE_NONE, 'Force ANSI output'), new \TMS\Symfony\Component\Console\Input\InputOption('--no-ansi', '', \TMS\Symfony\Component\Console\Input\InputOption::VALUE_NONE, 'Disable ANSI output'), new \TMS\Symfony\Component\Console\Input\InputOption('--no-interaction', '-n', \TMS\Symfony\Component\Console\Input\InputOption::VALUE_NONE, 'Do not ask any interactive question')]);
     }
     /**
      * Gets the default commands that should always be available.
@@ -934,12 +904,9 @@ class Application implements \TMS\Symfony\Contracts\Service\ResetInterface
      *
      * This method is not part of public API and should not be used directly.
      *
-     * @param string $name  The full name of the command
-     * @param string $limit The maximum number of parts of the namespace
-     *
      * @return string The namespace of the command
      */
-    public function extractNamespace($name, $limit = null)
+    public function extractNamespace(string $name, int $limit = null)
     {
         $parts = \explode(':', $name, -1);
         return \implode(':', null === $limit ? $parts : \array_slice($parts, 0, $limit));
@@ -968,7 +935,7 @@ class Application implements \TMS\Symfony\Contracts\Service\ResetInterface
                     continue;
                 }
                 $lev = \levenshtein($subname, $parts[$i]);
-                if ($lev <= \strlen($subname) / 3 || '' !== $subname && str_contains($parts[$i], $subname)) {
+                if ($lev <= \strlen($subname) / 3 || '' !== $subname && \false !== \strpos($parts[$i], $subname)) {
                     $alternatives[$collectionName] = $exists ? $alternatives[$collectionName] + $lev : $lev;
                 } elseif ($exists) {
                     $alternatives[$collectionName] += $threshold;
@@ -977,7 +944,7 @@ class Application implements \TMS\Symfony\Contracts\Service\ResetInterface
         }
         foreach ($collection as $item) {
             $lev = \levenshtein($name, $item);
-            if ($lev <= \strlen($name) / 3 || str_contains($item, $name)) {
+            if ($lev <= \strlen($name) / 3 || \false !== \strpos($item, $name)) {
                 $alternatives[$item] = isset($alternatives[$item]) ? $alternatives[$item] - $lev : $lev;
             }
         }
@@ -990,12 +957,9 @@ class Application implements \TMS\Symfony\Contracts\Service\ResetInterface
     /**
      * Sets the default Command name.
      *
-     * @param string $commandName     The Command name
-     * @param bool   $isSingleCommand Set to true if there is only one command in this application
-     *
      * @return self
      */
-    public function setDefaultCommand($commandName, $isSingleCommand = \false)
+    public function setDefaultCommand(string $commandName, bool $isSingleCommand = \false)
     {
         $this->defaultCommand = $commandName;
         if ($isSingleCommand) {

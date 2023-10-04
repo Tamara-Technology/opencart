@@ -30,9 +30,8 @@ class ProgressIndicator
     private static $formatters;
     private static $formats;
     /**
-     * @param string|null $format                  Indicator format
-     * @param int         $indicatorChangeInterval Change interval in milliseconds
-     * @param array|null  $indicatorValues         Animated indicator characters
+     * @param int        $indicatorChangeInterval Change interval in milliseconds
+     * @param array|null $indicatorValues         Animated indicator characters
      */
     public function __construct(\TMS\Symfony\Component\Console\Output\OutputInterface $output, string $format = null, int $indicatorChangeInterval = 100, array $indicatorValues = null)
     {
@@ -54,20 +53,16 @@ class ProgressIndicator
     }
     /**
      * Sets the current indicator message.
-     *
-     * @param string|null $message
      */
-    public function setMessage($message)
+    public function setMessage(?string $message)
     {
         $this->message = $message;
         $this->display();
     }
     /**
      * Starts the indicator output.
-     *
-     * @param $message
      */
-    public function start($message)
+    public function start(string $message)
     {
         if ($this->started) {
             throw new \TMS\Symfony\Component\Console\Exception\LogicException('Progress indicator already started.');
@@ -103,7 +98,7 @@ class ProgressIndicator
      *
      * @param $message
      */
-    public function finish($message)
+    public function finish(string $message)
     {
         if (!$this->started) {
             throw new \TMS\Symfony\Component\Console\Exception\LogicException('Progress indicator has not yet been started.');
@@ -116,11 +111,9 @@ class ProgressIndicator
     /**
      * Gets the format for a given name.
      *
-     * @param string $name The format name
-     *
      * @return string|null A format string
      */
-    public static function getFormatDefinition($name)
+    public static function getFormatDefinition(string $name)
     {
         if (!self::$formats) {
             self::$formats = self::initFormats();
@@ -131,11 +124,8 @@ class ProgressIndicator
      * Sets a placeholder formatter for a given name.
      *
      * This method also allow you to override an existing placeholder.
-     *
-     * @param string   $name     The placeholder name (including the delimiter char like %)
-     * @param callable $callable A PHP callable
      */
-    public static function setPlaceholderFormatterDefinition($name, $callable)
+    public static function setPlaceholderFormatterDefinition(string $name, callable $callable)
     {
         if (!self::$formatters) {
             self::$formatters = self::initPlaceholderFormatters();
@@ -143,13 +133,11 @@ class ProgressIndicator
         self::$formatters[$name] = $callable;
     }
     /**
-     * Gets the placeholder formatter for a given name.
-     *
-     * @param string $name The placeholder name (including the delimiter char like %)
+     * Gets the placeholder formatter for a given name (including the delimiter char like %).
      *
      * @return callable|null A PHP callable
      */
-    public static function getPlaceholderFormatterDefinition($name)
+    public static function getPlaceholderFormatterDefinition(string $name)
     {
         if (!self::$formatters) {
             self::$formatters = self::initPlaceholderFormatters();
@@ -166,7 +154,7 @@ class ProgressIndicator
                 return $formatter($this);
             }
             return $matches[0];
-        }, $this->format ?? ''));
+        }, $this->format));
     }
     private function determineBestFormat() : string
     {

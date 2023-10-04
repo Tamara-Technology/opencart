@@ -66,10 +66,20 @@ class EachPromise implements \TMS\GuzzleHttp\Promise\PromisorInterface
             $this->createPromise();
             /** @psalm-assert Promise $this->aggregate */
             $this->iterable->rewind();
-            $this->refillPending();
+            if (!$this->checkIfFinished()) {
+                $this->refillPending();
+            }
         } catch (\Throwable $e) {
+            /**
+             * @psalm-suppress NullReference
+             * @phpstan-ignore-next-line
+             */
             $this->aggregate->reject($e);
         } catch (\Exception $e) {
+            /**
+             * @psalm-suppress NullReference
+             * @phpstan-ignore-next-line
+             */
             $this->aggregate->reject($e);
         }
         /**
@@ -82,9 +92,6 @@ class EachPromise implements \TMS\GuzzleHttp\Promise\PromisorInterface
     {
         $this->mutex = \false;
         $this->aggregate = new \TMS\GuzzleHttp\Promise\Promise(function () {
-            if ($this->checkIfFinished()) {
-                return;
-            }
             \reset($this->pending);
             // Consume a potentially fluctuating list of promises while
             // ensuring that indexes are maintained (precluding array_shift).

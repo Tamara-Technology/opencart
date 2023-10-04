@@ -17,13 +17,16 @@ use TMS\Symfony\Component\Console\Exception\InvalidArgumentException;
 class TableCell
 {
     private $value;
-    private $options = ['rowspan' => 1, 'colspan' => 1];
+    private $options = ['rowspan' => 1, 'colspan' => 1, 'style' => null];
     public function __construct(string $value = '', array $options = [])
     {
         $this->value = $value;
         // check option names
         if ($diff = \array_diff(\array_keys($options), \array_keys($this->options))) {
             throw new \TMS\Symfony\Component\Console\Exception\InvalidArgumentException(\sprintf('The TableCell does not support the following options: \'%s\'.', \implode('\', \'', $diff)));
+        }
+        if (isset($options['style']) && !$options['style'] instanceof \TMS\Symfony\Component\Console\Helper\TableCellStyle) {
+            throw new \TMS\Symfony\Component\Console\Exception\InvalidArgumentException('The style option must be an instance of "TableCellStyle".');
         }
         $this->options = \array_merge($this->options, $options);
     }
@@ -53,5 +56,9 @@ class TableCell
     public function getRowspan()
     {
         return (int) $this->options['rowspan'];
+    }
+    public function getStyle() : ?\TMS\Symfony\Component\Console\Helper\TableCellStyle
+    {
+        return $this->options['style'];
     }
 }

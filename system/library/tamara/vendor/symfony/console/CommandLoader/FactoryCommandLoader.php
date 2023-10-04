@@ -29,14 +29,14 @@ class FactoryCommandLoader implements \TMS\Symfony\Component\Console\CommandLoad
     /**
      * {@inheritdoc}
      */
-    public function has($name)
+    public function has(string $name)
     {
         return isset($this->factories[$name]);
     }
     /**
      * {@inheritdoc}
      */
-    public function get($name)
+    public function get(string $name)
     {
         if (!isset($this->factories[$name])) {
             throw new \TMS\Symfony\Component\Console\Exception\CommandNotFoundException(\sprintf('Command "%s" does not exist.', $name));

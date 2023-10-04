@@ -20,7 +20,6 @@ class NullSessionHandler extends \TMS\Symfony\Component\HttpFoundation\Session\S
     /**
      * @return bool
      */
-    #[\ReturnTypeWillChange]
     public function close()
     {
         return \true;
@@ -28,7 +27,6 @@ class NullSessionHandler extends \TMS\Symfony\Component\HttpFoundation\Session\S
     /**
      * @return bool
      */
-    #[\ReturnTypeWillChange]
     public function validateId($sessionId)
     {
         return \true;
@@ -36,14 +34,13 @@ class NullSessionHandler extends \TMS\Symfony\Component\HttpFoundation\Session\S
     /**
      * {@inheritdoc}
      */
-    protected function doRead($sessionId)
+    protected function doRead(string $sessionId)
     {
         return '';
     }
     /**
      * @return bool
      */
-    #[\ReturnTypeWillChange]
     public function updateTimestamp($sessionId, $data)
     {
         return \true;
@@ -51,23 +48,22 @@ class NullSessionHandler extends \TMS\Symfony\Component\HttpFoundation\Session\S
     /**
      * {@inheritdoc}
      */
-    protected function doWrite($sessionId, $data)
+    protected function doWrite(string $sessionId, string $data)
     {
         return \true;
     }
     /**
      * {@inheritdoc}
      */
-    protected function doDestroy($sessionId)
+    protected function doDestroy(string $sessionId)
     {
         return \true;
     }
     /**
-     * @return int|false
+     * @return bool
      */
-    #[\ReturnTypeWillChange]
     public function gc($maxlifetime)
     {
-        return 0;
+        return \true;
     }
 }

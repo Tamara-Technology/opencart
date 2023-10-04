@@ -15,8 +15,6 @@ namespace TMS\Symfony\Component\Console\Output;
  * This adds information about stderr and section output stream.
  *
  * @author Dariusz Górecki <darek.krk@gmail.com>
- *
- * @method ConsoleSectionOutput section() Creates a new output section
  */
 interface ConsoleOutputInterface extends \TMS\Symfony\Component\Console\Output\OutputInterface
 {
@@ -27,4 +25,5 @@ interface ConsoleOutputInterface extends \TMS\Symfony\Component\Console\Output\O
      */
     public function getErrorOutput();
     public function setErrorOutput(\TMS\Symfony\Component\Console\Output\OutputInterface $error);
+    public function section() : \TMS\Symfony\Component\Console\Output\ConsoleSectionOutput;
 }

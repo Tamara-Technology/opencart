@@ -47,7 +47,7 @@ class MongoDbSessionHandler extends \TMS\Symfony\Component\HttpFoundation\Sessio
      * A TTL collections can be used on MongoDB 2.2+ to cleanup expired sessions
      * automatically. Such an index can for example look like this:
      *
-     *     db.<session-collection>.createIndex(
+     *     db.<session-collection>.ensureIndex(
      *         { "<expiry-field>": 1 },
      *         { "expireAfterSeconds": 0 }
      *     )
@@ -70,7 +70,6 @@ class MongoDbSessionHandler extends \TMS\Symfony\Component\HttpFoundation\Sessio
     /**
      * @return bool
      */
-    #[\ReturnTypeWillChange]
     public function close()
     {
         return \true;
@@ -78,23 +77,23 @@ class MongoDbSessionHandler extends \TMS\Symfony\Component\HttpFoundation\Sessio
     /**
      * {@inheritdoc}
      */
-    protected function doDestroy($sessionId)
+    protected function doDestroy(string $sessionId)
     {
         $this->getCollection()->deleteOne([$this->options['id_field'] => $sessionId]);
         return \true;
     }
     /**
-     * @return int|false
+     * @return bool
      */
-    #[\ReturnTypeWillChange]
     public function gc($maxlifetime)
     {
-        return $this->getCollection()->deleteMany([$this->options['expiry_field'] => ['$lt' => new \TMS\MongoDB\BSON\UTCDateTime()]])->getDeletedCount();
+        $this->getCollection()->deleteMany([$this->options['expiry_field'] => ['$lt' => new \TMS\MongoDB\BSON\UTCDateTime()]]);
+        return \true;
     }
     /**
      * {@inheritdoc}
      */
-    protected function doWrite($sessionId, $data)
+    protected function doWrite(string $sessionId, string $data)
     {
         $expiry = new \TMS\MongoDB\BSON\UTCDateTime((\time() + (int) \ini_get('session.gc_maxlifetime')) * 1000);
         $fields = [$this->options['time_field'] => new \TMS\MongoDB\BSON\UTCDateTime(), $this->options['expiry_field'] => $expiry, $this->options['data_field'] => new \TMS\MongoDB\BSON\Binary($data, \TMS\MongoDB\BSON\Binary::TYPE_OLD_BINARY)];
@@ -104,7 +103,6 @@ class MongoDbSessionHandler extends \TMS\Symfony\Component\HttpFoundation\Sessio
     /**
      * @return bool
      */
-    #[\ReturnTypeWillChange]
     public function updateTimestamp($sessionId, $data)
     {
         $expiry = new \TMS\MongoDB\BSON\UTCDateTime((\time() + (int) \ini_get('session.gc_maxlifetime')) * 1000);
@@ -114,7 +112,7 @@ class MongoDbSessionHandler extends \TMS\Symfony\Component\HttpFoundation\Sessio
     /**
      * {@inheritdoc}
      */
-    protected function doRead($sessionId)
+    protected function doRead(string $sessionId)
     {
         $dbData = $this->getCollection()->findOne([$this->options['id_field'] => $sessionId, $this->options['expiry_field'] => ['$gte' => new \TMS\MongoDB\BSON\UTCDateTime()]]);
         if (null === $dbData) {

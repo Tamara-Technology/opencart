@@ -45,7 +45,7 @@ class ArrayInput extends \TMS\Symfony\Component\Console\Input\Input
     /**
      * {@inheritdoc}
      */
-    public function hasParameterOption($values, $onlyParams = \false)
+    public function hasParameterOption($values, bool $onlyParams = \false)
     {
         $values = (array) $values;
         foreach ($this->parameters as $k => $v) {
@@ -64,7 +64,7 @@ class ArrayInput extends \TMS\Symfony\Component\Console\Input\Input
     /**
      * {@inheritdoc}
      */
-    public function getParameterOption($values, $default = \false, $onlyParams = \false)
+    public function getParameterOption($values, $default = \false, bool $onlyParams = \false)
     {
         $values = (array) $values;
         foreach ($this->parameters as $k => $v) {
@@ -114,9 +114,9 @@ class ArrayInput extends \TMS\Symfony\Component\Console\Input\Input
             if ('--' === $key) {
                 return;
             }
-            if (str_starts_with($key, '--')) {
+            if (0 === \strpos($key, '--')) {
                 $this->addLongOption(\substr($key, 2), $value);
-            } elseif (str_starts_with($key, '-')) {
+            } elseif (0 === \strpos($key, '-')) {
                 $this->addShortOption(\substr($key, 1), $value);
             } else {
                 $this->addArgument($key, $value);

@@ -23,11 +23,7 @@ final class HttpRejectedPromise implements \TMS\Http\Promise\Promise
             return $this;
         }
         try {
-            $result = $onRejected($this->exception);
-            if ($result instanceof \TMS\Http\Promise\Promise) {
-                return $result;
-            }
-            return new \TMS\Http\Client\Promise\HttpFulfilledPromise($result);
+            return new \TMS\Http\Client\Promise\HttpFulfilledPromise($onRejected($this->exception));
         } catch (\TMS\Http\Client\Exception $e) {
             return new self($e);
         }

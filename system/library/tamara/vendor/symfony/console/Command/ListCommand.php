@@ -12,7 +12,6 @@ namespace TMS\Symfony\Component\Console\Command;
 
 use TMS\Symfony\Component\Console\Helper\DescriptorHelper;
 use TMS\Symfony\Component\Console\Input\InputArgument;
-use TMS\Symfony\Component\Console\Input\InputDefinition;
 use TMS\Symfony\Component\Console\Input\InputInterface;
 use TMS\Symfony\Component\Console\Input\InputOption;
 use TMS\Symfony\Component\Console\Output\OutputInterface;
@@ -28,31 +27,24 @@ class ListCommand extends \TMS\Symfony\Component\Console\Command\Command
      */
     protected function configure()
     {
-        $this->setName('list')->setDefinition($this->createDefinition())->setDescription('List commands')->setHelp(<<<'EOF'
+        $this->setName('list')->setDefinition([new \TMS\Symfony\Component\Console\Input\InputArgument('namespace', \TMS\Symfony\Component\Console\Input\InputArgument::OPTIONAL, 'The namespace name'), new \TMS\Symfony\Component\Console\Input\InputOption('raw', null, \TMS\Symfony\Component\Console\Input\InputOption::VALUE_NONE, 'To output raw command list'), new \TMS\Symfony\Component\Console\Input\InputOption('format', null, \TMS\Symfony\Component\Console\Input\InputOption::VALUE_REQUIRED, 'The output format (txt, xml, json, or md)', 'txt')])->setDescription('List commands')->setHelp(<<<'EOF'
 The <info>%command.name%</info> command lists all commands:
 
-  <info>php %command.full_name%</info>
+  <info>%command.full_name%</info>
 
 You can also display the commands for a specific namespace:
 
-  <info>php %command.full_name% test</info>
+  <info>%command.full_name% test</info>
 
 You can also output the information in other formats by using the <comment>--format</comment> option:
 
-  <info>php %command.full_name% --format=xml</info>
+  <info>%command.full_name% --format=xml</info>
 
 It's also possible to get raw list of commands (useful for embedding command runner):
 
-  <info>php %command.full_name% --raw</info>
+  <info>%command.full_name% --raw</info>
 EOF
 );
-    }
-    /**
-     * {@inheritdoc}
-     */
-    public function getNativeDefinition()
-    {
-        return $this->createDefinition();
     }
     /**
      * {@inheritdoc}
@@ -62,9 +54,5 @@ EOF
         $helper = new \TMS\Symfony\Component\Console\Helper\DescriptorHelper();
         $helper->describe($output, $this->getApplication(), ['format' => $input->getOption('format'), 'raw_text' => $input->getOption('raw'), 'namespace' => $input->getArgument('namespace')]);
         return 0;
-    }
-    private function createDefinition() : \TMS\Symfony\Component\Console\Input\InputDefinition
-    {
-        return new \TMS\Symfony\Component\Console\Input\InputDefinition([new \TMS\Symfony\Component\Console\Input\InputArgument('namespace', \TMS\Symfony\Component\Console\Input\InputArgument::OPTIONAL, 'The namespace name'), new \TMS\Symfony\Component\Console\Input\InputOption('raw', null, \TMS\Symfony\Component\Console\Input\InputOption::VALUE_NONE, 'To output raw command list'), new \TMS\Symfony\Component\Console\Input\InputOption('format', null, \TMS\Symfony\Component\Console\Input\InputOption::VALUE_REQUIRED, 'The output format (txt, xml, json, or md)', 'txt')]);
     }
 }

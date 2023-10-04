@@ -64,9 +64,6 @@ class ServerRequest implements \TMS\Psr\Http\Message\ServerRequestInterface
     {
         return $this->uploadedFiles;
     }
-    /**
-     * @return static
-     */
     public function withUploadedFiles(array $uploadedFiles)
     {
         $new = clone $this;
@@ -77,9 +74,6 @@ class ServerRequest implements \TMS\Psr\Http\Message\ServerRequestInterface
     {
         return $this->cookieParams;
     }
-    /**
-     * @return static
-     */
     public function withCookieParams(array $cookies)
     {
         $new = clone $this;
@@ -90,25 +84,16 @@ class ServerRequest implements \TMS\Psr\Http\Message\ServerRequestInterface
     {
         return $this->queryParams;
     }
-    /**
-     * @return static
-     */
     public function withQueryParams(array $query)
     {
         $new = clone $this;
         $new->queryParams = $query;
         return $new;
     }
-    /**
-     * @return array|object|null
-     */
     public function getParsedBody()
     {
         return $this->parsedBody;
     }
-    /**
-     * @return static
-     */
     public function withParsedBody($data)
     {
         if (!\is_array($data) && !\is_object($data) && null !== $data) {
@@ -122,9 +107,6 @@ class ServerRequest implements \TMS\Psr\Http\Message\ServerRequestInterface
     {
         return $this->attributes;
     }
-    /**
-     * @return mixed
-     */
     public function getAttribute($attribute, $default = null)
     {
         if (\false === \array_key_exists($attribute, $this->attributes)) {

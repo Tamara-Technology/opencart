@@ -40,9 +40,6 @@ class ArgvInput extends \TMS\Symfony\Component\Console\Input\Input
 {
     private $tokens;
     private $parsed;
-    /**
-     * @param array|null $argv An array of parameters from the CLI (in the argv format)
-     */
     public function __construct(array $argv = null, \TMS\Symfony\Component\Console\Input\InputDefinition $definition = null)
     {
         $argv = $argv ?? $_SERVER['argv'] ?? [];
@@ -67,7 +64,7 @@ class ArgvInput extends \TMS\Symfony\Component\Console\Input\Input
                 $this->parseArgument($token);
             } elseif ($parseOptions && '--' == $token) {
                 $parseOptions = \false;
-            } elseif ($parseOptions && str_starts_with($token, '--')) {
+            } elseif ($parseOptions && 0 === \strpos($token, '--')) {
                 $this->parseLongOption($token);
             } elseif ($parseOptions && '-' === $token[0] && '-' !== $token) {
                 $this->parseShortOption($token);
@@ -122,7 +119,7 @@ class ArgvInput extends \TMS\Symfony\Component\Console\Input\Input
     {
         $name = \substr($token, 2);
         if (\false !== ($pos = \strpos($name, '='))) {
-            if ('' === ($value = \substr($name, $pos + 1))) {
+            if (0 === \strlen($value = \substr($name, $pos + 1))) {
                 \array_unshift($this->parsed, $value);
             }
             $this->addLongOption(\substr($name, 0, $pos), $value);
@@ -149,10 +146,23 @@ class ArgvInput extends \TMS\Symfony\Component\Console\Input\Input
             // unexpected argument
         } else {
             $all = $this->definition->getArguments();
-            if (\count($all)) {
-                throw new \TMS\Symfony\Component\Console\Exception\RuntimeException(\sprintf('Too many arguments, expected arguments "%s".', \implode('" "', \array_keys($all))));
+            $symfonyCommandName = null;
+            if (($inputArgument = $all[$key = \array_key_first($all)] ?? null) && 'command' === $inputArgument->getName()) {
+                $symfonyCommandName = $this->arguments['command'] ?? null;
+                unset($all[$key]);
             }
-            throw new \TMS\Symfony\Component\Console\Exception\RuntimeException(\sprintf('No arguments expected, got "%s".', $token));
+            if (\count($all)) {
+                if ($symfonyCommandName) {
+                    $message = \sprintf('Too many arguments to "%s" command, expected arguments "%s".', $symfonyCommandName, \implode('" "', \array_keys($all)));
+                } else {
+                    $message = \sprintf('Too many arguments, expected arguments "%s".', \implode('" "', \array_keys($all)));
+                }
+            } elseif ($symfonyCommandName) {
+                $message = \sprintf('No arguments expected for "%s" command, got "%s".', $symfonyCommandName, $token);
+            } else {
+                $message = \sprintf('No arguments expected, got "%s".', $token);
+            }
+            throw new \TMS\Symfony\Component\Console\Exception\RuntimeException($message);
         }
     }
     /**
@@ -213,7 +223,7 @@ class ArgvInput extends \TMS\Symfony\Component\Console\Input\Input
         $isOption = \false;
         foreach ($this->tokens as $i => $token) {
             if ($token && '-' === $token[0]) {
-                if (str_contains($token, '=') || !isset($this->tokens[$i + 1])) {
+                if (\false !== \strpos($token, '=') || !isset($this->tokens[$i + 1])) {
                     continue;
                 }
                 // If it's a long option, consider that everything after "--" is the option name.
@@ -237,7 +247,7 @@ class ArgvInput extends \TMS\Symfony\Component\Console\Input\Input
     /**
      * {@inheritdoc}
      */
-    public function hasParameterOption($values, $onlyParams = \false)
+    public function hasParameterOption($values, bool $onlyParams = \false)
     {
         $values = (array) $values;
         foreach ($this->tokens as $token) {
@@ -248,8 +258,8 @@ class ArgvInput extends \TMS\Symfony\Component\Console\Input\Input
                 // Options with values:
                 //   For long options, test for '--option=' at beginning
                 //   For short options, test for '-o' at beginning
-                $leading = str_starts_with($value, '--') ? $value . '=' : $value;
-                if ($token === $value || '' !== $leading && str_starts_with($token, $leading)) {
+                $leading = 0 === \strpos($value, '--') ? $value . '=' : $value;
+                if ($token === $value || '' !== $leading && 0 === \strpos($token, $leading)) {
                     return \true;
                 }
             }
@@ -259,7 +269,7 @@ class ArgvInput extends \TMS\Symfony\Component\Console\Input\Input
     /**
      * {@inheritdoc}
      */
-    public function getParameterOption($values, $default = \false, $onlyParams = \false)
+    public function getParameterOption($values, $default = \false, bool $onlyParams = \false)
     {
         $values = (array) $values;
         $tokens = $this->tokens;
@@ -275,8 +285,8 @@ class ArgvInput extends \TMS\Symfony\Component\Console\Input\Input
                 // Options with values:
                 //   For long options, test for '--option=' at beginning
                 //   For short options, test for '-o' at beginning
-                $leading = str_starts_with($value, '--') ? $value . '=' : $value;
-                if ('' !== $leading && str_starts_with($token, $leading)) {
+                $leading = 0 === \strpos($value, '--') ? $value . '=' : $value;
+                if ('' !== $leading && 0 === \strpos($token, $leading)) {
                     return \substr($token, \strlen($leading));
                 }
             }

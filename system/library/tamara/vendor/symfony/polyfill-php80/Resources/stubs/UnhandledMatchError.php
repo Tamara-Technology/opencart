@@ -2,8 +2,7 @@
 
 namespace TMS;
 
-if (\PHP_VERSION_ID < 80000) {
-    class UnhandledMatchError extends \Error
-    {
-    }
+class UnhandledMatchError extends \Error
+{
 }
+\class_alias('TMS\\UnhandledMatchError', 'UnhandledMatchError', \false);

@@ -33,12 +33,7 @@ class HelperSet implements \IteratorAggregate
             $this->set($helper, \is_int($alias) ? null : $alias);
         }
     }
-    /**
-     * Sets a helper.
-     *
-     * @param string $alias An alias
-     */
-    public function set(\TMS\Symfony\Component\Console\Helper\HelperInterface $helper, $alias = null)
+    public function set(\TMS\Symfony\Component\Console\Helper\HelperInterface $helper, string $alias = null)
     {
         $this->helpers[$helper->getName()] = $helper;
         if (null !== $alias) {
@@ -49,24 +44,20 @@ class HelperSet implements \IteratorAggregate
     /**
      * Returns true if the helper if defined.
      *
-     * @param string $name The helper name
-     *
      * @return bool true if the helper is defined, false otherwise
      */
-    public function has($name)
+    public function has(string $name)
     {
         return isset($this->helpers[$name]);
     }
     /**
      * Gets a helper value.
      *
-     * @param string $name The helper name
-     *
      * @return HelperInterface The helper instance
      *
      * @throws InvalidArgumentException if the helper is not defined
      */
-    public function get($name)
+    public function get(string $name)
     {
         if (!$this->has($name)) {
             throw new \TMS\Symfony\Component\Console\Exception\InvalidArgumentException(\sprintf('The helper "%s" is not defined.', $name));
@@ -87,9 +78,8 @@ class HelperSet implements \IteratorAggregate
         return $this->command;
     }
     /**
-     * @return \Traversable<Helper>
+     * @return Helper[]
      */
-    #[\ReturnTypeWillChange]
     public function getIterator()
     {
         return new \ArrayIterator($this->helpers);

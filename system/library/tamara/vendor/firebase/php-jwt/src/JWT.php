@@ -2,11 +2,8 @@
 
 namespace TMS\Firebase\JWT;
 
-use ArrayAccess;
 use DomainException;
-use Exception;
 use InvalidArgumentException;
-use TMS\OpenSSLAsymmetricKey;
 use UnexpectedValueException;
 use DateTime;
 /**
@@ -40,22 +37,18 @@ class JWT
      * Will default to PHP time() value if null.
      */
     public static $timestamp = null;
-    public static $supported_algs = array('ES384' => array('openssl', 'SHA384'), 'ES256' => array('openssl', 'SHA256'), 'HS256' => array('hash_hmac', 'SHA256'), 'HS384' => array('hash_hmac', 'SHA384'), 'HS512' => array('hash_hmac', 'SHA512'), 'RS256' => array('openssl', 'SHA256'), 'RS384' => array('openssl', 'SHA384'), 'RS512' => array('openssl', 'SHA512'), 'EdDSA' => array('sodium_crypto', 'EdDSA'));
+    public static $supported_algs = array('ES256' => array('openssl', 'SHA256'), 'HS256' => array('hash_hmac', 'SHA256'), 'HS384' => array('hash_hmac', 'SHA384'), 'HS512' => array('hash_hmac', 'SHA512'), 'RS256' => array('openssl', 'SHA256'), 'RS384' => array('openssl', 'SHA384'), 'RS512' => array('openssl', 'SHA512'));
     /**
      * Decodes a JWT string into a PHP object.
      *
      * @param string                    $jwt            The JWT
-     * @param Key|array<Key>|mixed      $keyOrKeyArray  The Key or array of Key objects.
+     * @param string|array|resource     $key            The key, or map of keys.
      *                                                  If the algorithm used is asymmetric, this is the public key
-     *                                                  Each Key object contains an algorithm and matching key.
-     *                                                  Supported algorithms are 'ES384','ES256', 'HS256', 'HS384',
-     *                                                  'HS512', 'RS256', 'RS384', and 'RS512'
-     * @param array                     $allowed_algs   [DEPRECATED] List of supported verification algorithms. Only
-     *                                                  should be used for backwards  compatibility.
+     * @param array                     $allowed_algs   List of supported verification algorithms
+     *                                                  Supported algorithms are 'ES256', 'HS256', 'HS384', 'HS512', 'RS256', 'RS384', and 'RS512'
      *
      * @return object The JWT's payload as a PHP object
      *
-     * @throws InvalidArgumentException     Provided JWT was empty
      * @throws UnexpectedValueException     Provided JWT was invalid
      * @throws SignatureInvalidException    Provided JWT was invalid because the signature verification failed
      * @throws BeforeValidException         Provided JWT is trying to be used before it's eligible as defined by 'nbf'
@@ -65,10 +58,10 @@ class JWT
      * @uses jsonDecode
      * @uses urlsafeB64Decode
      */
-    public static function decode($jwt, $keyOrKeyArray, array $allowed_algs = array())
+    public static function decode($jwt, $key, array $allowed_algs = array())
     {
         $timestamp = \is_null(static::$timestamp) ? \time() : static::$timestamp;
-        if (empty($keyOrKeyArray)) {
+        if (empty($key)) {
             throw new \InvalidArgumentException('Key may not be empty');
         }
         $tks = \explode('.', $jwt);
@@ -91,26 +84,25 @@ class JWT
         if (empty(static::$supported_algs[$header->alg])) {
             throw new \UnexpectedValueException('Algorithm not supported');
         }
-        list($keyMaterial, $algorithm) = self::getKeyMaterialAndAlgorithm($keyOrKeyArray, empty($header->kid) ? null : $header->kid);
-        if (empty($algorithm)) {
-            // Use deprecated "allowed_algs" to determine if the algorithm is supported.
-            // This opens up the possibility of an attack in some implementations.
-            // @see https://github.com/firebase/php-jwt/issues/351
-            if (!\in_array($header->alg, $allowed_algs)) {
-                throw new \UnexpectedValueException('Algorithm not allowed');
-            }
-        } else {
-            // Check the algorithm
-            if (!self::constantTimeEquals($algorithm, $header->alg)) {
-                // See issue #351
-                throw new \UnexpectedValueException('Incorrect key for this algorithm');
-            }
+        if (!\in_array($header->alg, $allowed_algs)) {
+            throw new \UnexpectedValueException('Algorithm not allowed');
         }
-        if ($header->alg === 'ES256' || $header->alg === 'ES384') {
-            // OpenSSL expects an ASN.1 DER sequence for ES256/ES384 signatures
+        if ($header->alg === 'ES256') {
+            // OpenSSL expects an ASN.1 DER sequence for ES256 signatures
             $sig = self::signatureToDER($sig);
         }
-        if (!static::verify("{$headb64}.{$bodyb64}", $sig, $keyMaterial, $header->alg)) {
+        if (\is_array($key) || $key instanceof \ArrayAccess) {
+            if (isset($header->kid)) {
+                if (!isset($key[$header->kid])) {
+                    throw new \UnexpectedValueException('"kid" invalid, unable to lookup correct key');
+                }
+                $key = $key[$header->kid];
+            } else {
+                throw new \UnexpectedValueException('"kid" empty, unable to lookup correct key');
+            }
+        }
+        // Check the signature
+        if (!static::verify("{$headb64}.{$bodyb64}", $sig, $key, $header->alg)) {
             throw new \TMS\Firebase\JWT\SignatureInvalidException('Signature verification failed');
         }
         // Check the nbf if it is defined. This is the time that the
@@ -133,14 +125,13 @@ class JWT
     /**
      * Converts and signs a PHP object or array into a JWT string.
      *
-     * @param object|array      $payload    PHP object or array
-     * @param string|resource   $key        The secret key.
-     *                                      If the algorithm used is asymmetric, this is the private key
-     * @param string            $alg        The signing algorithm.
-     *                                      Supported algorithms are 'ES384','ES256', 'HS256', 'HS384',
-     *                                      'HS512', 'RS256', 'RS384', and 'RS512'
-     * @param mixed             $keyId
-     * @param array             $head       An array with header elements to attach
+     * @param object|array  $payload    PHP object or array
+     * @param string        $key        The secret key.
+     *                                  If the algorithm used is asymmetric, this is the private key
+     * @param string        $alg        The signing algorithm.
+     *                                  Supported algorithms are 'ES256', 'HS256', 'HS384', 'HS512', 'RS256', 'RS384', and 'RS512'
+     * @param mixed         $keyId
+     * @param array         $head       An array with header elements to attach
      *
      * @return string A signed JWT
      *
@@ -170,12 +161,11 @@ class JWT
      * @param string            $msg    The message to sign
      * @param string|resource   $key    The secret key
      * @param string            $alg    The signing algorithm.
-     *                                  Supported algorithms are 'ES384','ES256', 'HS256', 'HS384',
-     *                                  'HS512', 'RS256', 'RS384', and 'RS512'
+     *                                  Supported algorithms are 'ES256', 'HS256', 'HS384', 'HS512', 'RS256', 'RS384', and 'RS512'
      *
      * @return string An encrypted message
      *
-     * @throws DomainException Unsupported algorithm or bad key was specified
+     * @throws DomainException Unsupported algorithm was specified
      */
     public static function sign($msg, $key, $alg = 'HS256')
     {
@@ -191,24 +181,11 @@ class JWT
                 $success = \openssl_sign($msg, $signature, $key, $algorithm);
                 if (!$success) {
                     throw new \DomainException("OpenSSL unable to sign data");
-                }
-                if ($alg === 'ES256') {
-                    $signature = self::signatureFromDER($signature, 256);
-                } elseif ($alg === 'ES384') {
-                    $signature = self::signatureFromDER($signature, 384);
-                }
-                return $signature;
-            case 'sodium_crypto':
-                if (!\function_exists('TMS\\sodium_crypto_sign_detached')) {
-                    throw new \DomainException('libsodium is not available');
-                }
-                try {
-                    // The last non-empty line is used as the key.
-                    $lines = \array_filter(\explode("\n", $key));
-                    $key = \base64_decode(\end($lines));
-                    return sodium_crypto_sign_detached($msg, $key);
-                } catch (\Exception $e) {
-                    throw new \DomainException($e->getMessage(), 0, $e);
+                } else {
+                    if ($alg === 'ES256') {
+                        $signature = self::signatureFromDER($signature, 256);
+                    }
+                    return $signature;
                 }
         }
     }
@@ -223,7 +200,7 @@ class JWT
      *
      * @return bool
      *
-     * @throws DomainException Invalid Algorithm, bad key, or OpenSSL failure
+     * @throws DomainException Invalid Algorithm or OpenSSL failure
      */
     private static function verify($msg, $signature, $key, $alg)
     {
@@ -241,22 +218,19 @@ class JWT
                 }
                 // returns 1 on success, 0 on failure, -1 on error.
                 throw new \DomainException('OpenSSL error: ' . \openssl_error_string());
-            case 'sodium_crypto':
-                if (!\function_exists('TMS\\sodium_crypto_sign_verify_detached')) {
-                    throw new \DomainException('libsodium is not available');
-                }
-                try {
-                    // The last non-empty line is used as the key.
-                    $lines = \array_filter(\explode("\n", $key));
-                    $key = \base64_decode(\end($lines));
-                    return sodium_crypto_sign_verify_detached($signature, $msg, $key);
-                } catch (\Exception $e) {
-                    throw new \DomainException($e->getMessage(), 0, $e);
-                }
             case 'hash_hmac':
             default:
                 $hash = \hash_hmac($algorithm, $msg, $key, \true);
-                return self::constantTimeEquals($signature, $hash);
+                if (\function_exists('hash_equals')) {
+                    return \hash_equals($signature, $hash);
+                }
+                $len = \min(static::safeStrlen($signature), static::safeStrlen($hash));
+                $status = 0;
+                for ($i = 0; $i < $len; $i++) {
+                    $status |= \ord($signature[$i]) ^ \ord($hash[$i]);
+                }
+                $status |= static::safeStrlen($signature) ^ static::safeStrlen($hash);
+                return $status === 0;
         }
     }
     /**
@@ -337,57 +311,6 @@ class JWT
     public static function urlsafeB64Encode($input)
     {
         return \str_replace('=', '', \strtr(\base64_encode($input), '+/', '-_'));
-    }
-    /**
-     * Determine if an algorithm has been provided for each Key
-     *
-     * @param Key|array<Key>|mixed $keyOrKeyArray
-     * @param string|null $kid
-     *
-     * @throws UnexpectedValueException
-     *
-     * @return array containing the keyMaterial and algorithm
-     */
-    private static function getKeyMaterialAndAlgorithm($keyOrKeyArray, $kid = null)
-    {
-        if (\is_string($keyOrKeyArray) || \is_resource($keyOrKeyArray) || $keyOrKeyArray instanceof \TMS\OpenSSLAsymmetricKey) {
-            return array($keyOrKeyArray, null);
-        }
-        if ($keyOrKeyArray instanceof \TMS\Firebase\JWT\Key) {
-            return array($keyOrKeyArray->getKeyMaterial(), $keyOrKeyArray->getAlgorithm());
-        }
-        if (\is_array($keyOrKeyArray) || $keyOrKeyArray instanceof \ArrayAccess) {
-            if (!isset($kid)) {
-                throw new \UnexpectedValueException('"kid" empty, unable to lookup correct key');
-            }
-            if (!isset($keyOrKeyArray[$kid])) {
-                throw new \UnexpectedValueException('"kid" invalid, unable to lookup correct key');
-            }
-            $key = $keyOrKeyArray[$kid];
-            if ($key instanceof \TMS\Firebase\JWT\Key) {
-                return array($key->getKeyMaterial(), $key->getAlgorithm());
-            }
-            return array($key, null);
-        }
-        throw new \UnexpectedValueException('$keyOrKeyArray must be a string|resource key, an array of string|resource keys, ' . 'an instance of Firebase\\JWT\\Key key or an array of Firebase\\JWT\\Key keys');
-    }
-    /**
-     * @param string $left
-     * @param string $right
-     * @return bool
-     */
-    public static function constantTimeEquals($left, $right)
-    {
-        if (\function_exists('hash_equals')) {
-            return \hash_equals($left, $right);
-        }
-        $len = \min(static::safeStrlen($left), static::safeStrlen($right));
-        $status = 0;
-        for ($i = 0; $i < $len; $i++) {
-            $status |= \ord($left[$i]) ^ \ord($right[$i]);
-        }
-        $status |= static::safeStrlen($left) ^ static::safeStrlen($right);
-        return $status === 0;
     }
     /**
      * Helper method to create a JSON error.

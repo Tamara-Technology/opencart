@@ -10,6 +10,10 @@
  */
 namespace TMS\Symfony\Component\Console;
 
+use TMS\Symfony\Component\Console\Event\ConsoleCommandEvent;
+use TMS\Symfony\Component\Console\Event\ConsoleErrorEvent;
+use TMS\Symfony\Component\Console\Event\ConsoleSignalEvent;
+use TMS\Symfony\Component\Console\Event\ConsoleTerminateEvent;
 /**
  * Contains all events dispatched by an Application.
  *
@@ -26,6 +30,13 @@ final class ConsoleEvents
      */
     public const COMMAND = 'console.command';
     /**
+     * The SIGNAL event allows you to perform some actions
+     * after the command execution was interrupted.
+     *
+     * @Event("Symfony\Component\Console\Event\ConsoleSignalEvent")
+     */
+    public const SIGNAL = 'console.signal';
+    /**
      * The TERMINATE event allows you to attach listeners after a command is
      * executed by the console.
      *
@@ -41,4 +52,10 @@ final class ConsoleEvents
      * @Event("Symfony\Component\Console\Event\ConsoleErrorEvent")
      */
     public const ERROR = 'console.error';
+    /**
+     * Event aliases.
+     *
+     * These aliases can be consumed by RegisterListenersPass.
+     */
+    public const ALIASES = [\TMS\Symfony\Component\Console\Event\ConsoleCommandEvent::class => self::COMMAND, \TMS\Symfony\Component\Console\Event\ConsoleErrorEvent::class => self::ERROR, \TMS\Symfony\Component\Console\Event\ConsoleSignalEvent::class => self::SIGNAL, \TMS\Symfony\Component\Console\Event\ConsoleTerminateEvent::class => self::TERMINATE];
 }

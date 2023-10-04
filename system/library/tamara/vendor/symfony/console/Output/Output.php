@@ -57,7 +57,7 @@ abstract class Output implements \TMS\Symfony\Component\Console\Output\OutputInt
     /**
      * {@inheritdoc}
      */
-    public function setDecorated($decorated)
+    public function setDecorated(bool $decorated)
     {
         $this->formatter->setDecorated($decorated);
     }
@@ -71,9 +71,9 @@ abstract class Output implements \TMS\Symfony\Component\Console\Output\OutputInt
     /**
      * {@inheritdoc}
      */
-    public function setVerbosity($level)
+    public function setVerbosity(int $level)
     {
-        $this->verbosity = (int) $level;
+        $this->verbosity = $level;
     }
     /**
      * {@inheritdoc}
@@ -113,14 +113,14 @@ abstract class Output implements \TMS\Symfony\Component\Console\Output\OutputInt
     /**
      * {@inheritdoc}
      */
-    public function writeln($messages, $options = self::OUTPUT_NORMAL)
+    public function writeln($messages, int $options = self::OUTPUT_NORMAL)
     {
         $this->write($messages, \true, $options);
     }
     /**
      * {@inheritdoc}
      */
-    public function write($messages, $newline = \false, $options = self::OUTPUT_NORMAL)
+    public function write($messages, bool $newline = \false, int $options = self::OUTPUT_NORMAL)
     {
         if (!\is_iterable($messages)) {
             $messages = [$messages];
@@ -143,14 +143,11 @@ abstract class Output implements \TMS\Symfony\Component\Console\Output\OutputInt
                     $message = \strip_tags($this->formatter->format($message));
                     break;
             }
-            $this->doWrite($message ?? '', $newline);
+            $this->doWrite($message, $newline);
         }
     }
     /**
      * Writes a message to the output.
-     *
-     * @param string $message A message to write to the output
-     * @param bool   $newline Whether to add a newline or not
      */
-    protected abstract function doWrite($message, $newline);
+    protected abstract function doWrite(string $message, bool $newline);
 }

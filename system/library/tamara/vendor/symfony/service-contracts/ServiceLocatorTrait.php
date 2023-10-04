@@ -38,7 +38,7 @@ trait ServiceLocatorTrait
      *
      * @return bool
      */
-    public function has($id)
+    public function has(string $id)
     {
         return isset($this->factories[$id]);
     }
@@ -47,7 +47,7 @@ trait ServiceLocatorTrait
      *
      * @return mixed
      */
-    public function get($id)
+    public function get(string $id)
     {
         if (!isset($this->factories[$id])) {
             throw $this->createNotFoundException($id);

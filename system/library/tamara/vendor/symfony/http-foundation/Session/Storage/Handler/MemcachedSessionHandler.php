@@ -50,7 +50,6 @@ class MemcachedSessionHandler extends \TMS\Symfony\Component\HttpFoundation\Sess
     /**
      * @return bool
      */
-    #[\ReturnTypeWillChange]
     public function close()
     {
         return $this->memcached->quit();
@@ -58,14 +57,13 @@ class MemcachedSessionHandler extends \TMS\Symfony\Component\HttpFoundation\Sess
     /**
      * {@inheritdoc}
      */
-    protected function doRead($sessionId)
+    protected function doRead(string $sessionId)
     {
         return $this->memcached->get($this->prefix . $sessionId) ?: '';
     }
     /**
      * @return bool
      */
-    #[\ReturnTypeWillChange]
     public function updateTimestamp($sessionId, $data)
     {
         $this->memcached->touch($this->prefix . $sessionId, \time() + $this->ttl);
@@ -74,26 +72,25 @@ class MemcachedSessionHandler extends \TMS\Symfony\Component\HttpFoundation\Sess
     /**
      * {@inheritdoc}
      */
-    protected function doWrite($sessionId, $data)
+    protected function doWrite(string $sessionId, string $data)
     {
         return $this->memcached->set($this->prefix . $sessionId, $data, \time() + $this->ttl);
     }
     /**
      * {@inheritdoc}
      */
-    protected function doDestroy($sessionId)
+    protected function doDestroy(string $sessionId)
     {
         $result = $this->memcached->delete($this->prefix . $sessionId);
         return $result || \TMS\Memcached::RES_NOTFOUND == $this->memcached->getResultCode();
     }
     /**
-     * @return int|false
+     * @return bool
      */
-    #[\ReturnTypeWillChange]
     public function gc($maxlifetime)
     {
         // not required here because memcached will auto expire the records anyhow.
-        return 0;
+        return \true;
     }
     /**
      * Return a Memcached instance.

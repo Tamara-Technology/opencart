@@ -157,7 +157,7 @@ class PdoSessionHandler extends \TMS\Symfony\Component\HttpFoundation\Session\St
             }
             $this->pdo = $pdoOrDsn;
             $this->driver = $this->pdo->getAttribute(\PDO::ATTR_DRIVER_NAME);
-        } elseif (\is_string($pdoOrDsn) && str_contains($pdoOrDsn, '://')) {
+        } elseif (\is_string($pdoOrDsn) && \false !== \strpos($pdoOrDsn, '://')) {
             $this->dsn = $this->buildDsnFromUrl($pdoOrDsn);
         } else {
             $this->dsn = $pdoOrDsn;
@@ -233,7 +233,6 @@ class PdoSessionHandler extends \TMS\Symfony\Component\HttpFoundation\Session\St
     /**
      * @return bool
      */
-    #[\ReturnTypeWillChange]
     public function open($savePath, $sessionName)
     {
         $this->sessionExpired = \false;
@@ -245,7 +244,6 @@ class PdoSessionHandler extends \TMS\Symfony\Component\HttpFoundation\Session\St
     /**
      * @return string
      */
-    #[\ReturnTypeWillChange]
     public function read($sessionId)
     {
         try {
@@ -256,20 +254,19 @@ class PdoSessionHandler extends \TMS\Symfony\Component\HttpFoundation\Session\St
         }
     }
     /**
-     * @return int|false
+     * @return bool
      */
-    #[\ReturnTypeWillChange]
     public function gc($maxlifetime)
     {
         // We delay gc() to close() so that it is executed outside the transactional and blocking read-write process.
         // This way, pruning expired sessions does not block them from being started while the current session is used.
         $this->gcCalled = \true;
-        return 0;
+        return \true;
     }
     /**
      * {@inheritdoc}
      */
-    protected function doDestroy($sessionId)
+    protected function doDestroy(string $sessionId)
     {
         // delete the record associated with this id
         $sql = "DELETE FROM {$this->table} WHERE {$this->idCol} = :id";
@@ -286,7 +283,7 @@ class PdoSessionHandler extends \TMS\Symfony\Component\HttpFoundation\Session\St
     /**
      * {@inheritdoc}
      */
-    protected function doWrite($sessionId, $data)
+    protected function doWrite(string $sessionId, string $data)
     {
         $maxlifetime = (int) \ini_get('session.gc_maxlifetime');
         try {
@@ -309,7 +306,7 @@ class PdoSessionHandler extends \TMS\Symfony\Component\HttpFoundation\Session\St
                     $insertStmt->execute();
                 } catch (\PDOException $e) {
                     // Handle integrity violation SQLSTATE 23000 (or a subclass like 23505 in Postgres) for duplicate keys
-                    if (str_starts_with($e->getCode(), '23')) {
+                    if (0 === \strpos($e->getCode(), '23')) {
                         $updateStmt->execute();
                     } else {
                         throw $e;
@@ -325,7 +322,6 @@ class PdoSessionHandler extends \TMS\Symfony\Component\HttpFoundation\Session\St
     /**
      * @return bool
      */
-    #[\ReturnTypeWillChange]
     public function updateTimestamp($sessionId, $data)
     {
         $expiry = \time() + (int) \ini_get('session.gc_maxlifetime');
@@ -344,7 +340,6 @@ class PdoSessionHandler extends \TMS\Symfony\Component\HttpFoundation\Session\St
     /**
      * @return bool
      */
-    #[\ReturnTypeWillChange]
     public function close()
     {
         $this->commit();
@@ -420,7 +415,7 @@ class PdoSessionHandler extends \TMS\Symfony\Component\HttpFoundation\Session\St
         ];
         $driver = $driverAliasMap[$params['scheme']] ?? $params['scheme'];
         // Doctrine DBAL supports passing its internal pdo_* driver names directly too (allowing both dashes and underscores). This allows supporting the same here.
-        if (str_starts_with($driver, 'pdo_') || str_starts_with($driver, 'pdo-')) {
+        if (0 === \strpos($driver, 'pdo_') || 0 === \strpos($driver, 'pdo-')) {
             $driver = \substr($driver, 4);
         }
         switch ($driver) {
@@ -529,11 +524,9 @@ class PdoSessionHandler extends \TMS\Symfony\Component\HttpFoundation\Session\St
      * We need to make sure we do not return session data that is already considered garbage according
      * to the session.gc_maxlifetime setting because gc() is called after read() and only sometimes.
      *
-     * @param string $sessionId Session ID
-     *
-     * @return string The session data
+     * @return string
      */
-    protected function doRead($sessionId)
+    protected function doRead(string $sessionId)
     {
         if (self::LOCK_ADVISORY === $this->lockMode) {
             $this->unlockStatements[] = $this->doAdvisoryLock($sessionId);
@@ -542,7 +535,7 @@ class PdoSessionHandler extends \TMS\Symfony\Component\HttpFoundation\Session\St
         $selectStmt = $this->pdo->prepare($selectSql);
         $selectStmt->bindParam(':id', $sessionId, \PDO::PARAM_STR);
         $insertStmt = null;
-        while (\true) {
+        do {
             $selectStmt->execute();
             $sessionRows = $selectStmt->fetchAll(\PDO::FETCH_NUM);
             if ($sessionRows) {
@@ -571,7 +564,7 @@ class PdoSessionHandler extends \TMS\Symfony\Component\HttpFoundation\Session\St
                 } catch (\PDOException $e) {
                     // Catch duplicate key error because other connection created the session already.
                     // It would only not be the case when the other connection destroyed the session.
-                    if (str_starts_with($e->getCode(), '23')) {
+                    if (0 === \strpos($e->getCode(), '23')) {
                         // Retrieve finished session data written by concurrent connection by restarting the loop.
                         // We have to start a new transaction as a failed query will mark the current transaction as
                         // aborted in PostgreSQL and disallow further queries within it.
@@ -583,7 +576,7 @@ class PdoSessionHandler extends \TMS\Symfony\Component\HttpFoundation\Session\St
                 }
             }
             return '';
-        }
+        } while (\true);
     }
     /**
      * Executes an application-level lock on the database.

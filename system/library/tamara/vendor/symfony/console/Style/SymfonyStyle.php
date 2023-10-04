@@ -52,13 +52,8 @@ class SymfonyStyle extends \TMS\Symfony\Component\Console\Style\OutputStyle
      * Formats a message as a block of text.
      *
      * @param string|array $messages The message to write in the block
-     * @param string|null  $type     The block type (added in [] on first line)
-     * @param string|null  $style    The style to apply to the whole block
-     * @param string       $prefix   The prefix for the block
-     * @param bool         $padding  Whether to add vertical padding
-     * @param bool         $escape   Whether to escape the message
      */
-    public function block($messages, $type = null, $style = null, $prefix = ' ', $padding = \false, $escape = \true)
+    public function block($messages, ?string $type = null, ?string $style = null, string $prefix = ' ', bool $padding = \false, bool $escape = \true)
     {
         $messages = \is_array($messages) ? \array_values($messages) : [$messages];
         $this->autoPrependBlock();
@@ -68,7 +63,7 @@ class SymfonyStyle extends \TMS\Symfony\Component\Console\Style\OutputStyle
     /**
      * {@inheritdoc}
      */
-    public function title($message)
+    public function title(string $message)
     {
         $this->autoPrependBlock();
         $this->writeln([\sprintf('<comment>%s</>', \TMS\Symfony\Component\Console\Formatter\OutputFormatter::escapeTrailingBackslash($message)), \sprintf('<comment>%s</>', \str_repeat('=', \TMS\Symfony\Component\Console\Helper\Helper::strlenWithoutDecoration($this->getFormatter(), $message)))]);
@@ -77,7 +72,7 @@ class SymfonyStyle extends \TMS\Symfony\Component\Console\Style\OutputStyle
     /**
      * {@inheritdoc}
      */
-    public function section($message)
+    public function section(string $message)
     {
         $this->autoPrependBlock();
         $this->writeln([\sprintf('<comment>%s</>', \TMS\Symfony\Component\Console\Formatter\OutputFormatter::escapeTrailingBackslash($message)), \sprintf('<comment>%s</>', \str_repeat('-', \TMS\Symfony\Component\Console\Helper\Helper::strlenWithoutDecoration($this->getFormatter(), $message)))]);
@@ -142,6 +137,15 @@ class SymfonyStyle extends \TMS\Symfony\Component\Console\Style\OutputStyle
     public function note($message)
     {
         $this->block($message, 'NOTE', 'fg=yellow', ' ! ');
+    }
+    /**
+     * Formats an info message.
+     *
+     * @param string|array $message
+     */
+    public function info($message)
+    {
+        $this->block($message, 'INFO', 'fg=green', ' ', \true);
     }
     /**
      * {@inheritdoc}
@@ -223,7 +227,7 @@ class SymfonyStyle extends \TMS\Symfony\Component\Console\Style\OutputStyle
     /**
      * {@inheritdoc}
      */
-    public function ask($question, $default = null, $validator = null)
+    public function ask(string $question, ?string $default = null, $validator = null)
     {
         $question = new \TMS\Symfony\Component\Console\Question\Question($question, $default);
         $question->setValidator($validator);
@@ -232,7 +236,7 @@ class SymfonyStyle extends \TMS\Symfony\Component\Console\Style\OutputStyle
     /**
      * {@inheritdoc}
      */
-    public function askHidden($question, $validator = null)
+    public function askHidden(string $question, $validator = null)
     {
         $question = new \TMS\Symfony\Component\Console\Question\Question($question);
         $question->setHidden(\true);
@@ -249,7 +253,7 @@ class SymfonyStyle extends \TMS\Symfony\Component\Console\Style\OutputStyle
     /**
      * {@inheritdoc}
      */
-    public function choice($question, array $choices, $default = null)
+    public function choice(string $question, array $choices, $default = null)
     {
         if (null !== $default) {
             $values = \array_flip($choices);
@@ -260,7 +264,7 @@ class SymfonyStyle extends \TMS\Symfony\Component\Console\Style\OutputStyle
     /**
      * {@inheritdoc}
      */
-    public function progressStart($max = 0)
+    public function progressStart(int $max = 0)
     {
         $this->progressBar = $this->createProgressBar($max);
         $this->progressBar->start();
@@ -268,7 +272,7 @@ class SymfonyStyle extends \TMS\Symfony\Component\Console\Style\OutputStyle
     /**
      * {@inheritdoc}
      */
-    public function progressAdvance($step = 1)
+    public function progressAdvance(int $step = 1)
     {
         $this->getProgressBar()->advance($step);
     }
@@ -284,7 +288,7 @@ class SymfonyStyle extends \TMS\Symfony\Component\Console\Style\OutputStyle
     /**
      * {@inheritdoc}
      */
-    public function createProgressBar($max = 0)
+    public function createProgressBar(int $max = 0)
     {
         $progressBar = parent::createProgressBar($max);
         if ('\\' !== \DIRECTORY_SEPARATOR || 'Hyper' === \getenv('TERM_PROGRAM')) {
@@ -317,7 +321,7 @@ class SymfonyStyle extends \TMS\Symfony\Component\Console\Style\OutputStyle
     /**
      * {@inheritdoc}
      */
-    public function writeln($messages, $type = self::OUTPUT_NORMAL)
+    public function writeln($messages, int $type = self::OUTPUT_NORMAL)
     {
         if (!\is_iterable($messages)) {
             $messages = [$messages];
@@ -330,7 +334,7 @@ class SymfonyStyle extends \TMS\Symfony\Component\Console\Style\OutputStyle
     /**
      * {@inheritdoc}
      */
-    public function write($messages, $newline = \false, $type = self::OUTPUT_NORMAL)
+    public function write($messages, bool $newline = \false, int $type = self::OUTPUT_NORMAL)
     {
         if (!\is_iterable($messages)) {
             $messages = [$messages];
@@ -343,7 +347,7 @@ class SymfonyStyle extends \TMS\Symfony\Component\Console\Style\OutputStyle
     /**
      * {@inheritdoc}
      */
-    public function newLine($count = 1)
+    public function newLine(int $count = 1)
     {
         parent::newLine($count);
         $this->bufferedOutput->write(\str_repeat("\n", $count));
@@ -369,17 +373,17 @@ class SymfonyStyle extends \TMS\Symfony\Component\Console\Style\OutputStyle
         $chars = \substr(\str_replace(\PHP_EOL, "\n", $this->bufferedOutput->fetch()), -2);
         if (!isset($chars[0])) {
             $this->newLine();
-            // empty history, so we should start with a new line.
+            //empty history, so we should start with a new line.
             return;
         }
-        // Prepend new line for each non LF chars (This means no blank line was output before)
+        //Prepend new line for each non LF chars (This means no blank line was output before)
         $this->newLine(2 - \substr_count($chars, "\n"));
     }
     private function autoPrependText() : void
     {
         $fetched = $this->bufferedOutput->fetch();
-        // Prepend new line if last char isn't EOL:
-        if (!str_ends_with($fetched, "\n")) {
+        //Prepend new line if last char isn't EOL:
+        if ("\n" !== \substr($fetched, -1)) {
             $this->newLine();
         }
     }

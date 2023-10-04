@@ -39,11 +39,9 @@ class DescriptorHelper extends \TMS\Symfony\Component\Console\Helper\Helper
      * * format: string, the output format name
      * * raw_text: boolean, sets output type as raw
      *
-     * @param object $object
-     *
      * @throws InvalidArgumentException when the given format is not supported
      */
-    public function describe(\TMS\Symfony\Component\Console\Output\OutputInterface $output, $object, array $options = [])
+    public function describe(\TMS\Symfony\Component\Console\Output\OutputInterface $output, ?object $object, array $options = [])
     {
         $options = \array_merge(['raw_text' => \false, 'format' => 'txt'], $options);
         if (!isset($this->descriptors[$options['format']])) {
@@ -55,11 +53,9 @@ class DescriptorHelper extends \TMS\Symfony\Component\Console\Helper\Helper
     /**
      * Registers a descriptor.
      *
-     * @param string $format
-     *
      * @return $this
      */
-    public function register($format, \TMS\Symfony\Component\Console\Descriptor\DescriptorInterface $descriptor)
+    public function register(string $format, \TMS\Symfony\Component\Console\Descriptor\DescriptorInterface $descriptor)
     {
         $this->descriptors[$format] = $descriptor;
         return $this;

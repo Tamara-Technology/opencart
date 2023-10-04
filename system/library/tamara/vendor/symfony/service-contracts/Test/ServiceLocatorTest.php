@@ -15,9 +15,6 @@ use TMS\Psr\Container\ContainerInterface;
 use TMS\Symfony\Contracts\Service\ServiceLocatorTrait;
 abstract class ServiceLocatorTest extends \TMS\PHPUnit\Framework\TestCase
 {
-    /**
-     * @return ContainerInterface
-     */
     protected function getServiceLocator(array $factories)
     {
         return new class($factories) implements \TMS\Psr\Container\ContainerInterface

@@ -57,7 +57,7 @@ class UploadedFile implements \TMS\Psr\Http\Message\UploadedFileInterface
         $this->clientMediaType = $clientMediaType;
         if (\UPLOAD_ERR_OK === $this->error) {
             // Depending on the value set file or stream variable.
-            if (\is_string($streamOrFile) && '' !== $streamOrFile) {
+            if (\is_string($streamOrFile)) {
                 $this->file = $streamOrFile;
             } elseif (\is_resource($streamOrFile)) {
                 $this->stream = \TMS\Nyholm\Psr7\Stream::create($streamOrFile);
@@ -86,9 +86,7 @@ class UploadedFile implements \TMS\Psr\Http\Message\UploadedFileInterface
         if ($this->stream instanceof \TMS\Psr\Http\Message\StreamInterface) {
             return $this->stream;
         }
-        if (\false === ($resource = @\fopen($this->file, 'r'))) {
-            throw new \RuntimeException(\sprintf('The file "%s" cannot be opened: %s', $this->file, \error_get_last()['message'] ?? ''));
-        }
+        $resource = \fopen($this->file, 'r');
         return \TMS\Nyholm\Psr7\Stream::create($resource);
     }
     public function moveTo($targetPath) : void
@@ -98,25 +96,23 @@ class UploadedFile implements \TMS\Psr\Http\Message\UploadedFileInterface
             throw new \InvalidArgumentException('Invalid path provided for move operation; must be a non-empty string');
         }
         if (null !== $this->file) {
-            $this->moved = 'cli' === \PHP_SAPI ? @\rename($this->file, $targetPath) : @\move_uploaded_file($this->file, $targetPath);
-            if (\false === $this->moved) {
-                throw new \RuntimeException(\sprintf('Uploaded file could not be moved to "%s": %s', $targetPath, \error_get_last()['message'] ?? ''));
-            }
+            $this->moved = 'cli' === \PHP_SAPI ? \rename($this->file, $targetPath) : \move_uploaded_file($this->file, $targetPath);
         } else {
             $stream = $this->getStream();
             if ($stream->isSeekable()) {
                 $stream->rewind();
             }
-            if (\false === ($resource = @\fopen($targetPath, 'w'))) {
-                throw new \RuntimeException(\sprintf('The file "%s" cannot be opened: %s', $targetPath, \error_get_last()['message'] ?? ''));
-            }
-            $dest = \TMS\Nyholm\Psr7\Stream::create($resource);
+            // Copy the contents of a stream into another stream until end-of-file.
+            $dest = \TMS\Nyholm\Psr7\Stream::create(\fopen($targetPath, 'w'));
             while (!$stream->eof()) {
                 if (!$dest->write($stream->read(1048576))) {
                     break;
                 }
             }
             $this->moved = \true;
+        }
+        if (\false === $this->moved) {
+            throw new \RuntimeException(\sprintf('Uploaded file could not be moved to %s', $targetPath));
         }
     }
     public function getSize() : int

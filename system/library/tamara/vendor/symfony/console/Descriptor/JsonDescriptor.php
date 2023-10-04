@@ -108,8 +108,7 @@ class JsonDescriptor extends \TMS\Symfony\Component\Console\Descriptor\Descripto
     }
     private function getCommandData(\TMS\Symfony\Component\Console\Command\Command $command) : array
     {
-        $command->getSynopsis();
         $command->mergeApplicationDefinition(\false);
-        return ['name' => $command->getName(), 'usage' => \array_merge([$command->getSynopsis()], $command->getUsages(), $command->getAliases()), 'description' => $command->getDescription(), 'help' => $command->getProcessedHelp(), 'definition' => $this->getInputDefinitionData($command->getNativeDefinition()), 'hidden' => $command->isHidden()];
+        return ['name' => $command->getName(), 'usage' => \array_merge([$command->getSynopsis()], $command->getUsages(), $command->getAliases()), 'description' => $command->getDescription(), 'help' => $command->getProcessedHelp(), 'definition' => $this->getInputDefinitionData($command->getDefinition()), 'hidden' => $command->isHidden()];
     }
 }

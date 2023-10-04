@@ -29,11 +29,7 @@ class CachingStream implements \TMS\Psr\Http\Message\StreamInterface
     }
     public function getSize()
     {
-        $remoteSize = $this->remoteStream->getSize();
-        if (null === $remoteSize) {
-            return null;
-        }
-        return \max($this->stream->getSize(), $remoteSize);
+        return \max($this->stream->getSize(), $this->remoteStream->getSize());
     }
     public function rewind()
     {

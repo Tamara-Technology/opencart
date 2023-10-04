@@ -30,15 +30,13 @@ class OutputFormatter implements \TMS\Symfony\Component\Console\Formatter\Wrappa
         }
     }
     /**
-     * Escapes "<" and ">" special chars in given text.
-     *
-     * @param string $text Text to escape
+     * Escapes "<" special char in given text.
      *
      * @return string Escaped text
      */
-    public static function escape($text)
+    public static function escape(string $text)
     {
-        $text = \preg_replace('/([^\\\\]|^)([<>])/', '$1\\\\$2', $text);
+        $text = \preg_replace('/([^\\\\]?)</', '$1\\<', $text);
         return self::escapeTrailingBackslash($text);
     }
     /**
@@ -48,7 +46,7 @@ class OutputFormatter implements \TMS\Symfony\Component\Console\Formatter\Wrappa
      */
     public static function escapeTrailingBackslash(string $text) : string
     {
-        if (str_ends_with($text, '\\')) {
+        if ('\\' === \substr($text, -1)) {
             $len = \strlen($text);
             $text = \rtrim($text, '\\');
             $text = \str_replace("\x00", '', $text);
@@ -76,9 +74,9 @@ class OutputFormatter implements \TMS\Symfony\Component\Console\Formatter\Wrappa
     /**
      * {@inheritdoc}
      */
-    public function setDecorated($decorated)
+    public function setDecorated(bool $decorated)
     {
-        $this->decorated = (bool) $decorated;
+        $this->decorated = $decorated;
     }
     /**
      * {@inheritdoc}
@@ -90,21 +88,21 @@ class OutputFormatter implements \TMS\Symfony\Component\Console\Formatter\Wrappa
     /**
      * {@inheritdoc}
      */
-    public function setStyle($name, \TMS\Symfony\Component\Console\Formatter\OutputFormatterStyleInterface $style)
+    public function setStyle(string $name, \TMS\Symfony\Component\Console\Formatter\OutputFormatterStyleInterface $style)
     {
         $this->styles[\strtolower($name)] = $style;
     }
     /**
      * {@inheritdoc}
      */
-    public function hasStyle($name)
+    public function hasStyle(string $name)
     {
         return isset($this->styles[\strtolower($name)]);
     }
     /**
      * {@inheritdoc}
      */
-    public function getStyle($name)
+    public function getStyle(string $name)
     {
         if (!$this->hasStyle($name)) {
             throw new \TMS\Symfony\Component\Console\Exception\InvalidArgumentException(\sprintf('Undefined style: "%s".', $name));
@@ -114,21 +112,20 @@ class OutputFormatter implements \TMS\Symfony\Component\Console\Formatter\Wrappa
     /**
      * {@inheritdoc}
      */
-    public function format($message)
+    public function format(?string $message)
     {
-        return $this->formatAndWrap((string) $message, 0);
+        return $this->formatAndWrap($message, 0);
     }
     /**
      * {@inheritdoc}
      */
-    public function formatAndWrap(string $message, int $width)
+    public function formatAndWrap(?string $message, int $width)
     {
         $offset = 0;
         $output = '';
-        $openTagRegex = '[a-z](?:[^\\\\<>]*+ | \\\\.)*';
-        $closeTagRegex = '[a-z][^<>]*+';
+        $tagRegex = '[a-z][^<>]*+';
         $currentLineLength = 0;
-        \preg_match_all("#<(({$openTagRegex}) | /({$closeTagRegex})?)>#ix", $message, $matches, \PREG_OFFSET_CAPTURE);
+        \preg_match_all("#<(({$tagRegex}) | /({$tagRegex})?)>#ix", $message, $matches, \PREG_OFFSET_CAPTURE);
         foreach ($matches[0] as $i => $match) {
             $pos = $match[1];
             $text = $match[0];
@@ -156,7 +153,10 @@ class OutputFormatter implements \TMS\Symfony\Component\Console\Formatter\Wrappa
             }
         }
         $output .= $this->applyCurrentStyle(\substr($message, $offset), $output, $width, $currentLineLength);
-        return \strtr($output, ["\x00" => '\\', '\\<' => '<', '\\>' => '>']);
+        if (\false !== \strpos($output, "\x00")) {
+            return \strtr($output, ["\x00" => '\\', '\\<' => '<']);
+        }
+        return \str_replace('\\<', '<', $output);
     }
     /**
      * @return OutputFormatterStyleStack
@@ -185,8 +185,7 @@ class OutputFormatter implements \TMS\Symfony\Component\Console\Formatter\Wrappa
             } elseif ('bg' == $match[0]) {
                 $style->setBackground(\strtolower($match[1]));
             } elseif ('href' === $match[0]) {
-                $url = \preg_replace('{\\\\([<>])}', '$1', $match[1]);
-                $style->setHref($url);
+                $style->setHref($match[1]);
             } elseif ('options' === $match[0]) {
                 \preg_match_all('([^,;]+)', \strtolower($match[1]), $options);
                 $options = \array_shift($options);

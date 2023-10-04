@@ -73,10 +73,8 @@ class RequestMatcher implements \TMS\Symfony\Component\HttpFoundation\RequestMat
     }
     /**
      * Adds a check for the URL host name.
-     *
-     * @param string|null $regexp A Regexp
      */
-    public function matchHost($regexp)
+    public function matchHost(?string $regexp)
     {
         $this->host = $regexp;
     }
@@ -91,10 +89,8 @@ class RequestMatcher implements \TMS\Symfony\Component\HttpFoundation\RequestMat
     }
     /**
      * Adds a check for the URL path info.
-     *
-     * @param string|null $regexp A Regexp
      */
-    public function matchPath($regexp)
+    public function matchPath(?string $regexp)
     {
         $this->path = $regexp;
     }
@@ -103,7 +99,7 @@ class RequestMatcher implements \TMS\Symfony\Component\HttpFoundation\RequestMat
      *
      * @param string $ip A specific IP address or a range specified using IP/netmask like 192.168.1.0/24
      */
-    public function matchIp($ip)
+    public function matchIp(string $ip)
     {
         $this->matchIps($ip);
     }
@@ -114,7 +110,10 @@ class RequestMatcher implements \TMS\Symfony\Component\HttpFoundation\RequestMat
      */
     public function matchIps($ips)
     {
-        $this->ips = null !== $ips ? (array) $ips : [];
+        $ips = null !== $ips ? (array) $ips : [];
+        $this->ips = \array_reduce($ips, static function (array $ips, string $ip) {
+            return \array_merge($ips, \preg_split('/\\s*,\\s*/', $ip));
+        }, []);
     }
     /**
      * Adds a check for the HTTP method.
@@ -127,11 +126,8 @@ class RequestMatcher implements \TMS\Symfony\Component\HttpFoundation\RequestMat
     }
     /**
      * Adds a check for request attribute.
-     *
-     * @param string $key    The request attribute name
-     * @param string $regexp A Regexp
      */
-    public function matchAttribute($key, $regexp)
+    public function matchAttribute(string $key, string $regexp)
     {
         $this->attributes[$key] = $regexp;
     }

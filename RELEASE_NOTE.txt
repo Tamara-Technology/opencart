@@ -1,3 +1,6 @@
+Version 1.8.9
+- New:
+    - Revert to use the legacy vendor autoloader
 Version 1.8.8
 - New:
     - Add risk assessment data to the order
