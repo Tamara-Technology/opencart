@@ -24,7 +24,7 @@ class ModelExtensionPaymentTamarapay extends Model
     /**
      * Define version of extension
      */
-    public const VERSION = '1.8.9';
+    public const VERSION = '1.9.0';
 
     public const
         MAX_LIMIT = 'max_limit',
@@ -870,7 +870,7 @@ class ModelExtensionPaymentTamarapay extends Model
             if (!$response->isSuccess()) {
                 throw new Exception($response->getMessage());
             } else {
-                if ($response->getOrderStatus() != "authorised") {
+                if (!in_array($response->getOrderStatus(), ["authorised", "fully_captured"])) {
                     throw new Exception("Order status doesn't accept authorization");
                 }
             }
@@ -1279,6 +1279,7 @@ class ModelExtensionPaymentTamarapay extends Model
      */
     public function getShippingData($orderId)
     {
+        return [];
         $query = sprintf("select * from %sorder_shipment oos 
                     inner join %sshipping_courier osc 
                     on oos.shipping_courier_id = osc.shipping_courier_id 
@@ -2261,7 +2262,7 @@ class ModelExtensionPaymentTamarapay extends Model
 
     public function getMerchantPublicKey() {
         $publicKey = $this->config->get("payment_tamarapay_merchant_public_key");
-        if (!empty($publicKey)) {
+        if ($publicKey !== null) {
             return $publicKey;
         }
         $publicKey = $this->getTamaraConfigValue('payment_tamarapay_merchant_public_key');

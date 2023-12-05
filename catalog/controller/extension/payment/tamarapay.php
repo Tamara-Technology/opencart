@@ -399,9 +399,6 @@ class ControllerExtensionPaymentTamarapay extends Controller
         if (empty($matches[0][1])) {
             return $output;
         }
-        if (!$this->config->get("payment_tamarapay_status")) {
-            return $output;
-        }
         if (empty($data['product_id'])) {
             return $output;
         }
@@ -446,9 +443,6 @@ class ControllerExtensionPaymentTamarapay extends Controller
         }
         preg_match('/<div .*class="buttons clearfix"/', $output, $matches, PREG_OFFSET_CAPTURE);
         if (empty($matches[0][1])) {
-            return $output;
-        }
-        if (!$this->config->get("payment_tamarapay_status")) {
             return $output;
         }
         if (!$this->model_extension_payment_tamarapay->validateCartItems()) {
