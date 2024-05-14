@@ -155,14 +155,12 @@ class ControllerPaymentTamarapay extends Controller
         if (!$tamaraOrder['is_authorised']) {
 
             //set order status
-            $successStatusId = $this->config->get('tamarapay_order_status_success_id');
-            $this->model_checkout_order->addOrderHistory($data['order_id'], $successStatusId, "Tamara - Pay success", false);
+//            $successStatusId = $this->config->get('tamarapay_order_status_success_id');
+//            $this->model_checkout_order->addOrderHistory($data['order_id'], $successStatusId, "Tamara - Pay success", false);
 
             //call authorise
             $this->model_payment_tamarapay->authoriseOrder($tamaraOrder['tamara_order_id']);
         }
-
-        $this->model_payment_tamarapay->updatePaymentTypeAfterCheckout($tamaraOrder);
 
         if (!empty($successUrl = $this->config->get('tamarapay_checkout_success_url'))) {
             return $this->response->redirect($successUrl);
@@ -486,7 +484,7 @@ class ControllerPaymentTamarapay extends Controller
         }
         $countryCode = $this->model_payment_tamarapay->getSupportedCountriesByCurrency($bestMethodForCustomer['currency'])[0];
         $languageCode = $this->model_payment_tamarapay->getLanguageCodeFromSession();
-        $publicKey = $this->config->get('tamarapay_merchant_public_key');
+        $publicKey = $this->model_payment_tamarapay->getMerchantPublicKey();
         $isUseWidgetV1 = empty($publicKey);
         if ($isUseWidgetV1) {
             $result = '<div id="tamara-product-widget" class="tamara-product-widget" data-lang="'. $languageCode .'" data-price="'. $price .'" data-currency="'. $bestMethodForCustomer['currency'] .'" data-country-code="'. $countryCode .'" data-installment-available-amount="'. $bestMethodForCustomer['min_limit'] .'"';
