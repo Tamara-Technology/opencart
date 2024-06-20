@@ -1,0 +1,202 @@
+<style type="text/css">
+    img.payment-icon {
+        max-height: 25px;
+    }
+    #tamara-installment-plan, .tamara_promo, .tamara-v2, .tamara-v1 {
+        margin-bottom: 10px;
+    }
+</style>
+{% if error_get_payment %}
+    <div id="error-area" class="alert alert-danger"><i class="fa fa-ban"></i> {{ error_get_payment }}</div>
+{% else %}
+    <div style="display: none;" class="payment-warning alert alert-danger">
+        <i class="fa fa-exclamation-circle"></i>
+        <span class="message"></span>
+    </div>
+    <div style="display: none" id="error-area" class="alert alert-danger"><i class="fa fa-ban"></i></div>
+
+    {% if total_method_available > 0 %}
+        <div class="container-customize">
+            <form class="form-horizontal" id="tamara-payment-form">
+                {% if total_method_available == 1 %}
+                    <section class="payment-types">
+                        <div class="payment-type-content">
+                            <div class="col-sm-12">
+                                <div class="form-check ps-0">
+                                    <input type="radio" name="payment_type" class="form-check-input" id="{{ first_method.name }}" value="{{ first_method.name }}" checked="true" style="display: none" />
+                                    <div class="tamara_promo" style="text-align: center;">
+                                        <tamara-widget amount="{{ order_data.total_in_currency }}" inline-type="3"></tamara-widget>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+                {% else %}
+                    <section class="payment-types">
+                        <div class="payment-type-title">
+                            <h3 class="text-center">{{ text_choose_payment }}</h3>
+                            {% if exists_pay_now == false %}
+                                <div class="col-sm-12">
+                                    <div class="col-sm-4"></div>
+                                    {% if total_method_available %}
+                                        <div class="col-sm-4 text-center">
+                                            <tamara-widget amount="{{ order_data.total_in_currency }}" inline-type="1"></tamara-widget>
+                                        </div>
+                                    {% endif %}
+                                    <div class="col-sm-4"></div>
+                                </div>
+                            {% endif %}
+                        </div>
+                        <div class="payment-type-content">
+                            {% for key,method in methods %}
+                                <div class="col-sm-12">
+                                    <div class="form-check">
+                                        {% if method.checked %}
+                                            <input type="radio" name="payment_type" class="form-check-input" id="{{ method.name }}" value="{{ method.name }}" checked>
+                                        {% else %}
+                                            <input type="radio" name="payment_type" class="form-check-input" id="{{ method.name }}" value="{{ method.name }}">
+                                        {% endif %}
+                                        <label for="{{ method.name }}" class="form-check-label"><img class="payment-icon" src="https://cdn.tamara.co/assets/svg/tamara-logo-badge-{{ language_code }}.svg" alt="Tamara">&nbsp;<b> {{ method.title }}</b></label>
+                                        <br />
+                                        {% if method.name == 'pay_by_later' %}
+                                            <label for="{{ method.name }}">
+                                                <a href="javascript:void(0)" class="tamara-product-widget tamara-v1" data-lang="{{ language_code }}" data-currency="{{ method.currency }}" data-country-code="{{ country_code }}" data-price="{{ order_data.total_in_currency }}" data-payment-type="paylater" data-pay-later-max-amount="{{ method.max_limit }}" data-disable-paylater="false" data-disable-product-limit="true" data-disable-installment="true" data-inject-template="false" data-installment-available-amount="{{ method.min_limit }}">{{ text_more_details }} </a>
+                                            </label>
+                                        {% else %}
+                                            {% if method.name == 'pay_next_month' %}
+                                                <div class="tamara-product-widget tamara-v1" data-lang="{{ language_code }}" data-currency="{{ method.currency }}" data-country-code="{{ country_code }}" data-price="{{ order_data.total_in_currency }}" data-payment-type="pay-next-month" data-disable-paylater="true" data-disable-installment="false" data-installment-available-amount="{{ method.min_limit }}"></div>
+                                            {% else %}
+                                                {% if method.name == 'pay_now' %}
+                                                    <div class="tamara_promo tamara-v2">
+                                                        <tamara-widget type="tamara-card-snippet" lang="{{ language_code }}" country="{{ country_code }}"></tamara-widget>
+                                                    </div>
+                                                {% else %}
+                                                    {% if total_installments_types > 1 %}
+                                                        <div id="tamara-installment-plan" class="tamara-installment-plan-widget tamara-v1" data-lang="{{ language_code }}" data-country-code="{{ country_code }}" data-price="{{ order_data.total_in_currency }}" data-currency="{{ method.currency }}" data-installment-minimum-amount="{{ method.min_limit }}" data-installment-maximum-amount="{{ method.max_limit }}" data-number-of-installments="{{ method.number_of_instalments }}" data-installment-available-amount="{{ method.min_limit }}"
+                                                        ></div>
+                                                    {% else %}
+                                                        <div class="tamara_promo tamara-v2">
+                                                            <tamara-widget amount="{{ order_data.total_in_currency }}" inline-type="3"></tamara-widget>
+                                                        </div>
+                                                    {% endif %}
+                                                {% endif %}
+                                            {% endif %}
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </section>
+                {% endif %}
+                <div class="form-group form-submit col-sm-12 text-center">
+                    <input id="button-confirm" type="button" value="{{ button_confirm }}" class="btn btn-primary submit-form tamara-button-confirm" />
+                </div>
+            </form>
+        </div>
+        {% if use_widget_version == 'v1' or use_widget_version == 'mixed' %}
+            {% if exists_pay_now == false %}
+                <script charset="utf-8" src="{{ tamara_widget_url }}?t={{ current_time }}"></script>
+                <script type="text/javascript">
+                    window.checkTamaraWidgetCount = 0;
+                    var existTamaraWidget = setInterval(function() {
+                        if (window.TamaraWidget) {
+                            window.TamaraWidget.init({ lang: '{{ language_code }}', currency: '{{ order_data.currency_code }}', publicKey: '{{ merchant_public_key }}' });
+                            window.TamaraWidget.render();
+                            clearInterval(existTamaraWidget);
+                        }
+                        window.checkTamaraWidgetCount += 1;
+                        if (window.checkTamaraWidgetCount > 15) {
+                            clearInterval(existTamaraWidget);
+                        }
+                    }, 300);
+                </script>
+            {% endif %}
+            {% if exists_pay_later_or_pay_next_month %}
+                <script charset="utf-8" src="{{ tamara_product_widget_url }}?t={{ current_time }}"></script>
+                <script type="text/javascript">
+                    var checkTamaraProductWidgetCount = 0;
+                    var existTamaraProductWidget = setInterval(function() {
+                        if (window.TamaraProductWidget) {
+                            window.TamaraProductWidget.init({ lang: '{{ language_code }}', currency: '{{ order_data.currency_code }}', publicKey: '{{ merchant_public_key }}' });
+                            window.TamaraProductWidget.render();
+                            clearInterval(existTamaraProductWidget);
+                        }
+                        checkTamaraProductWidgetCount += 1;
+                        if (checkTamaraProductWidgetCount > 33) {
+                            clearInterval(existTamaraProductWidget);
+                        }
+                    }, 300);
+                </script>
+            {% endif %}
+            {% if exists_pay_by_installments or exists_pay_in_x %}
+                <script charset="utf-8" src="{{ tamara_installments_plan_widget_url }}?t={{ current_time }}"></script>
+                <script type="text/javascript">
+                    var countExistTamaraInstallmentsPlan = 0;
+                    var existTamaraInstallmentsPlan = setInterval(function() {
+                        if ($('.tamara-installment-plan-widget').length) {
+                            if (window.TamaraInstallmentPlan) {
+                                window.TamaraInstallmentPlan.init({ lang: '{{ language_code }}', currency: '{{ order_data.currency_code }}', publicKey: '{{ merchant_public_key }}' });
+                                window.TamaraInstallmentPlan.render();
+                                clearInterval(existTamaraInstallmentsPlan);
+                            }
+                        }
+                        if (++countExistTamaraInstallmentsPlan > 33) {
+                            clearInterval(existTamaraInstallmentsPlan);
+                        }
+                    }, 300);
+                </script>
+            {% endif %}
+        {% endif %}
+        {% if use_widget_version == 'v2' or use_widget_version == 'mixed' %}
+            <script>
+                var tamaraWidgetConfig = {
+                    lang: '{{ language_code }}',
+                    country: '{{ country_code }}',
+                    publicKey: '{{ merchant_public_key }}',
+                    css: '.tamara-summary-widget__container {display:inline-block;}'
+                }
+            </script>
+            <script charset="utf-8" defer src="{{ information_widget_v2_url }}?t={{ current_time }}"></script>
+        {% endif %}
+    {% else %}
+        <p class="text-danger text-center font-weight-bold" style="font-weight: bold;">
+            {{ error_no_method_available }}
+        </p>
+    {% endif %}
+
+    <script type="text/javascript">
+        $('#button-confirm').on('click', function() {
+            $.ajax({
+                url: 'index.php?route=extension/tamarapay/payment/tamarapay.send',
+                type: 'post',
+                data: {
+                    'payment_type' : $('#tamara-payment-form input:checked').val(),
+                    'is_none_validated_method' : {{ is_none_validated_method }}
+                },
+                dataType: 'json',
+                beforeSend: function() {
+                    $('.payment-warning').hide();
+
+                    $('.payment-warning .message').text();
+
+                    $('#tamara-payment-form').find('*').removeClass('has-error');
+
+                    $('#button-confirm').button('loading').attr('disabled', true);
+                },
+                complete: function() {
+                    $('#button-confirm').button('reset');
+                },
+                success: function(json) {
+                    if (json['redirectUrl']) {
+                        window.location = json['redirectUrl'];
+                    }
+                    if (json['error']) {
+                        $('#error-area').css('display', 'block');
+                        $('#error-area').text(json['error']);
+                    }
+                    $('#button-confirm').button('reset');
+                }
+            });
+        });
+    </script>
+{% endif %}

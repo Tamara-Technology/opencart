@@ -1,0 +1,413 @@
+{{ header }}{{ column_left }}
+
+
+
+<div id="content">
+  <div class="page-header">
+    <div class="container-fluid">
+      <div class="float-end">
+        <button type="submit" form="form-payment" data-bs-toggle="tooltip" title="{{ button_save }}" class="btn btn-primary"><i class="fa-solid fa-save"></i></button>
+        <a href="{{ back }}" data-bs-toggle="tooltip" title="{{ button_back }}" class="btn btn-light"><i class="fa-solid fa-reply"></i></a></div>
+      <h1>{{ heading_title }}</h1>
+      <ol class="breadcrumb">
+        {% for breadcrumb in breadcrumbs %}
+          <li class="breadcrumb-item"><a href="{{ breadcrumb.href }}">{{ breadcrumb.text }}</a></li>
+        {% endfor %}
+      </ol>
+    </div>
+  </div>
+  <div class="container-fluid">
+
+    {% if is_using_latest_version is defined %}
+        {% if is_using_latest_version %}
+            <div class="alert alert-success"><p class="mb-0">You are using latest version, read more about extension <a title="Read more" href="{{ github.readme_link }}">here</a></p></div>
+        {% else %}
+            <div class="alert alert-danger"><p class="mb-0">You are using outdated version, please update <a title="Download" href="{{ github.download_link }}">here</a>, read more about extension <a title="Read more" href="{{ github.readme_link }}">here</a></p></div>
+        {% endif %}
+    {% endif %}
+
+    <div class="card">
+      <div class="card-header"><i class="fa-solid fa-pencil"></i> {{ text_edit }}</div>
+        <div class="card-body">
+            <form id="form-payment" action="{{ save }}" method="post" data-oc-toggle="ajax">
+                <div class="panel-group" id="tamara-payment-api-configurations">
+                    <div class="panel panel-default">
+                        <div class="panel-heading card-header border shadow-sm ">
+                            <h5 class="panel-title mb-0 "><a href="#collapse-api-configurations" data-bs-toggle="collapse"  class="accordion-toggle collapsed text-dark mb-0" aria-expanded="false">API Configurations <i class="fa fa-caret-down"></i></a></h4>
+                        </div>
+                        <div class="panel-collapse collapse" id="collapse-api-configurations" aria-expanded="false" style="height: 0px;">
+                            <div class="panel-body">
+                                <div class="row">
+                                    <div class="col-sm-12">
+
+                                        <div class="mt-4 form-group row">
+                                            <label class=" fw-bold text-bold mb-2 col-md-3 col-12 control-label" for="input-api-environment">{{ entry_api_environment }}</label>
+                                            <div class="col-md-9 col-12">
+                                                <select name="payment_tamarapay_api_environment" id="input-api-environment" class="form-control">
+                                                    {% if payment_tamarapay_api_environment == "1" %}
+                                                        <option value="1" selected="selected">{{ text_sandbox }}</option>
+                                                        <option value="2">{{ text_production }}</option>
+                                                    {% else %}
+                                                        <option value="1">{{ text_sandbox }}</option>
+                                                        <option value="2" selected="selected">{{ text_production }}</option>
+                                                    {% endif %}
+                                                </select>
+                                                <span>The sandbox environment is used for testing, not actual orders. Please make sure sandbox testing goes well before moving to production.</span>
+                                            </div>
+                                        </div>
+
+                                        <div class="mt-4 form-group row required">
+                                            <label class=" fw-bold text-bold mb-2 col-md-3 col-12 control-label" for="input-token">{{ entry_token }}</label>
+                                            <div class="col-md-9 col-12">
+                                                <textarea class="form-control" id="input-token" placeholder="{{ entry_token }}" rows="7" name="payment_tamarapay_token">{{ payment_tamarapay_token }}</textarea>
+                                                {% if error_token %}
+                                                    <div class="text-danger">{{ error_token }}</div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        <div class="mt-4 form-group row required">
+                                            <label class=" fw-bold text-bold mb-2 col-md-3 col-12 control-label" for="input-token-notification">{{ entry_token_notification }}</label>
+                                            <div class="col-md-9 col-12">
+                                                <input class="form-control" id="input-token-notification" type="text" name="payment_tamarapay_token_notification" value="{{ payment_tamarapay_token_notification }}"/>
+                                                {% if error_token_notification %}
+                                                    <div class="text-danger">{{ error_token_notification }}</div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        <div id="group-merchant-public-key" class="form-group mt-4 form-group row {{ payment_tamarapay_merchant_public_key_extra_class }}">
+                                            <label class=" fw-bold text-bold mb-2 col-md-3 col-12 control-label" for="input-merchant-public-key">{{ entry_merchant_public_key }}</label>
+                                            <div class="col-md-9 col-12">
+                                                <input id="input-merchant-public-key" name="payment_tamarapay_merchant_public_key" value="{{ payment_tamarapay_merchant_public_key }}" type="text" class="form-control" />
+                                                {% if error_merchant_public_key %}
+                                                    <div class="text-danger">{{ error_merchant_public_key }}</div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        <div class="mt-4 form-group row">
+                                            <label class=" fw-bold text-bold mb-2 col-md-3 col-12 control-label" for="input-trigger-actions-enabled">{{ entry_enable_trigger_actions }}</label>
+                                            <div class="col-md-9 col-12">
+                                                <select name="payment_tamarapay_trigger_actions_enabled" id="input-trigger-actions-enabled" class="form-control">
+                                                    {% if payment_tamarapay_trigger_actions_enabled %}
+                                                        <option value="1" selected="selected">{{ text_enabled }}</option>
+                                                        <option value="0">{{ text_disabled }}</option>
+                                                    {% else %}
+                                                        <option value="1">{{ text_enabled }}</option>
+                                                        <option value="0" selected="selected">{{ text_disabled }}</option>
+                                                    {% endif %}
+                                                </select>
+                                            </div>
+                                        </div>
+
+                                        <div class="mt-4 form-group row">
+                                            <label class=" fw-bold text-bold mb-2 col-md-3 col-12 control-label" for="input-checkout-success-url">{{ entry_merchant_success_url }}</label>
+                                            <div class="col-md-9 col-12">
+                                                <input id="input-checkout-success-url" name="payment_tamarapay_checkout_success_url" value="{{ payment_tamarapay_checkout_success_url }}" type="text" class="form-control" />
+                                                <span>If empty, Tamara will process this url automatically (Recommend)</span>
+                                            </div>
+                                        </div>
+
+                                        <div class="mt-4 form-group row">
+                                            <label class=" fw-bold text-bold mb-2 col-md-3 col-12 control-label" for="input-checkout-cancel-url">{{ entry_merchant_cancel_url }}</label>
+                                            <div class="col-md-9 col-12">
+                                                <input id="input-checkout-cancel-url" name="payment_tamarapay_checkout_cancel_url" value="{{ payment_tamarapay_checkout_cancel_url }}" type="text" class="form-control" />
+                                                <span>If empty, Tamara will process this url automatically (Recommend)</span>
+                                            </div>
+                                        </div>
+
+                                        <div class="mt-4 form-group row">
+                                            <label class=" fw-bold text-bold mb-2 col-md-3 col-12 control-label" for="input-checkout-failure-url">{{ entry_merchant_failure_url }}</label>
+                                            <div class="col-md-9 col-12">
+                                                <input id="input-checkout-failure-url" name="payment_tamarapay_checkout_failure_url" value="{{ payment_tamarapay_checkout_failure_url }}" type="text" class="form-control" />
+                                                <span>If empty, Tamara will process this url automatically (Recommend)</span>
+                                            </div>
+                                        </div>
+
+                                        <div class="mt-4 form-group row">
+                                            <label class=" fw-bold text-bold mb-2 col-md-3 col-12 control-label" for="input-tamara-success-page-enabled">{{ entry_enable_tamara_checkout_success_page}}</label>
+                                            <div class="col-md-9 col-12">
+                                                <select name="payment_tamarapay_enable_tamara_checkout_success_page" id="input-tamara-success-page-enabled" class="form-control">
+                                                    {% if payment_tamarapay_enable_tamara_checkout_success_page %}
+                                                        <option value="1" selected="selected">{{ text_enabled }}</option>
+                                                        <option value="0">{{ text_disabled }}</option>
+                                                    {% else %}
+                                                        <option value="1">{{ text_enabled }}</option>
+                                                        <option value="0" selected="selected">{{ text_disabled }}</option>
+                                                    {% endif %}
+                                                </select>
+                                                <b>This option is only available while checkout success redirect URL is empty</b>
+                                                <br />
+                                                <span>If disabled, we will use default checkout success page</span>
+                                            </div>
+                                        </div>
+
+                                        <div class="mt-4 form-group row">
+                                            <label class=" fw-bold text-bold mb-2 col-md-3 col-12 control-label" for="input-pdp-wg-exclude-product-ids">{{ entry_pdp_wg_exclude_product_ids }}</label>
+                                            <div class="col-md-9 col-12">
+                                                <input id="input-pdp-wg-exclude-product-ids" name="payment_tamarapay_pdp_wg_exclude_product_ids" value="{{ payment_tamarapay_pdp_wg_exclude_product_ids }}" type="text" class="form-control" />
+                                                <span>It also hides Tamara at checkout page if the customer has these products in their cart, each value is separated by comma (,)</span>
+                                            </div>
+                                        </div>
+
+                                        <div class="mt-4 form-group row">
+                                            <label class=" fw-bold text-bold mb-2 col-md-3 col-12 control-label" for="input-pdp-wg-exclude-category-ids">{{ entry_pdp_wg_exclude_category_ids }}</label>
+                                            <div class="col-md-9 col-12">
+                                                <input id="input-pdp-wg-exclude-category-ids" name="payment_tamarapay_pdp_wg_exclude_category_ids" value="{{ payment_tamarapay_pdp_wg_exclude_category_ids }}" type="text" class="form-control" />
+                                                <span>It also hides Tamara at the checkout page if the customer has products in these categories in their cart, each value is separated by comma (,)</span>
+                                            </div>
+                                        </div>
+
+                                        <div class="mt-4 form-group row">
+                                            <label class=" fw-bold text-bold mb-2 col-md-3 col-12 control-label" for="input-only-show-tamara-for-these-emails">{{ entry_only_show_for_these_customer }}</label>
+                                            <div class="col-md-9 col-12">
+                                                <input id="input-only-show-tamara-for-these-emails" name="payment_tamarapay_only_show_for_these_customer" value="{{ payment_tamarapay_only_show_for_these_customer }}" type="text" class="form-control" />
+                                                <span>Useful in case you want to limit the customers who can use Tamara, for example testing. Each email is separated by comma (,)</span>
+                                            </div>
+                                        </div>
+
+                                        <div class="mt-4 form-group row">
+                                            <div class="col-sm-12">
+                                                <button type="button" id="update-payment-config" class="btn btn-primary mt-3 mb-2">Pull new changes from Tamara / Flush cache</button>
+                                                <div id="update-payment-config-message" class="alert alert-success" style="display: none;"></span>
+                                            </div>
+                                        </div>
+
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="panel-group" id="tamara-payment-order-statuses">
+                    <div class="panel panel-default">
+                        <div class="panel-heading card-header border shadow-sm mt-4 text-dark">
+                            <h5 class="panel-title mb-0"><a href="#collapse-order-statuses" data-bs-toggle="collapse" class="accordion-toggle collapsed text-dark mb-0" aria-expanded="false">Checkout order statuses <i class="fa fa-caret-down"></i></a></h4>
+                        </div>
+                        <div class="panel-collapse collapse" id="collapse-order-statuses" aria-expanded="false" style="height: 0px;">
+                            <div class="panel-body">
+                                <div class="row">
+                                    <div class="col-sm-12">
+                                        <div class="mt-4 form-group row">
+                                            <label class=" fw-bold text-bold mb-2 col-md-3 col-12 control-label" for="input-order-status-success">{{ entry_order_status_success }}</label>
+                                            <div class="col-md-9 col-12">
+                                                <select name="payment_tamarapay_order_status_success_id" id="input-order-status-success" class="form-control">
+                                                    {% for order_status in order_statuses %}
+                                                        {% if order_status.order_status_id == payment_tamarapay_order_status_success_id %}
+                                                            <option value="{{ order_status.order_status_id }}" selected="selected">{{ order_status.name }}</option>
+                                                        {% else %}
+                                                            <option value="{{ order_status.order_status_id }}">{{ order_status.name }}</option>
+                                                        {% endif %}
+                                                    {% endfor %}
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div class="mt-4 form-group row">
+                                            <label class=" fw-bold text-bold mb-2 col-md-3 col-12 control-label" for="input-order-status-failure">{{ entry_order_status_failure }}</label>
+                                            <div class="col-md-9 col-12">
+                                                <select name="payment_tamarapay_order_status_failure_id" id="input-order-status-failure" class="form-control">
+                                                    {% for order_status in order_statuses %}
+                                                        {% if order_status.order_status_id == payment_tamarapay_order_status_failure_id %}
+                                                            <option value="{{ order_status.order_status_id }}" selected="selected">{{ order_status.name }}</option>
+                                                        {% else %}
+                                                            <option value="{{ order_status.order_status_id }}">{{ order_status.name }}</option>
+                                                        {% endif %}
+                                                    {% endfor %}
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div class="mt-4 form-group row">
+                                            <label class=" fw-bold text-bold mb-2 col-md-3 col-12 control-label" for="input-order-status-canceled">{{ entry_order_status_canceled }}</label>
+                                            <div class="col-md-9 col-12">
+                                                <select name="payment_tamarapay_order_status_canceled_id" id="input-order-status-canceled" class="form-control">
+                                                    {% for order_status in order_statuses %}
+                                                        {% if order_status.order_status_id == payment_tamarapay_order_status_canceled_id %}
+                                                            <option value="{{ order_status.order_status_id }}" selected="selected">{{ order_status.name }}</option>
+                                                        {% else %}
+                                                            <option value="{{ order_status.order_status_id }}">{{ order_status.name }}</option>
+                                                        {% endif %}
+                                                    {% endfor %}
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div class="mt-4 form-group row mb-5">
+                                            <label class=" fw-bold text-bold mb-2 col-md-3 col-12 control-label" for="input-order-status-authorised">{{ entry_order_status_authorised }}</label>
+                                            <div class="col-md-9 col-12">
+                                                <select name="payment_tamarapay_order_status_authorised_id" id="input-order-status-authorised" class="form-control">
+                                                    {% for order_status in order_statuses %}
+                                                        {% if order_status.order_status_id == payment_tamarapay_order_status_authorised_id %}
+                                                            <option value="{{ order_status.order_status_id }}" selected="selected">{{ order_status.name }}</option>
+                                                        {% else %}
+                                                            <option value="{{ order_status.order_status_id }}">{{ order_status.name }}</option>
+                                                        {% endif %}
+                                                    {% endfor %}
+                                                </select>
+                                            </div>
+                                        </div>
+
+
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="panel-group" id="tamara-payment-capture-order-statuses">
+                    <div class="panel panel-default">
+                        <div class="panel-heading card-header border shadow-sm mt-4 text-dark">
+                            <h5 class="panel-title mb-0"><a href="#collapse-capture-order-statuses" data-bs-toggle="collapse"  class="accordion-toggle collapsed text-dark mb-0" aria-expanded="false">Tamara trigger configuration <i class="fa fa-caret-down"></i></a></h4>
+                        </div>
+                        <div class="panel-collapse collapse" id="collapse-capture-order-statuses" aria-expanded="false" style="height: 0px;">
+                            <div class="panel-body">
+                                <div class="row">
+                                    <div class="col-sm-12">
+                                        <div class="mt-4 form-group row">
+                                            <label class="col-sm-6 fw-bold mb-2 control-label" for="input-capture-order-status">{{ entry_capture_order_status }}</label>
+                                            <div class="col-sm-6">
+                                                <select name="payment_tamarapay_capture_order_status_id" id="input-capture-order-status" class="form-control">
+                                                    {% for order_status in order_statuses %}
+                                                        {% if order_status.order_status_id == payment_tamarapay_capture_order_status_id %}
+                                                            <option value="{{ order_status.order_status_id }}" selected="selected">{{ order_status.name }}</option>
+                                                        {% else %}
+                                                            <option value="{{ order_status.order_status_id }}">{{ order_status.name }}</option>
+                                                        {% endif %}
+                                                    {% endfor %}
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-sm-12">
+                                        <div class="mt-4 form-group row">
+                                            <label class="col-sm-6 fw-bold mb-2 control-label" for="input-cancel-order-status">{{ entry_cancel_order_status }}</label>
+                                            <div class="col-sm-6">
+                                                <select name="payment_tamarapay_cancel_order_status_id" id="input-cancel-order-status" class="form-control">
+                                                    {% for order_status in order_statuses %}
+                                                        {% if order_status.order_status_id == payment_tamarapay_cancel_order_status_id %}
+                                                            <option value="{{ order_status.order_status_id }}" selected="selected">{{ order_status.name }}</option>
+                                                        {% else %}
+                                                            <option value="{{ order_status.order_status_id }}">{{ order_status.name }}</option>
+                                                        {% endif %}
+                                                    {% endfor %}
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+
+                <div class="panel-group" id="tamara-payment-general-configuration">
+                    <div class="panel panel-default">
+                        <div class="panel-heading card-header border shadow-sm mt-4">
+                            <h5 class="panel-title mb-0">General configuration</h5>
+                        </div>
+                        <div class="panel-body">
+                            <div class="mt-4 form-group row">
+                                <label class=" fw-bold text-bold mb-2 col-md-3 col-12 control-label" for="input-debug-enabled">{{ entry_enable_debug }}</label>
+                                <div class="col-md-9 col-12">
+                                    <select name="payment_tamarapay_debug" id="input-debug-enabled" class="form-control">
+                                        {% if payment_tamarapay_debug %}
+                                            <option value="1" selected="selected">{{ text_enabled }}</option>
+                                            <option value="0">{{ text_disabled }}</option>
+                                        {% else %}
+                                            <option value="1">{{ text_enabled }}</option>
+                                            <option value="0" selected="selected">{{ text_disabled }}</option>
+                                        {% endif %}
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="mt-4 form-group row">
+                                <label class=" fw-bold text-bold mb-2 col-md-3 col-12 control-label" for="input-geo-zone">{{ entry_geo_zone }}</label>
+                                <div class="col-md-9 col-12">
+                                    <select name="payment_tamarapay_geo_zone_id" id="input-geo-zone" class="form-control">
+                                        <option value="0">{{ text_all_zones }}</option>
+                                        {% for geo_zone in geo_zones %}
+                                            {% if geo_zone.geo_zone_id == payment_tamarapay_geo_zone_id %}
+                                                <option value="{{ geo_zone.geo_zone_id }}" selected="selected">{{ geo_zone.name }}</option>
+                                            {% else %}
+                                                <option value="{{ geo_zone.geo_zone_id }}">{{ geo_zone.name }}</option>
+                                            {% endif %}
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="mt-4 form-group row">
+                                <label class=" fw-bold text-bold mb-2 col-md-3 col-12 control-label" for="input-status">{{ entry_status }}</label>
+                                <div class="col-md-9 col-12">
+                                    <select name="payment_tamarapay_status" id="input-status" class="form-control">
+                                        {% if payment_tamarapay_status %}
+                                            <option value="1" selected="selected">{{ text_enabled }}</option>
+                                            <option value="0">{{ text_disabled }}</option>
+                                        {% else %}
+                                            <option value="1">{{ text_enabled }}</option>
+                                            <option value="0" selected="selected">{{ text_disabled }}</option>
+                                        {% endif %}
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="mt-4 form-group row">
+                                <label class=" fw-bold text-bold mb-2 col-md-3 col-12 control-label" for="input-sort-order">{{ entry_sort_order }}</label>
+                                <div class="col-md-9 col-12">
+                                    <input type="text" name="payment_tamarapay_sort_order" value="{{ payment_tamarapay_sort_order }}" placeholder="{{ entry_sort_order }}" id="input-sort-order" class="form-control" />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </form>
+          </div>
+        </div>
+    </div>
+  </div>
+</div>
+
+
+
+
+
+{{ footer }}
+
+<script type="text/javascript"><!--
+    {# $('.date').datetimepicker({
+        language: '{{ datepicker }}',
+        pickTime: false
+    }); #}
+
+    $('#update-payment-config').on('click', function() {
+        $.ajax({
+            url: 'index.php?route=extension/tamarapay/payment/tamarapay.flushTamaraCache&user_token={{ user_token }}',
+            type: 'get',
+            contentType: "application/json",
+            dataType: 'json',
+            data: {},
+            beforeSend: function() {
+                $('#update-payment-config').attr("disabled", true);
+            },
+            complete: function() {
+                $('#update-payment-config').attr("disabled", false);
+            },
+            success: function(rs) {
+                if (rs.success == true) {
+                    $('#update-payment-config-message').text("Tamara cache has been flushed, applied new changes").removeClass("text-danger").addClass("text-success").show();
+                } else {
+                    let msg = "Cannot flush payment types";
+                    if (rs.error) {
+                        msg += (", error: " + rs.error);
+                    } else {
+                        msg += ", please check log file";
+                    }
+                    $('#update-payment-config-message').text(msg).removeClass("text-success").addClass("text-danger").show();
+                }
+
+                $('#update-payment-config').attr("disabled", false);
+            }
+        });
+    });
+//--></script>
+
