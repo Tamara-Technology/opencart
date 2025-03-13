@@ -24,7 +24,7 @@
                                 <div class="form-check">
                                     <input type="radio" name="payment_type" class="form-check-input" id="<?php echo $first_method['name']; ?>" value="<?php echo $first_method['name']; ?>" checked="true" style="display: none" />
                                     <div class="tamara_promo" style="text-align: center;">
-                                        <tamara-widget amount="<?php echo $order_data['total_in_currency'] ?>" inline-type="3"></tamara-widget>
+                                        <tamara-widget amount="<?php echo $order_data['total_in_currency'] ?>" inline-type="6" config='{"badgePosition":"","showExtraContent":"full","hidePayInX":false}'></tamara-widget>
                                     </div>
                                 </div>
                             </div>
@@ -74,7 +74,7 @@
                                                     <div id="tamara-installment-plan" class="tamara-installment-plan-widget tamara-v1" data-lang="<?php echo $language_code; ?>" data-country-code="<?php echo $country_code; ?>" data-price="<?php echo $order_data['total_in_currency']; ?>" data-currency="<?php echo $method['currency']; ?>" data-installment-minimum-amount="<?php echo $method['min_limit']; ?>" data-installment-maximum-amount="<?php echo $method['max_limit']; ?>" data-number-of-installments="<?php echo $method['number_of_instalments']; ?>" data-installment-available-amount="<?php echo $method['min_limit']; ?>"></div>
                                                     <?php else: ?>
                                                     <div class="tamara_promo tamara-v2">
-                                                        <tamara-widget amount="<?php echo $order_data['total_in_currency'] ?>" inline-type="3"></tamara-widget>
+                                                        <tamara-widget amount="<?php echo $order_data['total_in_currency'] ?>" inline-type="6" config='{"badgePosition":"","showExtraContent":"full","hidePayInX":false}'></tamara-widget>
                                                     </div>
                                                     <?php endif; ?>
                                                 <?php endif; ?>

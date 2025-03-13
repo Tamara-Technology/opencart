@@ -24,7 +24,7 @@ class ModelExtensionPaymentTamarapay extends Model
     /**
      * Define version of extension
      */
-    public const VERSION = '1.7.9';
+    public const VERSION = '1.8.0';
 
     public const
         MAX_LIMIT = 'max_limit',
