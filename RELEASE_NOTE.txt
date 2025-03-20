@@ -1,3 +1,6 @@
+Version 1.5.0
+- New:
+    - Change widget type on the checkout page
 Version 1.4.9
 - New:
     - Improve code
