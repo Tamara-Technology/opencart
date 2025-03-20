@@ -1,3 +1,6 @@
+Version 1.1.0
+- New:
+    - Change widget type on the checkout page
 Version 1.0.0
 - New:
     - First release for Opencart 4.0.x

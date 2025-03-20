@@ -122,8 +122,8 @@ class Tamarapay extends \Opencart\System\Engine\Controller {
         $githubVersionLink = "https://raw.githubusercontent.com/tamara-solution/opencart/v40x/VERSION.txt";
         $githubVersion = @file_get_contents($githubVersionLink);
         if ($githubVersion) {
-            $downloadLink = "https://github.com/tamara-solution/opencart/archive/refs/heads/master.zip";
-            $readmeLink = "https://github.com/tamara-solution/opencart/blob/master/README.md";
+            $downloadLink = "https://github.com/Tamara-Technology/opencart/archive/refs/heads/v40x.zip";
+            $readmeLink = "https://github.com/Tamara-Technology/opencart/blob/v40x/README.md";
             $data['github'] = ['download_link' => $downloadLink, 'readme_link' => $readmeLink];
             if (version_compare($data['extension_version'], $githubVersion, '<')) {
                 $data['is_using_latest_version'] = false;

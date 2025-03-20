@@ -8,7 +8,7 @@
       <div class="float-end">
         <button type="submit" form="form-payment" data-bs-toggle="tooltip" title="{{ button_save }}" class="btn btn-primary"><i class="fa-solid fa-save"></i></button>
         <a href="{{ back }}" data-bs-toggle="tooltip" title="{{ button_back }}" class="btn btn-light"><i class="fa-solid fa-reply"></i></a></div>
-      <h1>{{ heading_title }}</h1>
+      <h1>{{ heading_title }} version {{ extension_version }}</h1>
       <ol class="breadcrumb">
         {% for breadcrumb in breadcrumbs %}
           <li class="breadcrumb-item"><a href="{{ breadcrumb.href }}">{{ breadcrumb.text }}</a></li>
@@ -20,9 +20,9 @@
 
     {% if is_using_latest_version is defined %}
         {% if is_using_latest_version %}
-            <div class="alert alert-success"><p class="mb-0">You are using latest version, read more about extension <a title="Read more" href="{{ github.readme_link }}">here</a></p></div>
+            <div class="alert alert-success"><p class="mb-0">You are using a latest version, read more about extension <a title="Read more" href="{{ github.readme_link }}">here</a></p></div>
         {% else %}
-            <div class="alert alert-danger"><p class="mb-0">You are using outdated version, please update <a title="Download" href="{{ github.download_link }}">here</a>, read more about extension <a title="Read more" href="{{ github.readme_link }}">here</a></p></div>
+            <div class="alert alert-danger"><p class="mb-0">You are using an outdated version, please update <a title="Download" href="{{ github.download_link }}">here</a>, read more about extension <a title="Read more" href="{{ github.readme_link }}">here</a></p></div>
         {% endif %}
     {% endif %}
 

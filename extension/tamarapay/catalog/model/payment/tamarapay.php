@@ -34,7 +34,7 @@ class Tamarapay extends \Opencart\System\Engine\Model
     /**
      * Define version of extension
      */
-    public const VERSION = '1.8.9';
+    public const VERSION = '1.1.0';
 
     public const
         MAX_LIMIT = 'max_limit',
