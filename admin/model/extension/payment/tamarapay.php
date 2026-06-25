@@ -9,15 +9,16 @@ class ModelExtensionPaymentTamarapay extends Model
     /**
      * Define version of extension
      */
-    public const VERSION = '1.9.1';
+    public const VERSION = '1.10.0';
 
     /**
      * Define schema version
      */
-    public const SCHEMA_VERSION = '1.8.0';
+    public const SCHEMA_VERSION = '1.9.0';
 
     private const TAMARA_EVENT_ORDER_STATUS_CHANGE_CODE = 'tamara_order_status_change';
     private const TAMARA_EVENT_ADD_PROMO_WIDGET_CODE = 'tamara_promo_wg';
+    private const TAMARA_EVENT_PRE_CHECKOUT_UNAVAILABLE_CODE = 'tamara_pre_checkout_unavailable';
 
     const WEBHOOK_URL = 'index.php?route=extension/payment/tamarapay/webhook', ALLOWED_WEBHOOKS = ['order_expired', 'order_declined'];
 
@@ -206,6 +207,7 @@ class ModelExtensionPaymentTamarapay extends Model
         $this->load->model('setting/event');
         $this->model_setting_event->addEvent(self::TAMARA_EVENT_ORDER_STATUS_CHANGE_CODE, 'catalog/model/checkout/order/addOrderHistory/after', 'extension/payment/tamarapay/handleOrderStatusChange', 1);
         $this->model_setting_event->addEvent(self::TAMARA_EVENT_ADD_PROMO_WIDGET_CODE, 'catalog/view/product/product/after', 'extension/payment/tamarapay/addPromoWidgetForProduct', 1, 999);
+        $this->model_setting_event->addEvent(self::TAMARA_EVENT_PRE_CHECKOUT_UNAVAILABLE_CODE, 'catalog/view/checkout/payment_method/after', 'extension/payment/tamarapay/renderPreCheckoutUnavailableNotice', 1, 1);
     }
 
     public function uninstall()
@@ -227,6 +229,7 @@ class ModelExtensionPaymentTamarapay extends Model
         $this->load->model('setting/event');
         $this->model_setting_event->deleteEvent(self::TAMARA_EVENT_ORDER_STATUS_CHANGE_CODE);
         $this->model_setting_event->deleteEvent(self::TAMARA_EVENT_ADD_PROMO_WIDGET_CODE);
+        $this->model_setting_event->deleteEvent(self::TAMARA_EVENT_PRE_CHECKOUT_UNAVAILABLE_CODE);
     }
 
     /**
@@ -418,7 +421,7 @@ class ModelExtensionPaymentTamarapay extends Model
         $themeDir = sprintf("%sview%stheme%s", DIR_CATALOG, DIRECTORY_SEPARATOR, DIRECTORY_SEPARATOR);
         $themes = glob($themeDir . '*' , GLOB_ONLYDIR);
         $defaultThemePaymentDir = $themeDir . sprintf("default%stemplate%sextension%spayment%s", DIRECTORY_SEPARATOR, DIRECTORY_SEPARATOR, DIRECTORY_SEPARATOR, DIRECTORY_SEPARATOR);
-        $needToCopies = ["tamarapay.twig", "tamarapay_success.twig"];
+        $needToCopies = ["tamarapay.twig", "tamarapay_success.twig", "tamarapay_pre_checkout_unavailable.twig"];
         foreach ($themes as $theme) {
             if ($this->endsWith($theme, "default")) {
                 continue;

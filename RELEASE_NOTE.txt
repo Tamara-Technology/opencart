@@ -1,3 +1,6 @@
+Version 1.9.2
+- New:
+    - Add Pre-check API
 Version 1.9.1
 - New:
     - Change widget type on the checkout page
