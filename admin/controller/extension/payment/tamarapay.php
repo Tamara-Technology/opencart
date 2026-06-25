@@ -535,6 +535,12 @@ class ControllerExtensionPaymentTamarapay extends Controller {
         $this->model_extension_event->addEvent('tamara_promo_wg_cart', 'catalog/view/*/template/checkout/cart/after', 'extension/payment/tamarapay/addPromoWidgetForCartPage');
     }
 
+    private function addEventForPreCheckoutUnavailableNotice() {
+        $this->load->model('setting/event');
+        $this->model_setting_event->deleteEventByCode('tamara_pre_checkout_unavailable');
+        $this->model_setting_event->addEvent('tamara_pre_checkout_unavailable', 'catalog/view/checkout/payment_method/after', 'extension/payment/tamarapay/renderPreCheckoutUnavailableNotice', 1, 1);
+    }
+
     public function deleteDir($dir) {
         $it = new RecursiveDirectoryIterator($dir, RecursiveDirectoryIterator::SKIP_DOTS);
         $files = new RecursiveIteratorIterator($it,
@@ -610,6 +616,10 @@ class ControllerExtensionPaymentTamarapay extends Controller {
             if (version_compare($this->contextSchemaVersion, '1.8.0', '<')) {
                 $this->addEventToShowPromoWidgetOnCartPage();
                 $this->updateSchemaVersion("1.8.0");
+            }
+            if (version_compare($this->contextSchemaVersion, '1.9.0', '<')) {
+                $this->addEventForPreCheckoutUnavailableNotice();
+                $this->updateSchemaVersion("1.9.0");
             }
         }
         return;

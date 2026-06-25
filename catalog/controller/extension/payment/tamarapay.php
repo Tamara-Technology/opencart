@@ -76,6 +76,10 @@ class ControllerExtensionPaymentTamarapay extends Controller
             $this->load->language('extension/payment/tamarapay');
             $this->load->model('extension/payment/tamarapay');
 
+            if ($this->model_extension_payment_tamarapay->isPreCheckoutUnavailable()) {
+                throw new \Exception($this->model_extension_payment_tamarapay->getPreCheckoutNotAvailableMessage());
+            }
+
             //validate data
             $orderData = $this->model_extension_payment_tamarapay->getOrder($this->model_extension_payment_tamarapay->getOrderIdFromSession());
             $countryCode = $this->model_extension_payment_tamarapay->getOrderCountryCode($orderData);
@@ -466,6 +470,60 @@ class ControllerExtensionPaymentTamarapay extends Controller
             $output = substr_replace($output, $widgetHtml, $matches[0][1], 0);
         }
         return $output;
+    }
+
+    public function renderPreCheckoutUnavailableNotice($route, $data, $output) {
+        $this->load->model('extension/payment/tamarapay');
+        if (!$this->model_extension_payment_tamarapay->isPreCheckoutUnavailable()) {
+            return null;
+        }
+
+        if (strpos($output, 'value="tamarapay"') === false) {
+            return null;
+        }
+
+        $assets = '<style>.tamara-pre-checkout-unavailable label{opacity:.55;cursor:not-allowed;pointer-events:none;}'
+            . '.tamara-pre-checkout-inline{display:inline-block;vertical-align:middle;line-height:1.4;}'
+            . '.tamara-pre-checkout-inline .payment-icon{vertical-align:middle;}'
+            . '.tamara-pre-checkout-inline small{vertical-align:middle;}</style>'
+            . '<script>(function(){var t=document.querySelector(\'input[name="payment_method"][value="tamarapay"]\');'
+            . 'if(!t||!t.disabled)return;t.checked=false;var e=document.querySelectorAll(\'input[name="payment_method"]:not(:disabled)\');'
+            . 'if(e.length)e[0].checked=true;})();</script>';
+
+        $modified = preg_replace(
+            '/<div class="radio">\s*<label>[\s\S]*?<input type="radio" name="payment_method" value="tamarapay"[^>]*\/?>[\s\S]*?<\/label>\s*<\/div>/',
+            '<div class="radio tamara-pre-checkout-unavailable"><label class="text-muted"><input type="radio" name="payment_method" value="tamarapay" disabled="disabled">'
+            . $this->model_extension_payment_tamarapay->getTamaraUnavailableNoticeTitle()
+            . '</label></div>',
+            $output,
+            1,
+            $count
+        );
+
+        if ($count > 0) {
+            return $modified . $assets;
+        }
+
+        $modified = preg_replace(
+            '/(<input type="radio" name="payment_method" value="tamarapay")([^>]*>)/',
+            '<input type="radio" name="payment_method" value="tamarapay" disabled="disabled">',
+            $output,
+            1,
+            $count
+        );
+
+        if ($count > 0) {
+            $modified = preg_replace(
+                '/(<div class="radio">)(\s*<label>)(\s*<input type="radio" name="payment_method" value="tamarapay" disabled="disabled">)/',
+                '<div class="radio tamara-pre-checkout-unavailable"><label class="text-muted">$3',
+                $modified,
+                1
+            );
+
+            return $modified . $assets;
+        }
+
+        return $output . $assets;
     }
 
     public function getWidgetHtml($price) {

@@ -13,7 +13,9 @@ use TMS\Tamara\Model\Order\OrderItem;
 use TMS\Tamara\Model\Order\OrderItemCollection;
 use TMS\Tamara\Model\Payment\Capture;
 use TMS\Tamara\Model\ShippingInfo;
+use TMS\Tamara\Request\Checkout\CheckPaymentOptionsAvailabilityRequest;
 use TMS\Tamara\Request\Checkout\CreateCheckoutRequest;
+use TMS\Tamara\Model\Checkout\PaymentOptionsAvailability;
 use TMS\Tamara\Request\Order\AuthoriseOrderRequest;
 use TMS\Tamara\Request\Order\CancelOrderRequest;
 use TMS\Tamara\Request\Payment\CaptureRequest;
@@ -24,7 +26,7 @@ class ModelExtensionPaymentTamarapay extends Model
     /**
      * Define version of extension
      */
-    public const VERSION = '1.8.0';
+    public const VERSION = '1.9.0';
 
     public const
         MAX_LIMIT = 'max_limit',
@@ -76,6 +78,18 @@ class ModelExtensionPaymentTamarapay extends Model
     ];
 
     const API_REQUEST_TIMEOUT = 30; //in seconds
+    const PRE_CHECKOUT_ELIGIBILITY_TIMEOUT_MS = 200;
+    const PRE_CHECKOUT_ELIGIBILITY_SANDBOX_TIMEOUT_MS = 3000;
+    const PRE_CHECKOUT_ELIGIBILITY_ENDPOINT = '/pre-checkout/v1/eligibility';
+    const PRE_CHECKOUT_ELIGIBILITY_FALLBACK_EMAIL = 'precheck-fallback@example.com';
+    const PRE_CHECKOUT_ELIGIBILITY_SKIPPED = 'skipped';
+    const PRE_CHECKOUT_ELIGIBILITY_ELIGIBLE = 'eligible';
+    const PRE_CHECKOUT_ELIGIBILITY_INELIGIBLE = 'ineligible';
+    const PRE_CHECKOUT_ELIGIBILITY_TIMEOUT = 'timeout';
+    const PRE_CHECKOUT_UNAVAILABLE_MESSAGE_EN = 'Tamara option is not available right now.';
+    const PRE_CHECKOUT_UNAVAILABLE_MESSAGE_AR = 'خيار تمارا غير متاح حالياً.';
+
+    private static $preCheckoutUnavailableViewEventRegistered = false;
 
     private $orders = [];
     private $tamaraOrders = [];
@@ -115,10 +129,160 @@ class ModelExtensionPaymentTamarapay extends Model
             return [];
         }
 
-        //get methods for checkout page and save it to session
+        $this->registerPreCheckoutUnavailableViewEvent();
+        $this->ensurePreCheckoutUnavailableEventInDatabase();
+
+        $currency = $this->getCurrencyCodeFromSession();
+        $orderTotal = $this->getOrderTotalFromSession();
+        $phoneNumber = $this->normalizePhoneNumber($this->getCustomerPhoneNumberFromSession(), $currency);
+        $this->clearStalePreCheckoutEligibilityCache($phoneNumber, $orderTotal, $currency);
+
+        if ($phoneNumber !== '') {
+            $eligibility = $this->checkPreCheckoutEligibility(
+                $orderTotal,
+                $currency,
+                $phoneNumber,
+                $this->getCustomerEmailFromSession()
+            );
+
+            if ($eligibility === self::PRE_CHECKOUT_ELIGIBILITY_INELIGIBLE) {
+                unset($this->session->data['tamara_methods_for_checkout_page']);
+                $this->setPreCheckoutUnavailableNotice();
+                return $this->getTamaraUnavailableMethodData();
+            }
+        }
+
+        $this->clearPreCheckoutUnavailableNotice();
         $availableMethods = $this->getPaymentMethodsForCheckoutPage();
-        $this->session->data['tamara_methods_for_checkout_page'] = $availableMethods;
-        return $this->getTamaraMethodData($availableMethods);
+        if (!empty($availableMethods)) {
+            $this->session->data['tamara_methods_for_checkout_page'] = $availableMethods;
+            return $this->getTamaraMethodData($availableMethods);
+        }
+
+        if (
+            $phoneNumber !== ''
+            && isset($eligibility)
+            && in_array($eligibility, [self::PRE_CHECKOUT_ELIGIBILITY_ELIGIBLE, self::PRE_CHECKOUT_ELIGIBILITY_TIMEOUT], true)
+        ) {
+            $languageCode = $this->getLanguageCodeFromSession();
+            $this->load->language('extension/payment/tamarapay');
+
+            return [
+                'code' => 'tamarapay',
+                'title' => '<img class="payment-icon" src="https://cdn.tamara.co/assets/svg/tamara-logo-badge-'. $languageCode .'.svg" alt="Tamara">&nbsp;' . $this->language->get('text_title_normal'),
+                'sort_order' => $this->config->get('payment_tamarapay_sort_order'),
+            ];
+        }
+
+        return [];
+    }
+
+    private function getTamaraUnavailableMethodData() {
+        return [
+            'code' => 'tamarapay',
+            'title' => $this->getTamaraUnavailableNoticeTitle(),
+            'sort_order' => $this->config->get('payment_tamarapay_sort_order'),
+        ];
+    }
+
+    public function getTamaraUnavailableNoticeTitle() {
+        $languageCode = $this->getLanguageCodeFromSession();
+        $message = $this->getPreCheckoutNotAvailableMessage();
+
+        return '<span class="tamara-pre-checkout-inline"><img class="payment-icon" src="https://cdn.tamara.co/assets/svg/tamara-logo-badge-'. $languageCode .'.svg" alt="Tamara" style="vertical-align:middle;">&nbsp;<small class="text-muted" style="vertical-align:middle;">' . $message . '</small></span>';
+    }
+
+    public function setPreCheckoutUnavailableNotice() {
+        $this->session->data['tamara_pre_checkout_unavailable'] = true;
+    }
+
+    public function clearPreCheckoutUnavailableNotice() {
+        unset($this->session->data['tamara_pre_checkout_unavailable']);
+    }
+
+    public function isPreCheckoutUnavailable() {
+        return !empty($this->session->data['tamara_pre_checkout_unavailable']);
+    }
+
+    public function getPreCheckoutNotAvailableMessage() {
+        $this->load->language('extension/payment/tamarapay');
+        $message = $this->language->get('text_pre_checkout_not_available');
+
+        if ($message === 'text_pre_checkout_not_available') {
+            return $this->getLanguageCodeFromSession() === 'ar'
+                ? self::PRE_CHECKOUT_UNAVAILABLE_MESSAGE_AR
+                : self::PRE_CHECKOUT_UNAVAILABLE_MESSAGE_EN;
+        }
+
+        return $message;
+    }
+
+    private function registerPreCheckoutUnavailableViewEvent() {
+        if (self::$preCheckoutUnavailableViewEventRegistered) {
+            return;
+        }
+
+        self::$preCheckoutUnavailableViewEventRegistered = true;
+        $this->event->register(
+            'view/checkout/payment_method/after',
+            new Action('extension/payment/tamarapay/renderPreCheckoutUnavailableNotice'),
+            1
+        );
+    }
+
+    private function clearStalePreCheckoutEligibilityCache($phoneNumber, $orderAmount, $currency) {
+        $contextKey = 'tamara_pre_checkout_eligibility_context';
+        $context = $phoneNumber . '|' . $orderAmount . '|' . $currency;
+
+        if (isset($this->session->data[$contextKey]) && $this->session->data[$contextKey] === $context) {
+            return;
+        }
+
+        foreach (array_keys($this->session->data) as $key) {
+            if ($key === $contextKey) {
+                continue;
+            }
+            if (strpos($key, 'tamara_pre_checkout_eligibility_') === 0) {
+                unset($this->session->data[$key]);
+            }
+        }
+
+        $this->session->data[$contextKey] = $context;
+    }
+
+    private function parsePreCheckoutEligibilityFlag($value) {
+        if (is_bool($value)) {
+            return $value;
+        }
+
+        if (is_numeric($value)) {
+            return (int) $value === 1;
+        }
+
+        $normalized = strtolower(trim(strval($value)));
+        if (in_array($normalized, ['1', 'true', 'yes'], true)) {
+            return true;
+        }
+        if (in_array($normalized, ['0', 'false', 'no', ''], true)) {
+            return false;
+        }
+
+        return filter_var($value, FILTER_VALIDATE_BOOLEAN);
+    }
+
+    private function ensurePreCheckoutUnavailableEventInDatabase() {
+        static $checked = false;
+        if ($checked) {
+            return;
+        }
+        $checked = true;
+
+        $query = $this->db->query("SELECT event_id FROM `" . DB_PREFIX . "event` WHERE `code` = 'tamara_pre_checkout_unavailable' LIMIT 1");
+        if ($query->num_rows) {
+            return;
+        }
+
+        $this->db->query("INSERT INTO `" . DB_PREFIX . "event` SET `code` = 'tamara_pre_checkout_unavailable', `trigger` = 'catalog/view/checkout/payment_method/after', `action` = 'extension/payment/tamarapay/renderPreCheckoutUnavailableNotice', `status` = '1', `sort_order` = '1'");
     }
 
     private function getTamaraMethodData($availableMethods) {
@@ -146,6 +310,158 @@ class ModelExtensionPaymentTamarapay extends Model
             'terms' => ('<a href="'. $termAndConditionLink .'" target="_blank">'. $this->language->get("text_terms_and_conditions") .'</a>'),
             'sort_order' => $this->config->get('tamarapay_sort_order'),
         ];
+    }
+
+    /**
+     * Calls Tamara Pre-checkout Eligibility API before showing Tamara at checkout.
+     *
+     * @return string skipped|eligible|ineligible|timeout
+     */
+    public function checkPreCheckoutEligibility($orderAmount, $currency, $phoneNumber, $email = '') {
+        $phoneNumber = $this->normalizePhoneNumber($phoneNumber, $currency);
+        if ($phoneNumber === '') {
+            return self::PRE_CHECKOUT_ELIGIBILITY_SKIPPED;
+        }
+
+        $email = $this->resolvePreCheckoutEligibilityEmail($email);
+
+        $cacheKey = 'tamara_pre_checkout_eligibility_' . md5($phoneNumber . $orderAmount . $currency);
+        if (isset($this->session->data[$cacheKey])) {
+            return $this->session->data[$cacheKey];
+        }
+
+        $url = rtrim($this->getApiUrl(), '/') . self::PRE_CHECKOUT_ELIGIBILITY_ENDPOINT;
+        $payload = json_encode([
+            'order' => [
+                'amount' => (float) $orderAmount,
+                'currency' => $currency,
+            ],
+            'customer' => [
+                'phone' => $phoneNumber,
+                'email' => $email,
+            ],
+        ]);
+
+        $timeoutMs = $this->getPreCheckoutEligibilityTimeoutMs();
+        $startedAt = microtime(true);
+        $ch = curl_init($url);
+        curl_setopt_array($ch, [
+            CURLOPT_POST => true,
+            CURLOPT_POSTFIELDS => $payload,
+            CURLOPT_HTTPHEADER => [
+                'Authorization: Bearer ' . $this->config->get('payment_tamarapay_token'),
+                'Content-Type: application/json',
+                'Accept: application/json',
+            ],
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_NOSIGNAL => true,
+            CURLOPT_TIMEOUT_MS => $timeoutMs,
+        ]);
+
+        $responseBody = curl_exec($ch);
+        $curlError = curl_errno($ch);
+        $curlErrorMessage = curl_error($ch);
+        $httpCode = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $elapsedMs = round((microtime(true) - $startedAt) * 1000, 2);
+        curl_close($ch);
+
+        if ($curlError === CURLE_OPERATION_TIMEDOUT || $curlError === 28) {
+            $this->log([
+                'msg' => 'Pre-checkout eligibility timed out',
+                'timeout_ms' => $timeoutMs,
+                'elapsed_ms' => $elapsedMs,
+                'curl_error' => $curlErrorMessage,
+            ]);
+            return self::PRE_CHECKOUT_ELIGIBILITY_TIMEOUT;
+        }
+
+        if ($curlError !== 0 || $httpCode !== 200) {
+            $this->log([
+                'msg' => 'Pre-checkout eligibility request failed',
+                'timeout_ms' => $timeoutMs,
+                'elapsed_ms' => $elapsedMs,
+                'curl_errno' => $curlError,
+                'curl_error' => $curlErrorMessage,
+                'http_code' => $httpCode,
+                'response' => $responseBody,
+            ]);
+            return self::PRE_CHECKOUT_ELIGIBILITY_TIMEOUT;
+        }
+
+        $decoded = json_decode($responseBody, true);
+        if (!is_array($decoded) || !array_key_exists('is_eligible', $decoded)) {
+            $this->log([
+                'msg' => 'Pre-checkout eligibility invalid response',
+                'elapsed_ms' => $elapsedMs,
+                'response' => $responseBody,
+            ]);
+            return self::PRE_CHECKOUT_ELIGIBILITY_TIMEOUT;
+        }
+
+        $isEligible = $this->parsePreCheckoutEligibilityFlag($decoded['is_eligible']);
+        $result = $isEligible
+            ? self::PRE_CHECKOUT_ELIGIBILITY_ELIGIBLE
+            : self::PRE_CHECKOUT_ELIGIBILITY_INELIGIBLE;
+
+        $this->log([
+            'msg' => 'Pre-checkout eligibility response',
+            'is_eligible' => $decoded['is_eligible'],
+            'parsed' => $isEligible,
+            'result' => $result,
+            'elapsed_ms' => $elapsedMs,
+        ]);
+
+        $this->session->data[$cacheKey] = $result;
+        return $result;
+    }
+
+    private function getPreCheckoutEligibilityTimeoutMs() {
+        if ($this->config->get('payment_tamarapay_api_environment') == self::PRODUCTION_API_ENVIRONMENT) {
+            return self::PRE_CHECKOUT_ELIGIBILITY_TIMEOUT_MS;
+        }
+
+        return self::PRE_CHECKOUT_ELIGIBILITY_SANDBOX_TIMEOUT_MS;
+    }
+
+    private function normalizePhoneNumber($phoneNumber, $currency = '') {
+        $phoneNumber = preg_replace('/\s+/', '', trim(strval($phoneNumber)));
+        if ($phoneNumber === '') {
+            return '';
+        }
+
+        $phoneNumber = ltrim($phoneNumber, '+');
+        $phoneNumber = preg_replace('/\D/', '', $phoneNumber);
+        if ($phoneNumber === '') {
+            return '';
+        }
+
+        if (strpos($phoneNumber, '966') === 0 || strpos($phoneNumber, '971') === 0) {
+            return $phoneNumber;
+        }
+
+        if (strpos($phoneNumber, '0') === 0) {
+            $phoneNumber = ltrim($phoneNumber, '0');
+        }
+
+        if (strpos($phoneNumber, '5') !== 0) {
+            return $phoneNumber;
+        }
+
+        $currency = strtoupper(trim(strval($currency)));
+        if ($currency === 'SAR') {
+            return '966' . $phoneNumber;
+        }
+        if ($currency === 'AED') {
+            return '971' . $phoneNumber;
+        }
+
+        return $phoneNumber;
+    }
+
+    private function resolvePreCheckoutEligibilityEmail($email) {
+        $email = trim(strval($email));
+
+        return $email !== '' ? $email : self::PRE_CHECKOUT_ELIGIBILITY_FALLBACK_EMAIL;
     }
 
     public function validateCartItems() {
@@ -1490,7 +1806,21 @@ class ModelExtensionPaymentTamarapay extends Model
         return $this->registry->get('console') !== null;
     }
 
+    private function ensureTamaraAutoloadLoaded() {
+        static $loaded = false;
+        if ($loaded) {
+            return;
+        }
+
+        $autoload = DIR_SYSTEM . 'library/tamara/vendor/autoload.php';
+        if (is_file($autoload)) {
+            require_once $autoload;
+            $loaded = true;
+        }
+    }
+
     public function getTamaraClient() {
+        $this->ensureTamaraAutoloadLoaded();
         $url = $this->getApiUrl();
         $token = $this->config->get('tamarapay_token');
 
@@ -1834,7 +2164,26 @@ class ModelExtensionPaymentTamarapay extends Model
                 $result = $this->session->data['guest']['telephone'];
             }
         }
+        if (empty($result) && !empty($this->session->data['payment_address']['telephone'])) {
+            $result = $this->session->data['payment_address']['telephone'];
+        }
+        if (empty($result) && !empty($this->session->data['shipping_address']['telephone'])) {
+            $result = $this->session->data['shipping_address']['telephone'];
+        }
         return $result;
+    }
+
+    public function getCustomerEmailFromSession() {
+        if ($this->customer->isLogged()) {
+            return $this->customer->getEmail();
+        }
+        if (!empty($this->session->data['guest']['email'])) {
+            return $this->session->data['guest']['email'];
+        }
+        if (!empty($this->session->data['payment_address']['email'])) {
+            return $this->session->data['payment_address']['email'];
+        }
+        return '';
     }
 
     public function isTamaraAvailableForThisCustomer() {
@@ -1963,6 +2312,7 @@ class ModelExtensionPaymentTamarapay extends Model
      * @return array
      */
     public function checkPaymentOptionsAvailability($countryCode, $orderValue, $phoneNumber, $isVip = true) {
+        $this->ensureTamaraAutoloadLoaded();
         $result = [
             'has_available_payment_options' => false,
             'single_checkout_enabled' => false,
@@ -1972,13 +2322,13 @@ class ModelExtensionPaymentTamarapay extends Model
             return $result;
         }
         try {
-            $paymentOptionsAvailability = new \TMS\Tamara\Model\Checkout\PaymentOptionsAvailability(
+            $paymentOptionsAvailability = new PaymentOptionsAvailability(
                 $countryCode,
-                new \TMS\Tamara\Model\Money($orderValue, $this->getCurrencyCodeFromSession()),
+                new Money($orderValue, $this->getCurrencyCodeFromSession()),
                 $phoneNumber,
                 $isVip
             );
-            $request = new \TMS\Tamara\Request\Checkout\CheckPaymentOptionsAvailabilityRequest($paymentOptionsAvailability);
+            $request = new CheckPaymentOptionsAvailabilityRequest($paymentOptionsAvailability);
             $response = $this->getTamaraClient()->checkPaymentOptionsAvailability($request);
             return $this->parsePaymentOptionsAvailabilityResponse($response);
         } catch (\TMS\Tamara\Exception\RequestException $requestException) {
