@@ -3,7 +3,6 @@ $_['heading_title']        = 'Your order has been placed!';
 $_['text_tamarapay_title']        = 'Tamara Payment';
 $_['text_tamarapay']        = 'Tamara';
 
-
 // Text
 $_['text_basket']          = 'Shopping Cart';
 $_['text_checkout']        = 'Checkout';
@@ -51,6 +50,7 @@ $_['text_know_more']                    = 'Know more?';
 $_['text_order_canceled']               = 'Your order has been canceled';
 $_['text_order_pay_failure']            = 'Pay with Tamara failed';
 $_['text_terms_and_conditions']           = 'Terms and conditions';
+$_['text_pre_checkout_not_available']     = 'Tamara option is not available right now.';
 
 // Error
 $_['error_process_order']				= 'There was an error processing your order. Please contact the shop administrator for help.';

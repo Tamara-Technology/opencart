@@ -48,6 +48,7 @@ $_['text_know_more']                    = 'للمزيد من المعلومات'
 $_['text_order_canceled']               = 'تم إلغاء طلبك';
 $_['text_order_pay_failure']            = 'فشل الدفع مع تمارا';
 $_['text_terms_and_conditions']           = 'الأحكام والشروط';
+$_['text_pre_checkout_not_available']     = 'خيار تمارا غير متاح حالياً.';
 
 // Error
 $_['error_process_order']				= 'حدث خطأ أثناء معالجة طلبك، تواصل مع مسؤول المتجر للمساعدة.';

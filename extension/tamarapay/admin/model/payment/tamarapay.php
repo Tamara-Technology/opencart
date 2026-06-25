@@ -16,12 +16,12 @@ class Tamarapay extends \Opencart\System\Engine\Model
     /**
      * Define version of extension
      */
-    public const VERSION = '1.1.0';
+    public const VERSION = '1.2.0';
 
     /**
      * Define schema version
      */
-    public const SCHEMA_VERSION = '1.0.0';
+    public const SCHEMA_VERSION = '1.1.0';
 
     private const TAMARA_EVENT_ORDER_STATUS_CHANGE_CODE = 'tamara_order_status_change';
     private const TAMARA_EVENT_ADD_PROMO_WIDGET_PRODUCT = 'tamara_promo_wg_product';
@@ -681,7 +681,7 @@ class Tamarapay extends \Opencart\System\Engine\Model
         $themeDir = sprintf("%sview%stheme%s", DIR_CATALOG, DIRECTORY_SEPARATOR, DIRECTORY_SEPARATOR);
         $themes = glob($themeDir . '*' , GLOB_ONLYDIR);
         $defaultThemePaymentDir = $themeDir . sprintf("default%stemplate%sextension%spayment%s", DIRECTORY_SEPARATOR, DIRECTORY_SEPARATOR, DIRECTORY_SEPARATOR, DIRECTORY_SEPARATOR);
-        $needToCopies = ["tamarapay.twig", "tamarapay_success.twig"];
+        $needToCopies = ["tamarapay.twig", "tamarapay_success.twig", "tamarapay_pre_checkout_unavailable.twig"];
         foreach ($themes as $theme) {
             if ($this->endsWith($theme, "default")) {
                 continue;

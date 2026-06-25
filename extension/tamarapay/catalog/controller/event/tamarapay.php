@@ -175,6 +175,13 @@ class Tamarapay extends \Opencart\System\Engine\Controller
             return $output;
         }
 
+        $search = "                    for (i in json['payment_methods']) {\n                        html += '<p><strong>' + json['payment_methods'][i]['name'] + '</strong></p>';\n\n                        if (!json['payment_methods'][i]['error']) {";
+        $replace = "                    for (i in json['payment_methods']) {\n                        if (json['payment_methods'][i]['unavailable']) {\n                            html += '<div class=\"form-check tamara-pre-checkout-unavailable\">';\n                            html += '<input type=\"radio\" name=\"payment_method\" value=\"tamarapay\" id=\"input-payment-method-tamarapay\" disabled=\"disabled\" />';\n                            html += '<label class=\"text-muted\" for=\"input-payment-method-tamarapay\">' + json['payment_methods'][i]['unavailable_html'] + '</label>';\n                            html += '</div>';\n                            continue;\n                        }\n\n                        html += '<p><strong>' + json['payment_methods'][i]['name'] + '</strong></p>';\n\n                        if (!json['payment_methods'][i]['error']) {";
+
+        if (strpos($output, $search) !== false) {
+            $output = str_replace($search, $replace, $output);
+        }
+
         if (preg_match('/<\/footer>/i', $output, $matches, PREG_OFFSET_CAPTURE)) {
             
             $addCss = '
@@ -184,6 +191,11 @@ class Tamarapay extends \Opencart\System\Engine\Controller
             {
               display: inline;
             }
+            .tamara-pre-checkout-unavailable { opacity: .55; }
+            .tamara-pre-checkout-unavailable label { cursor: not-allowed; pointer-events: none; }
+            .tamara-pre-checkout-unavailable .payment-icon { max-height: 25px; vertical-align: middle; }
+            .tamara-pre-checkout-inline { display: inline-block; vertical-align: middle; line-height: 1.4; }
+            .tamara-pre-checkout-inline small { vertical-align: middle; }
             </style>
             ';
 

@@ -76,6 +76,10 @@ class Tamarapay extends \Opencart\System\Engine\Controller
             $this->load->language('extension/tamarapay/payment/tamarapay');
             $this->load->model('extension/tamarapay/payment/tamarapay');
 
+            if ($this->model_extension_tamarapay_payment_tamarapay->isPreCheckoutUnavailable()) {
+                throw new \Exception($this->model_extension_tamarapay_payment_tamarapay->getPreCheckoutNotAvailableMessage());
+            }
+
             //validate data
             $orderData = $this->model_extension_tamarapay_payment_tamarapay->getOrder($this->model_extension_tamarapay_payment_tamarapay->getOrderIdFromSession());
 
