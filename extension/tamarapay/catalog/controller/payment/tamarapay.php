@@ -19,10 +19,22 @@ class Tamarapay extends \Opencart\System\Engine\Controller
         $this->load->language('extension/tamarapay/payment/tamarapay');
         $this->load->model('extension/tamarapay/payment/tamarapay');
 
-        if (!empty($this->session->data['tamara_methods_for_checkout_page'])) {
-            $methods = $this->session->data['tamara_methods_for_checkout_page'];
-        } else {
+        $methods = $this->session->data['tamara_methods_for_checkout_page'] ?? [];
+        $hasAvailableMethod = false;
+        foreach ($methods as $method) {
+            if (!empty($method['is_in_limit'])) {
+                $hasAvailableMethod = true;
+                break;
+            }
+        }
+        if (!$hasAvailableMethod) {
             $methods = $this->model_extension_tamarapay_payment_tamarapay->getPaymentMethodsForCheckoutPage();
+        }
+        if (empty($methods)) {
+            $methods = $this->model_extension_tamarapay_payment_tamarapay->getFallbackCheckoutMethods();
+        }
+        if (!empty($methods)) {
+            $this->session->data['tamara_methods_for_checkout_page'] = $methods;
         }
         if (empty($methods)) {
             return $this->renderIndexTemplate(['error_get_payment' => $this->language->get('error_no_method_available')]);
@@ -123,6 +135,22 @@ class Tamarapay extends \Opencart\System\Engine\Controller
 
     private function validatePaymentTypeSubmitted($name, $countryCode, $orderValue, $phoneNumber)
     {
+        $phoneNumber = $this->model_extension_tamarapay_payment_tamarapay->getPaymentTypesApiPhoneNumber($phoneNumber);
+        $currencyCode = $this->model_extension_tamarapay_payment_tamarapay->getCurrencyCodeFromSession();
+        $paymentTypes = $this->model_extension_tamarapay_payment_tamarapay->getPaymentTypes($countryCode, $currencyCode, $orderValue, $phoneNumber);
+        if (!empty($paymentTypes)) {
+            if ($this->model_extension_tamarapay_payment_tamarapay->isSingleCheckoutVersion()) {
+                return true;
+            }
+            foreach ($paymentTypes as $type) {
+                if ($type['name'] == $name || (!empty($type['is_installment']) && $this->model_extension_tamarapay_payment_tamarapay->isInstallmentsPayment($name))) {
+                    return true;
+                }
+            }
+
+            return true;
+        }
+
         $paymentOptionsAvailability = $this->model_extension_tamarapay_payment_tamarapay->checkPaymentOptionsAvailability($countryCode, $orderValue, $phoneNumber);
         if ($paymentOptionsAvailability['has_available_payment_options']) {
             if ($paymentOptionsAvailability['single_checkout_enabled']) {
@@ -377,7 +405,7 @@ class Tamarapay extends \Opencart\System\Engine\Controller
                     sprintf(
                         "UPDATE `%s` SET `is_active` = '0' WHERE `order_id` = '%s'",
                         DB_PREFIX . 'tamara_orders',
-                        $tamaraOrder['order_id']
+                        $this->db->escape((string) $tamaraOrder['order_id'])
                     )
                 );
 
@@ -386,11 +414,11 @@ class Tamarapay extends \Opencart\System\Engine\Controller
                     sprintf(
                         "UPDATE `%s` SET `is_active` = '1' WHERE `tamara_order_id` = '%s'",
                         DB_PREFIX . 'tamara_orders',
-                        $tamaraOrderId
+                        $this->db->escape($tamaraOrderId)
                     )
                 );
             }
-        } catch (Exception $exception) {
+        } catch (\Exception $exception) {
             $this->log($exception->getMessage());
             $response = ['error' => $this->language->get('error_not_found_order')];
             return $this->responseJson($response);

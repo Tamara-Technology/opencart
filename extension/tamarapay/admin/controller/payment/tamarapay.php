@@ -89,10 +89,13 @@ class Tamarapay extends \Opencart\System\Engine\Controller {
     public function save(): void {
 
         $this->load->language('extension/tamarapay/payment/tamarapay');
+        $this->load->model('setting/setting');
+        $this->load->model('extension/tamarapay/payment/tamarapay');
 
         if ('POST' === ($this->request->server['REQUEST_METHOD']) && $this->validate() ) {
 
             $this->model_setting_setting->editSetting('payment_tamarapay', $this->request->post);
+            $this->model_extension_tamarapay_payment_tamarapay->updateOpencartConfig();
 
             $json['success'] = $this->language->get('text_success');
 
@@ -248,6 +251,12 @@ class Tamarapay extends \Opencart\System\Engine\Controller {
             $data['payment_tamarapay_cancel_order_status_id'] = $this->request->post['payment_tamarapay_cancel_order_status_id'];
         } else {
             $data['payment_tamarapay_cancel_order_status_id'] = $this->config->get('payment_tamarapay_cancel_order_status_id');
+        }
+
+        if (isset($this->request->post['payment_tamarapay_refund_order_status_id'])) {
+            $data['payment_tamarapay_refund_order_status_id'] = $this->request->post['payment_tamarapay_refund_order_status_id'];
+        } else {
+            $data['payment_tamarapay_refund_order_status_id'] = $this->config->get('payment_tamarapay_refund_order_status_id');
         }
 
         if (isset($this->request->post['payment_tamarapay_enable_tamara_checkout_success_page'])) {
@@ -475,8 +484,11 @@ class Tamarapay extends \Opencart\System\Engine\Controller {
      *
      */
     private function upgradeData() {
-        if (version_compare($this->contextSchemaVersion, $this->getSchemaVersion() , '<')) {
-            //Process upgrade here
+        $this->load->model('extension/tamarapay/payment/tamarapay');
+        $this->model_extension_tamarapay_payment_tamarapay->addEvents();
+
+        if (version_compare((string) $this->contextSchemaVersion, $this->getSchemaVersion(), '<')) {
+            $this->updateSchemaVersion($this->getSchemaVersion());
         }
     }
 

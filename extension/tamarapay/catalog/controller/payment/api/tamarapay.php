@@ -27,7 +27,7 @@ class Tamarapay extends \Opencart\System\Engine\Model {
                 ];
                 $json['success'] = $this->language->get('text_success');
                 $json['checkout_data'] = $result;
-            } catch (Exception $exception) {
+            } catch (\Exception $exception) {
                 $this->model_extension_tamarapay_payment_tamarapay->log([$exception->getMessage()]);
                 $json['error'] = $exception->getMessage();
             }

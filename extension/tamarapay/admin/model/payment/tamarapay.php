@@ -21,13 +21,14 @@ class Tamarapay extends \Opencart\System\Engine\Model
     /**
      * Define schema version
      */
-    public const SCHEMA_VERSION = '1.1.0';
+    public const SCHEMA_VERSION = '1.2.0';
 
     private const TAMARA_EVENT_ORDER_STATUS_CHANGE_CODE = 'tamara_order_status_change';
     private const TAMARA_EVENT_ADD_PROMO_WIDGET_PRODUCT = 'tamara_promo_wg_product';
     private const TAMARA_EVENT_ADD_PROMO_WIDGET_CART = 'tamara_promo_wg_cart';
     private const TAMARA_EVENT_ADD_TELEPHONE_TO_SHIPPING_ADDRESS = 'tamara_add_telephone_to_shipping_address';
     private const TAMARA_EVENT_ADD_CSS_TO_PAYMENT_METHOD = 'tamara_add_css_to_payment_method';
+    private const TAMARA_EVENT_ADD_CSS_TO_PAYMENT_METHOD_PARTIAL = 'tamara_add_css_to_payment_method_partial';
 
     // const WEBHOOK_URL = 'index.php?route=extension/tamarapay/payment/tamarapay/webhook', ALLOWED_WEBHOOKS = ['order_expired', 'order_declined'];
 
@@ -208,23 +209,30 @@ class Tamarapay extends \Opencart\System\Engine\Model
               KEY `tamara_cancels_order_id` (`order_id`)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='tamara_cancels';
         ");
+
+        $this->db->query("
+            CREATE TABLE IF NOT EXISTS `" . DB_PREFIX . "tamara_refunds` (
+              `refund_id` varchar(255) NOT NULL,
+              `order_id` int unsigned NOT NULL,
+              `tamara_order_id` varchar(255) NOT NULL,
+              `capture_id` varchar(255) DEFAULT NULL,
+              `total_amount` decimal(15,2) NOT NULL DEFAULT 0.00,
+              `currency` varchar(3) NOT NULL,
+              `status` varchar(64) DEFAULT NULL,
+              `comment` text,
+              `request` text,
+              `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+              PRIMARY KEY (`refund_id`,`order_id`,`tamara_order_id`),
+              KEY `tamara_refunds_order_id` (`order_id`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='tamara_refunds';
+        ");
     }
 
     public function addEvents() {
         
         $this->load->model('setting/event');
-
-        // event add telephone field to checkout page
-//        $event = [
-//            'code' => self::TAMARA_EVENT_ADD_TELEPHONE_TO_SHIPPING_ADDRESS,
-//            'description' => 'Add telephone to shipping address',
-//            'trigger' => 'catalog/model/account/custom_field/getCustomFields/after',
-//            'action' => 'extension/tamarapay/event/tamarapay.checkTelephoneForTamaraPayment',
-//            'sort_order' => 999,
-//            'status' => true
-//        ];
-//        $this->model_setting_event->addEvent($event);
-
+        $this->removeEvents();
 
         // event add widget to product page 
         $event = [
@@ -237,11 +245,11 @@ class Tamarapay extends \Opencart\System\Engine\Model
         ];
         $this->model_setting_event->addEvent($event);
 
-        // event add widget to cart page 
+        // event add widget to cart list (OpenCart 4.1 renders the table in cart_list)
         $event = [
             'code' => self::TAMARA_EVENT_ADD_PROMO_WIDGET_CART,
             'description' => 'Add widget to cart page',
-            'trigger' => 'catalog/view/checkout/cart/after',
+            'trigger' => 'catalog/view/checkout/cart_list/after',
             'action' => 'extension/tamarapay/event/tamarapay.addPromoWidgetForCartPage',
             'sort_order' => 999,
             'status' => true
@@ -252,7 +260,7 @@ class Tamarapay extends \Opencart\System\Engine\Model
         $event = [
             'code' => self::TAMARA_EVENT_ORDER_STATUS_CHANGE_CODE,
             'description' => 'Add event order status change code',
-            'trigger' => 'catalog/model/checkout/order/addHistory/after',
+            'trigger' => 'catalog/model/checkout/order.addHistory/after',
             'action' => 'extension/tamarapay/event/tamarapay.handleOrderStatusChange',
             'sort_order' => 999,
             'status' => true
@@ -264,6 +272,16 @@ class Tamarapay extends \Opencart\System\Engine\Model
             'code' => self::TAMARA_EVENT_ADD_CSS_TO_PAYMENT_METHOD,
             'description' => 'Add css to label tamara in payment method',
             'trigger' => 'catalog/view/checkout/checkout/after',
+            'action' => 'extension/tamarapay/event/tamarapay.addCssToPaymentMethod',
+            'sort_order' => 999,
+            'status' => true
+        ];
+        $this->model_setting_event->addEvent($event);
+
+        $event = [
+            'code' => self::TAMARA_EVENT_ADD_CSS_TO_PAYMENT_METHOD_PARTIAL,
+            'description' => 'Patch Tamara payment option rendering on the payment method partial',
+            'trigger' => 'catalog/view/checkout/payment_method/after',
             'action' => 'extension/tamarapay/event/tamarapay.addCssToPaymentMethod',
             'sort_order' => 999,
             'status' => true
@@ -317,6 +335,12 @@ class Tamarapay extends \Opencart\System\Engine\Model
                         'value' => $row['order_status_id']
                     ];
                 }
+                if ($row['name'] == "Refunded") {
+                    $data[] = [
+                        'key' => 'payment_tamarapay_refund_order_status_id',
+                        'value' => $row['order_status_id']
+                    ];
+                }
             }
         }
         $sql = "";
@@ -345,7 +369,17 @@ class Tamarapay extends \Opencart\System\Engine\Model
     }
 
     public function updateTelephoneConfig() {
-        $this->db->query("UPDATE `". DB_PREFIX ."setting` SET `value`='1' WHERE `key` = 'config_telephone_display' OR `key` = 'config_telephone_required'");
+        $this->load->model('setting/setting');
+
+        foreach (['config_telephone_display', 'config_telephone_required'] as $key) {
+            $existing = $this->db->query("SELECT `setting_id` FROM `" . DB_PREFIX . "setting` WHERE `code` = 'config' AND `key` = '" . $this->db->escape($key) . "' AND `store_id` = '0' LIMIT 1");
+
+            if ($existing->num_rows) {
+                $this->model_setting_setting->editValue('config', $key, '1');
+            } else {
+                $this->db->query("INSERT INTO `" . DB_PREFIX . "setting` SET `store_id` = '0', `code` = 'config', `key` = '" . $this->db->escape($key) . "', `value` = '1', `serialized` = '0'");
+            }
+        }
     }
 
     public function updateCookieSameSite() {
@@ -490,6 +524,7 @@ class Tamarapay extends \Opencart\System\Engine\Model
         $this->model_setting_event->deleteEventByCode(self::TAMARA_EVENT_ADD_PROMO_WIDGET_PRODUCT);
         $this->model_setting_event->deleteEventByCode(self::TAMARA_EVENT_ADD_PROMO_WIDGET_CART);
         $this->model_setting_event->deleteEventByCode(self::TAMARA_EVENT_ADD_CSS_TO_PAYMENT_METHOD);
+        $this->model_setting_event->deleteEventByCode(self::TAMARA_EVENT_ADD_CSS_TO_PAYMENT_METHOD_PARTIAL);
     }
 
     /**

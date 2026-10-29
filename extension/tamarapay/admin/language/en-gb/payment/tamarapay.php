@@ -60,6 +60,7 @@ $_['entry_only_show_for_these_customer']  = "Only show Tamara for these customer
 $_['entry_enable_debug']                = 'Enable debug';
 $_['entry_capture_order_status']        = 'Which order status do you want to trigger Tamara capture API? (You should set it to the status after the order is shipped)';
 $_['entry_cancel_order_status']         = 'Which order status do you want to trigger Tamara cancel API? (You should set it to the status when order is canceled)';
+$_['entry_refund_order_status']         = 'Which order status do you want to trigger Tamara refund API? (You should set it to the status when order is refunded)';
 $_['entry_title']                       = 'Title';
 $_['entry_enable']                      = 'Enabled';
 $_['entry_min_limit_amount']            = 'Min Limit Amount of Order';

@@ -8,18 +8,18 @@ namespace Opencart\Catalog\Controller\Extension\Tamarapay\Event;
 class Tamarapay extends \Opencart\System\Engine\Controller
 {
     // catalog/model/account/custom_field/getCustomFields/after
-    public function checkTelephoneForTamaraPayment($route, $args, $output) {
+    public function checkTelephoneForTamaraPayment(&$route, &$args, &$output) {
         //check if Tamara payment is enabled (get it from config)
 
         $this->load->model('extension/tamarapay/payment/tamarapay');
 
         if (!$this->model_extension_tamarapay_payment_tamarapay->isTamaraEnabled()) {
-            return $output;
+            return;
         }
 
         foreach ($output as $customField) {
             if ($customField['name'] == "Telephone" && $customField['location'] == 'address' && $customField['type'] == 'text') {
-                return $output;
+                return;
             }
         }
         if (!empty($args)) {
@@ -27,8 +27,6 @@ class Tamarapay extends \Opencart\System\Engine\Controller
         } else {
             $output = array_merge($output, $this->getTamaraCustomFields($this->customer->getGroupId()));
         }
-
-        return $output;
     }
 
     private function getTamaraCustomFields(int $customer_group_id = 0): array {
@@ -71,24 +69,24 @@ class Tamarapay extends \Opencart\System\Engine\Controller
     }
 
 
-    public function addPromoWidgetForProduct($route, $data, $output)
+    public function addPromoWidgetForProduct(&$route, &$data, &$output)
     {
         $this->load->model('extension/tamarapay/payment/tamarapay');
         if (!$this->model_extension_tamarapay_payment_tamarapay->isTamaraEnabled()) {
-            return $output;
+            return;
         }
         if ($this->model_extension_tamarapay_payment_tamarapay->getDisableTamara()) {
-            return $output;
+            return;
         }
         preg_match('/<div .*id="product"/', $output, $matches, PREG_OFFSET_CAPTURE);
         if (empty($matches[0][1])) {
-            return $output;
+            return;
         }
         if (!$this->config->get("payment_tamarapay_status")) {
-            return $output;
+            return;
         }
         if (empty($data['product_id'])) {
-            return $output;
+            return;
         }
         $productId = $data['product_id'];
         $excludeProductIds = explode(",", strval($this->config->get('payment_tamarapay_pdp_wg_exclude_product_ids')));
@@ -118,89 +116,183 @@ class Tamarapay extends \Opencart\System\Engine\Controller
                 $output = substr_replace($output, $widgetHtml, $matches[0][1], 0);
             }
         }
-        return $output;
     }
 
-    public function addPromoWidgetForCartPage($route, $data, $output)
+    public function addPromoWidgetForCartPage(&$route, &$data, &$output)
     {
         $this->load->model('extension/tamarapay/payment/tamarapay');
         if (!$this->model_extension_tamarapay_payment_tamarapay->isTamaraEnabled()) {
-            return $output;
+            return;
         }
         if ($this->model_extension_tamarapay_payment_tamarapay->getDisableTamara()) {
-            return $output;
+            return;
         }
 
-        if (preg_match('/<\/table>/i', $output, $tableMatches, PREG_OFFSET_CAPTURE)) {
-            $tablePosition = $tableMatches[0][1];
-            $htmlAfterTable = substr($output, $tablePosition);
-            preg_match('/<h2>(.*?)<\/h2>/i', $output, $matches, PREG_OFFSET_CAPTURE);
-        }
-
-        if (empty($matches[0][1])) {
-            return $output;
+        if (!preg_match('/<\/table>/i', $output, $tableMatches, PREG_OFFSET_CAPTURE)) {
+            return;
         }
         if (!$this->config->get("payment_tamarapay_status")) {
-            return $output;
+            return;
         }
         if (!$this->model_extension_tamarapay_payment_tamarapay->validateCartItems()) {
-            return $output;
+            return;
         }
         $this->load->model('extension/tamarapay/payment/helper/tamara_opencart');
         $cartValue = $this->model_extension_tamarapay_payment_helper_tamara_opencart->getTotalAmountInCurrency();
         if (empty($cartValue)) {
-            return $output;
+            return;
         }
         $widgetHtml = $this->getWidgetHtml($cartValue);
         if (!empty($widgetHtml)) {
-
             $widgetHtml .= '<style>#tamara_promo_widget {text-align: left;} .tamara-promo {margin: 6px auto 18px auto !important;} </style>';
-
-            // $matches[0][1] = explode('id="accordion"', $output)[0];
-            // $matches[0][1] = explode('<h2>', $output);
-
-            $output = substr_replace($output, $widgetHtml, $matches[0][1], 0);
+            $insertAt = $tableMatches[0][1] + strlen($tableMatches[0][0]);
+            $output = substr_replace($output, $widgetHtml, $insertAt, 0);
         }
-        return $output;
     }
 
-    public function addCssToPaymentMethod($route, $data, $output)
+    public function addCssToPaymentMethod(&$route, &$data, &$output)
     {
         $this->load->model('extension/tamarapay/payment/tamarapay');
 
         if (!$this->model_extension_tamarapay_payment_tamarapay->isTamaraEnabled()) {
-            return $output;
+            return;
         }
         if ($this->model_extension_tamarapay_payment_tamarapay->getDisableTamara()) {
-            return $output;
+            return;
         }
 
-        $search = "                    for (i in json['payment_methods']) {\n                        html += '<p><strong>' + json['payment_methods'][i]['name'] + '</strong></p>';\n\n                        if (!json['payment_methods'][i]['error']) {";
-        $replace = "                    for (i in json['payment_methods']) {\n                        if (json['payment_methods'][i]['unavailable']) {\n                            html += '<div class=\"form-check tamara-pre-checkout-unavailable\">';\n                            html += '<input type=\"radio\" name=\"payment_method\" value=\"tamarapay\" id=\"input-payment-method-tamarapay\" disabled=\"disabled\" />';\n                            html += '<label class=\"text-muted\" for=\"input-payment-method-tamarapay\">' + json['payment_methods'][i]['unavailable_html'] + '</label>';\n                            html += '</div>';\n                            continue;\n                        }\n\n                        html += '<p><strong>' + json['payment_methods'][i]['name'] + '</strong></p>';\n\n                        if (!json['payment_methods'][i]['error']) {";
+        $logoUrl = 'https://cdn.tamara.co/assets/svg/tamara-logo-badge-en.svg';
+        $optionReplacements = [
+            [
+                "                                html += '<div class=\"form-check\">';\n\n                                var code = i + '-' + j.replaceAll('_', '-');\n\n                                html += '<input type=\"radio\" name=\"payment_method\" value=\"' + json['payment_methods'][i]['option'][j]['code'] + '\" id=\"input-payment-method-' + code + '\"';\n\n                                var method = \$('#input-payment-code').val();\n\n                                if ((json['payment_methods'][i]['option'][j]['code'] == method) || (!method && first)) {\n                                    html += ' checked';\n\n                                    first = false;\n                                }",
+                "                                var optionDisabled = !!(json['payment_methods'][i]['unavailable'] || json['payment_methods'][i]['option'][j]['disabled']);\n                                html += '<div class=\"form-check' + (optionDisabled ? ' tamara-pre-checkout-unavailable' : '') + '\">';\n\n                                var code = i + '-' + j.replaceAll('_', '-');\n\n                                html += '<input type=\"radio\" name=\"payment_method\" value=\"' + json['payment_methods'][i]['option'][j]['code'] + '\" id=\"input-payment-method-' + code + '\"';\n\n                                var method = \$('#input-payment-code').val();\n\n                                if (optionDisabled) {\n                                    html += ' disabled=\"disabled\"';\n                                } else if ((json['payment_methods'][i]['option'][j]['code'] == method) || (!method && first)) {\n                                    html += ' checked';\n\n                                    first = false;\n                                }",
+            ],
+            [
+                "                                html += '<div class=\"form-check\">';\n\n                                var code = i + '-' + j.replaceAll('_', '-');\n\n                                html += '<input type=\"radio\" name=\"payment_method\" value=\"' + json['payment_methods'][i]['option'][j]['code'] + '\" id=\"input-payment-method-' + code + '\"';\n\n                                if (json['payment_methods'][i]['option'][j]['code'] == \$('#input-payment-code').val()) {\n                                    html += ' checked';\n                                }",
+                "                                var optionDisabled = !!(json['payment_methods'][i]['unavailable'] || json['payment_methods'][i]['option'][j]['disabled']);\n                                html += '<div class=\"form-check' + (optionDisabled ? ' tamara-pre-checkout-unavailable' : '') + '\">';\n\n                                var code = i + '-' + j.replaceAll('_', '-');\n\n                                html += '<input type=\"radio\" name=\"payment_method\" value=\"' + json['payment_methods'][i]['option'][j]['code'] + '\" id=\"input-payment-method-' + code + '\"';\n\n                                if (optionDisabled) {\n                                    html += ' disabled=\"disabled\"';\n                                } else if (json['payment_methods'][i]['option'][j]['code'] == \$('#input-payment-code').val()) {\n                                    html += ' checked';\n                                }",
+            ],
+        ];
 
-        if (strpos($output, $search) !== false) {
-            $output = str_replace($search, $replace, $output);
+        foreach ($optionReplacements as [$optionSearch, $optionReplace]) {
+            if (strpos($output, $optionSearch) !== false) {
+                $output = str_replace($optionSearch, $optionReplace, $output);
+                break;
+            }
         }
 
-        if (preg_match('/<\/footer>/i', $output, $matches, PREG_OFFSET_CAPTURE)) {
-            
-            $addCss = '
+        $labelSearch = "html += '  <label for=\"input-payment-method-' + code + '\">' + json['payment_methods'][i]['option'][j]['name'] + '</label>';";
+        $labelReplace = "var optionName = json['payment_methods'][i]['option'][j]['name'];"
+            . " if (json['payment_methods'][i]['option'][j]['code'] && String(json['payment_methods'][i]['option'][j]['code']).indexOf('tamarapay') === 0) {"
+            . " optionName = '<img class=\"payment-icon tamara-payment-option-logo\" src=\"" . $logoUrl . "\" alt=\"Tamara\">' + optionName;"
+            . " }"
+            . " html += '  <label for=\"input-payment-method-' + code + '\">' + optionName + '</label>';";
+
+        if (strpos($output, $labelSearch) !== false) {
+            $output = str_replace($labelSearch, $labelReplace, $output);
+        }
+
+        $selectedSearch = "$('#input-payment-method').val($('input[name=\'payment_method\']:checked').parent().find('label').text());";
+        $selectedReplace = "$('#input-payment-method').val($('input[name=\'payment_method\']:checked').parent().find('label').text());"
+            . " if (typeof window.updateTamaraPaymentMethodLogo === 'function') { window.updateTamaraPaymentMethodLogo(); }";
+        if (strpos($output, $selectedSearch) !== false) {
+            $output = str_replace($selectedSearch, $selectedReplace, $output);
+        }
+
+        $clearedSearch = "$('#input-payment-method').val('');";
+        $clearedReplace = "$('#input-payment-method').val(''); if (typeof window.updateTamaraPaymentMethodLogo === 'function') { window.updateTamaraPaymentMethodLogo(); }";
+        if (strpos($output, $clearedSearch) !== false) {
+            $output = str_replace($clearedSearch, $clearedReplace, $output);
+        }
+
+        if (strpos($output, 'id="tamara-pre-checkout-script"') !== false) {
+            return;
+        }
+
+        $addCss = '
 
             <style>
             label[for=input-payment-method-tamarapay-tamarapay]
             {
               display: inline;
             }
+            .tamara-payment-option-logo { height: 28px; width: auto; vertical-align: middle; margin-right: 6px; }
+            #input-payment-method.tamara-selected-payment {
+              background-image: url("' . $logoUrl . '");
+              background-repeat: no-repeat;
+              background-position: 10px center;
+              background-size: auto 24px;
+              padding-left: 100px;
+            }
+            [dir=rtl] #input-payment-method.tamara-selected-payment {
+              background-position: right 10px center;
+              padding-left: 12px;
+              padding-right: 100px;
+            }
             .tamara-pre-checkout-unavailable { opacity: .55; }
             .tamara-pre-checkout-unavailable label { cursor: not-allowed; pointer-events: none; }
-            .tamara-pre-checkout-unavailable .payment-icon { max-height: 25px; vertical-align: middle; }
-            .tamara-pre-checkout-inline { display: inline-block; vertical-align: middle; line-height: 1.4; }
-            .tamara-pre-checkout-inline small { vertical-align: middle; }
+            .tamara-pre-checkout-unavailable .tamara-payment-option-logo { opacity: .75; }
             </style>
+            <script type="text/javascript" id="tamara-pre-checkout-script">
+            window.updateTamaraPaymentMethodLogo = function() {
+                var code = $("#input-payment-code").val() || "";
+                var name = $("#input-payment-method").val() || "";
+                $("#input-payment-method").toggleClass("tamara-selected-payment", code.indexOf("tamarapay") === 0 && name !== "");
+            };
+            window.decorateTamaraPaymentOptions = function(paymentMethods) {
+                var method = paymentMethods && paymentMethods.tamarapay ? paymentMethods.tamarapay : null;
+                if (!method) {
+                    return false;
+                }
+                var option = method.option && method.option.tamarapay ? method.option.tamarapay : {};
+                var input = document.querySelector(\'input[name="payment_method"][value="tamarapay.tamarapay"]\');
+                if (!input) {
+                    return false;
+                }
+                if (method.unavailable || option.disabled) {
+                    input.disabled = true;
+                    input.checked = false;
+                    var wrap = input.closest(".form-check");
+                    if (wrap) {
+                        wrap.classList.add("tamara-pre-checkout-unavailable");
+                    }
+                }
+                var label = document.querySelector(\'label[for="\' + input.id + \'"]\') || (input.parentNode ? input.parentNode.querySelector("label") : null);
+                if (label && !label.querySelector(".tamara-payment-option-logo")) {
+                    var img = document.createElement("img");
+                    img.className = "payment-icon tamara-payment-option-logo";
+                    img.src = "' . $logoUrl . '";
+                    img.alt = "Tamara";
+                    label.insertBefore(img, label.firstChild);
+                }
+                return true;
+            };
+            $(document).ajaxSuccess(function(event, xhr, settings) {
+                if (!settings.url || settings.url.indexOf("payment_method.getMethods") === -1) {
+                    return;
+                }
+                var json = xhr.responseJSON;
+                if (!json && xhr.responseText) {
+                    try { json = JSON.parse(xhr.responseText); } catch (e) { json = null; }
+                }
+                if (!json || !json.payment_methods) {
+                    return;
+                }
+                var attempts = 0;
+                var timer = setInterval(function() {
+                    attempts++;
+                    if (window.decorateTamaraPaymentOptions(json.payment_methods) || attempts > 20) {
+                        clearInterval(timer);
+                    }
+                }, 50);
+            });
+            $(function() { window.updateTamaraPaymentMethodLogo(); });
+            </script>
             ';
 
+        if (preg_match('/<\/footer>/i', $output, $matches, PREG_OFFSET_CAPTURE)) {
             $output = substr_replace($output, $addCss, $matches[0][1], 0);
-           
+        } else {
+            $output .= $addCss;
         }
 
         return $output;
@@ -319,9 +411,14 @@ class Tamarapay extends \Opencart\System\Engine\Controller
                     $this->model_extension_tamarapay_payment_tamarapay->cancelOrder($tamaraOrder['tamara_order_id']);
                     return;
                 }
+                if ($statusId == $this->model_extension_tamarapay_payment_tamarapay->getRefundOrderStatusId()) {
+                    $this->log(["Tamara - handleOrderStatusChange - will go to refund, order id: " . $orderId . ", tamara order id: " . $tamaraOrder['tamara_order_id']]);
+                    $this->model_extension_tamarapay_payment_tamarapay->refundOrder($tamaraOrder['tamara_order_id']);
+                    return;
+                }
                 $this->log(["Tamara - handleOrderStatusChange - not processing, order id: " . $orderId . ", tamara order id: " . $tamaraOrder['tamara_order_id']]);
             } catch (\Exception $exception) {
-                $this->log(["handleOrderStatusChange - Exception when capture or cancel order"]);
+                $this->log(["handleOrderStatusChange - Exception when capture, cancel or refund order"]);
                 $this->log($exception->getMessage());
             }
         } else {

@@ -1,6 +1,12 @@
-Version 1.1.1
-- New:
-    - Add Pre-check API
+Version 1.2.0
+- New / Fixes:
+    - Phone number: normalize customer phone for payment-types and pre-checkout eligibility (SAR 966 / AED 971)
+    - Render widget: product, cart, and checkout widgets using payment-types API
+    - Payment types API: country, currency, order value, and phone support
+    - Cancel: order-status trigger and Tamara cancel API
+    - Capture: order-status trigger and Tamara capture API
+    - Refund: simplified refund API and order-status trigger
+    - Eligibility: pre-checkout eligibility keeps Tamara visible as a normal disabled option for SAR and AED
 Version 1.1.0
 - New:
     - Change widget type on the checkout page

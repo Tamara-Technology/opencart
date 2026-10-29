@@ -295,6 +295,24 @@
                                         </div>
                                     </div>
                                 </div>
+                                <div class="row">
+                                    <div class="col-sm-12">
+                                        <div class="mt-4 form-group row">
+                                            <label class="col-sm-6 fw-bold mb-2 control-label" for="input-refund-order-status">{{ entry_refund_order_status }}</label>
+                                            <div class="col-sm-6">
+                                                <select name="payment_tamarapay_refund_order_status_id" id="input-refund-order-status" class="form-control">
+                                                    {% for order_status in order_statuses %}
+                                                        {% if order_status.order_status_id == payment_tamarapay_refund_order_status_id %}
+                                                            <option value="{{ order_status.order_status_id }}" selected="selected">{{ order_status.name }}</option>
+                                                        {% else %}
+                                                            <option value="{{ order_status.order_status_id }}">{{ order_status.name }}</option>
+                                                        {% endif %}
+                                                    {% endfor %}
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>

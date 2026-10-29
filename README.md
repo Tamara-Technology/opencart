@@ -1,5 +1,5 @@
 ## Available Versions
-* **Tamara payment for OpenCart 4.0.x**
+* **Tamara payment for OpenCart 4.1.x**
 * [Tamara payment for OpenCart 3.0.x](https://github.com/tamara-solution/opencart/tree/master)
 * [Tamara payment for OpenCart 2.3.x](https://github.com/tamara-solution/opencart/tree/v2)
 * [Tamara payment for OpenCart 2.0.x](https://github.com/tamara-solution/opencart/tree/v20x)

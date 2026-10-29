@@ -13,6 +13,7 @@ $_['text_guest']           = '<p>Your order has been successfully processed!</p>
 // Text payment title
 $_['text_title']						= 'Split it up to 4 payments with Tamara, interest-free';
 $_['text_title_normal']					= 'Split your payments. No hidden fees, no interest!';
+$_['text_eligible_payment_label_ksa']	= 'Monthly Payments. Sharia Compliant.';
 $_['text_title_sko_2']					= 'Split it up to 2 payments with Tamara, interest-free';
 $_['text_title_sko_3']					= 'Split it up to 3 payments with Tamara, interest-free';
 $_['text_title_sko_4']					= 'Split it up to 4 payments with Tamara, interest-free';
